@@ -119,7 +119,7 @@ struct PaintType
 	enum Enum : uint32_t
 	{
 		None = 0,
-		Transparent, // Does it make sense? 
+		Transparent, // Does it make sense?
 		Color
 	};
 };
@@ -250,7 +250,7 @@ struct AttribFlags
 		FontSizeInherit         = 1 << 9,
 		FontFamilyInherit       = 1 << 10,
 
-		InheritAll = StrokePaintInherit | StrokeMiterLimitInherit | StrokeOpacityInherit | StrokeWidthInherit | StrokeLineJoinInherit | StrokeLineCapInherit 
+		InheritAll = StrokePaintInherit | StrokeMiterLimitInherit | StrokeOpacityInherit | StrokeWidthInherit | StrokeLineJoinInherit | StrokeLineCapInherit
 		           | FillPaintInherit | FillOpacityInherit | FillRuleInherit | FontSizeInherit | FontFamilyInherit
 	};
 };

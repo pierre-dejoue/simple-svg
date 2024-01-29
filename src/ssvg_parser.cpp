@@ -34,42 +34,42 @@ struct CSSColor
 };
 
 static const CSSColor kCSSColors[] = {
-	{ "black",            0xFF000000 }, { "silver",               0xFFC0C0C0 }, { "gray",              0xFF808080 }, { "white",           0xFFFFFFFF }, 
-	{ "maroon",           0xFF000080 }, { "red",                  0xFF0000FF }, { "purple",            0xFF800080 }, { "fuchsia",         0xFFFF00FF }, 
-	{ "green",            0xFF008000 }, { "lime",                 0xFF00FF00 }, { "olive",             0xFF008080 }, { "yellow",          0xFF00FFFF }, 
-	{ "navy",             0xFF800000 }, { "blue",                 0xFFFF0000 }, { "teal",              0xFF808000 }, { "aqua",            0xFFFFFF00 }, 
-	{ "orange",           0xFF00A5FF }, { "aliceblue",            0xFFFFF8F0 }, { "antiquewhite",      0xFFD7EBFA }, { "aquamarine",      0xFFD4FF7F }, 
-	{ "azure",            0xFFFFFFF0 }, { "beige",                0xFFDCF5F5 }, { "bisque",            0xFFC4E4FF }, { "blanchedalmond",  0xFFCDEBFF }, 
-	{ "blueviolet",       0xFFE22B8A }, { "brown",                0xFF2A2AA5 }, { "burlywood",         0xFF87B8DE }, { "cadetblue",       0xFFA09E5F }, 
-	{ "chartreuse",       0xFF00FF7F }, { "chocolate",            0xFF1E69D2 }, { "coral",             0xFF507FFF }, { "cornflowerblue",  0xFFED9564 }, 
-	{ "cornsilk",         0xFFDCF8FF }, { "crimson",              0xFF3C14DC }, { "cyan",              0xFFFFFF00 }, { "darkblue",        0xFF8B0000 }, 
+	{ "black",            0xFF000000 }, { "silver",               0xFFC0C0C0 }, { "gray",              0xFF808080 }, { "white",           0xFFFFFFFF },
+	{ "maroon",           0xFF000080 }, { "red",                  0xFF0000FF }, { "purple",            0xFF800080 }, { "fuchsia",         0xFFFF00FF },
+	{ "green",            0xFF008000 }, { "lime",                 0xFF00FF00 }, { "olive",             0xFF008080 }, { "yellow",          0xFF00FFFF },
+	{ "navy",             0xFF800000 }, { "blue",                 0xFFFF0000 }, { "teal",              0xFF808000 }, { "aqua",            0xFFFFFF00 },
+	{ "orange",           0xFF00A5FF }, { "aliceblue",            0xFFFFF8F0 }, { "antiquewhite",      0xFFD7EBFA }, { "aquamarine",      0xFFD4FF7F },
+	{ "azure",            0xFFFFFFF0 }, { "beige",                0xFFDCF5F5 }, { "bisque",            0xFFC4E4FF }, { "blanchedalmond",  0xFFCDEBFF },
+	{ "blueviolet",       0xFFE22B8A }, { "brown",                0xFF2A2AA5 }, { "burlywood",         0xFF87B8DE }, { "cadetblue",       0xFFA09E5F },
+	{ "chartreuse",       0xFF00FF7F }, { "chocolate",            0xFF1E69D2 }, { "coral",             0xFF507FFF }, { "cornflowerblue",  0xFFED9564 },
+	{ "cornsilk",         0xFFDCF8FF }, { "crimson",              0xFF3C14DC }, { "cyan",              0xFFFFFF00 }, { "darkblue",        0xFF8B0000 },
 	{ "darkcyan",         0xFF8B8B00 }, { "darkgoldenrod",        0xFF0B86B8 }, { "darkgray",          0xFFA9A9A9 }, { "darkgreen",       0xFF006400 },
-	{ "darkgrey",         0xFFA9A9A9 }, { "darkkhaki",            0xFF6BB7BD }, { "darkmagenta",       0xFF8B008B }, { "darkolivegreen",  0xFF2F6B55 }, 
-	{ "darkorange",       0xFF008CFF }, { "darkorchid",           0xFFCC3299 }, { "darkred",           0xFF00008B }, { "darksalmon",      0xFF7A96E9 }, 
-	{ "darkseagreen",     0xFF8FBC8F }, { "darkslateblue",        0xFF8B3D48 }, { "darkslategray",     0xFF4F4F2F }, { "darkslategrey",   0xFF4F4F2F }, 
-	{ "darkturquoise",    0xFFD1CE00 }, { "darkviolet",           0xFFD30094 }, { "deeppink",          0xFF9314FF }, { "deepskyblue",     0xFFFFBF00 }, 
+	{ "darkgrey",         0xFFA9A9A9 }, { "darkkhaki",            0xFF6BB7BD }, { "darkmagenta",       0xFF8B008B }, { "darkolivegreen",  0xFF2F6B55 },
+	{ "darkorange",       0xFF008CFF }, { "darkorchid",           0xFFCC3299 }, { "darkred",           0xFF00008B }, { "darksalmon",      0xFF7A96E9 },
+	{ "darkseagreen",     0xFF8FBC8F }, { "darkslateblue",        0xFF8B3D48 }, { "darkslategray",     0xFF4F4F2F }, { "darkslategrey",   0xFF4F4F2F },
+	{ "darkturquoise",    0xFFD1CE00 }, { "darkviolet",           0xFFD30094 }, { "deeppink",          0xFF9314FF }, { "deepskyblue",     0xFFFFBF00 },
 	{ "dimgray",          0xFF696969 }, { "dimgrey",              0xFF696969 }, { "dodgerblue",        0xFFFF901E }, { "firebrick",       0xFF2222B2 },
-	{ "floralwhite",      0xFFF0FAFF }, { "forestgreen",          0xFF228B22 }, { "gainsboro",         0xFFDCDCDC }, { "ghostwhite",      0xFFFFF8F8 }, 
-	{ "gold",             0xFF00D7FF }, { "goldenrod",            0xFF20A5DA }, { "greenyellow",       0xFF2FFFAD }, { "grey",            0xFF808080 }, 
-	{ "honeydew",         0xFFF0FFF0 }, { "hotpink",              0xFFB469FF }, { "indianred",         0xFF5C5CCD }, { "indigo",          0xFF82004B }, 
-	{ "ivory",            0xFFF0FFFF }, { "khaki",                0xFF8CE6F0 }, { "lavender",          0xFFF1E6E6 }, { "lavenderblush",   0xFFF5F0FF }, 
+	{ "floralwhite",      0xFFF0FAFF }, { "forestgreen",          0xFF228B22 }, { "gainsboro",         0xFFDCDCDC }, { "ghostwhite",      0xFFFFF8F8 },
+	{ "gold",             0xFF00D7FF }, { "goldenrod",            0xFF20A5DA }, { "greenyellow",       0xFF2FFFAD }, { "grey",            0xFF808080 },
+	{ "honeydew",         0xFFF0FFF0 }, { "hotpink",              0xFFB469FF }, { "indianred",         0xFF5C5CCD }, { "indigo",          0xFF82004B },
+	{ "ivory",            0xFFF0FFFF }, { "khaki",                0xFF8CE6F0 }, { "lavender",          0xFFF1E6E6 }, { "lavenderblush",   0xFFF5F0FF },
 	{ "lawngreen",        0xFF00FC7C }, { "lemonchiffon",         0xFFCDFAFF }, { "lightblue",         0xFFE6D8AD }, { "lightcoral",      0xFF8080F0 },
-	{ "lightcyan",        0xFFFFFFE0 }, { "lightgoldenrodyellow", 0xFFD2FAFA }, { "lightgray",         0xFFD3D3D3 }, { "lightgreen",      0xFF90EE90 }, 
-	{ "lightgrey",        0xFFD3D3D3 }, { "lightpink",            0xFFC1B6FF }, { "lightsalmon",       0xFF7AA0FF }, { "lightseagreen",   0xFFAAB220 }, 
-	{ "lightskyblue",     0xFFFACE87 }, { "lightslategray",       0xFF778899 }, { "lightslategrey",    0xFF778899 }, { "lightsteelblue",  0xFFDEC4B0 }, 
-	{ "lightyellow",      0xFFE0FFFF }, { "limegreen",            0xFF32CD32 }, { "linen",             0xFFE6F0FA }, { "magenta",         0xFFFF00FF }, 
+	{ "lightcyan",        0xFFFFFFE0 }, { "lightgoldenrodyellow", 0xFFD2FAFA }, { "lightgray",         0xFFD3D3D3 }, { "lightgreen",      0xFF90EE90 },
+	{ "lightgrey",        0xFFD3D3D3 }, { "lightpink",            0xFFC1B6FF }, { "lightsalmon",       0xFF7AA0FF }, { "lightseagreen",   0xFFAAB220 },
+	{ "lightskyblue",     0xFFFACE87 }, { "lightslategray",       0xFF778899 }, { "lightslategrey",    0xFF778899 }, { "lightsteelblue",  0xFFDEC4B0 },
+	{ "lightyellow",      0xFFE0FFFF }, { "limegreen",            0xFF32CD32 }, { "linen",             0xFFE6F0FA }, { "magenta",         0xFFFF00FF },
 	{ "mediumaquamarine", 0xFFAACD66 }, { "mediumblue",           0xFFCD0000 }, { "mediumorchid",      0xFFD355BA }, { "mediumpurple",    0xFFDB7093 },
-	{ "mediumseagreen",   0xFF71B33C }, { "mediumslateblue",      0xFFEE687B }, { "mediumspringgreen", 0xFF9AFA00 }, { "mediumturquoise", 0xFFCCD148 }, 
-	{ "mediumvioletred",  0xFF8515C7 }, { "midnightblue",         0xFF701919 }, { "mintcream",         0xFFFAFFF5 }, { "mistyrose",       0xFFE1E4FF }, 
-	{ "moccasin",         0xFFB5E4FF }, { "navajowhite",          0xFFADDEFF }, { "oldlace",           0xFFE6F5FD }, { "olivedrab",       0xFF238E6B }, 
-	{ "orangered",        0xFF0045FF }, { "orchid",               0xFFD670DA }, { "palegoldenrod",     0xFFAAE8EE }, { "palegreen",       0xFF98FB98 }, 
+	{ "mediumseagreen",   0xFF71B33C }, { "mediumslateblue",      0xFFEE687B }, { "mediumspringgreen", 0xFF9AFA00 }, { "mediumturquoise", 0xFFCCD148 },
+	{ "mediumvioletred",  0xFF8515C7 }, { "midnightblue",         0xFF701919 }, { "mintcream",         0xFFFAFFF5 }, { "mistyrose",       0xFFE1E4FF },
+	{ "moccasin",         0xFFB5E4FF }, { "navajowhite",          0xFFADDEFF }, { "oldlace",           0xFFE6F5FD }, { "olivedrab",       0xFF238E6B },
+	{ "orangered",        0xFF0045FF }, { "orchid",               0xFFD670DA }, { "palegoldenrod",     0xFFAAE8EE }, { "palegreen",       0xFF98FB98 },
 	{ "paleturquoise",    0xFFEEEEAF }, { "palevioletred",        0xFF9370DB }, { "papayawhip",        0xFFF5EFFF }, { "peachpuff",       0xFFB9DAFF },
-	{ "peru",             0xFF3F85CD }, { "pink",                 0xFFCBC0FF }, { "plum",              0xFFDDA0DD }, { "powderblue",      0xFFE6E0B0 }, 
-	{ "rosybrown",        0xFF8F8FBC }, { "royalblue",            0xFFE16941 }, { "saddlebrown",       0xFF13458B }, { "salmon",          0xFF7280FA }, 
-	{ "sandybrown",       0xFF60A4F4 }, { "seagreen",             0xFF578B2E }, { "seashell",          0xFFEEF5FF }, { "sienna",          0xFF2D52A0 }, 
-	{ "skyblue",          0xFFEBCE87 }, { "slateblue",            0xFFCDA56A }, { "slategray",         0xFF908070 }, { "slategrey",       0xFF908070 }, 
+	{ "peru",             0xFF3F85CD }, { "pink",                 0xFFCBC0FF }, { "plum",              0xFFDDA0DD }, { "powderblue",      0xFFE6E0B0 },
+	{ "rosybrown",        0xFF8F8FBC }, { "royalblue",            0xFFE16941 }, { "saddlebrown",       0xFF13458B }, { "salmon",          0xFF7280FA },
+	{ "sandybrown",       0xFF60A4F4 }, { "seagreen",             0xFF578B2E }, { "seashell",          0xFFEEF5FF }, { "sienna",          0xFF2D52A0 },
+	{ "skyblue",          0xFFEBCE87 }, { "slateblue",            0xFFCDA56A }, { "slategray",         0xFF908070 }, { "slategrey",       0xFF908070 },
 	{ "snow",             0xFFFAFAFF }, { "springgreen",          0xFF7FFF00 }, { "steelblue",         0xFFB48246 }, { "tan",             0xFF8CB4D2 },
-	{ "thistle",          0xFFD8BFD8 }, { "tomato",               0xFF4763FF }, { "turquoise",         0xFFD0E040 }, { "violet",          0xFFEE82EE }, 
+	{ "thistle",          0xFFD8BFD8 }, { "tomato",               0xFF4763FF }, { "turquoise",         0xFFD0E040 }, { "violet",          0xFFEE82EE },
 	{ "wheat",            0xFFB3DEF5 }, { "whitesmoke",           0xFFF5F5F5 }, { "yellowgreen",       0xFF32CD9A }, { "rebeccapurple",   0xFF993366 },
 };
 
@@ -418,8 +418,8 @@ static bool parseViewBox(const bx::StringView& str, float* viewBox)
 	return true;
 }
 
-// Scans str and extracts type and value. Expected format is: 
-//    type '(' value ')' 
+// Scans str and extracts type and value. Expected format is:
+//    type '(' value ')'
 // where type is an identifier and value is any kind of text
 static const char* parseTransformComponent(const char* str, const char* end, bx::StringView* type, bx::StringView* value)
 {
@@ -601,11 +601,11 @@ bool pathFromString(Path* path, const bx::StringView& str, uint32_t flags)
 			firstY = lastY = cmd->m_Data[1];
 
 			// https://www.w3.org/TR/SVG/paths.html#PathDataMovetoCommands
-			// If a moveto is followed by multiple pairs of coordinates, the subsequent pairs are treated 
-			// as implicit lineto commands. Hence, implicit lineto commands will be relative if the moveto 
-			// is relative, and absolute if the moveto is absolute. If a relative moveto (m) appears as the 
-			// first element of the path, then it is treated as a pair of absolute coordinates. In this case, 
-			// subsequent pairs of coordinates are treated as relative even though the initial moveto is 
+			// If a moveto is followed by multiple pairs of coordinates, the subsequent pairs are treated
+			// as implicit lineto commands. Hence, implicit lineto commands will be relative if the moveto
+			// is relative, and absolute if the moveto is absolute. If a relative moveto (m) appears as the
+			// first element of the path, then it is treated as a pair of absolute coordinates. In this case,
+			// subsequent pairs of coordinates are treated as relative even though the initial moveto is
 			// interpreted as an absolute moveto.
 			ch = bx::isLower(ch) ? 'l' : 'L';
 		} else if (lch == 'l') {
@@ -684,10 +684,10 @@ bool pathFromString(Path* path, const bx::StringView& str, uint32_t flags)
 			ptr = parseCoord(ptr, end, &cmd->m_Data[4]);
 			ptr = parseCoord(ptr, end, &cmd->m_Data[5]);
 
-			// The first control point is assumed to be the reflection of the second control point on 
-			// the previous command relative to the current point. (If there is no previous command or 
-			// if the previous command was not an C, c, S or s, assume the first control point is 
-			// coincident with the current point.) 
+			// The first control point is assumed to be the reflection of the second control point on
+			// the previous command relative to the current point. (If there is no previous command or
+			// if the previous command was not an C, c, S or s, assume the first control point is
+			// coincident with the current point.)
 			const char lastCmdLower = bx::toLower(lastCommand);
 			if (lastCmdLower == 'c' || lastCmdLower == 's') {
 				const float dx = lastX - lastCPX;
@@ -739,9 +739,9 @@ bool pathFromString(Path* path, const bx::StringView& str, uint32_t flags)
 			ptr = parseCoord(ptr, end, &cmd->m_Data[2]);
 			ptr = parseCoord(ptr, end, &cmd->m_Data[3]);
 
-			// The control point is assumed to be the reflection of the control point on the 
-			// previous command relative to the current point. (If there is no previous command 
-			// or if the previous command was not a Q, q, T or t, assume the control point is 
+			// The control point is assumed to be the reflection of the control point on the
+			// previous command relative to the current point. (If there is no previous command
+			// or if the previous command was not a Q, q, T or t, assume the control point is
 			// coincident with the current point.)
 			const char lastCmdLower = bx::toLower(lastCommand);
 			if (lastCmdLower == 'q' || lastCmdLower == 't') {
@@ -838,7 +838,7 @@ static ParseAttr::Result parseStyle(const bx::StringView& str, ShapeAttributes* 
 		if (*ptr != ':') {
 			return ParseAttr::Fail;
 		}
-		
+
 		ptr = skipWhitespace(ptr + 1, end);
 
 		const char* valueStart = ptr;
@@ -1314,7 +1314,7 @@ static bool parseShape_PointList(ParserState* parser, Shape* shape)
 
 					if (!err && ptList.m_NumPoints >= 2 &&
 						((shape->m_Type == ShapeType::Polygon && (parser->m_Flags & ImageLoadFlags::ConvertPolygonsToPaths) != 0) ||
-						(shape->m_Type == ShapeType::Polyline && (parser->m_Flags & ImageLoadFlags::ConvertPolylinesToPaths) != 0))) 
+						(shape->m_Type == ShapeType::Polyline && (parser->m_Flags & ImageLoadFlags::ConvertPolylinesToPaths) != 0)))
 					{
 						const float* coords = ptList.m_Coords;
 

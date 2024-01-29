@@ -784,7 +784,7 @@ static ShapeAttributes* shapeAttrsAlloc()
 		s_ShapeAttrFreeListHead->m_Prev = node;
 	}
 	s_ShapeAttrFreeListHead = node;
-		
+
 	return shapeAttrsAllocFromNode(node);
 }
 
