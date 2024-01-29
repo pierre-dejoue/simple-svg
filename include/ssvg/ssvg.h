@@ -372,6 +372,8 @@ bool pointListFromString(PointList* ptList, const bx::StringView& str);
 bool pointListToString(const PointList* ptList, bx::WriterI* writer);
 void pointListCalcBounds(const PointList* ptList, float* bounds);
 
+bx::StringView shapeAttrsGetID(const ShapeAttributes* attrs);
+
 void shapeAttrsSetID(ShapeAttributes* attrs, const bx::StringView& id);
 void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const bx::StringView& fontFamily);
 void shapeAttrsSetClass(ShapeAttributes* attrs, const bx::StringView& c);

@@ -954,11 +954,15 @@ static bool parseShape_Group(ParserState* parser, Shape* group)
 {
 	bool err = false;
 	while (!parserDone(parser) && !err) {
-		SSVG_CHECK(!(parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>'), "Empty group element");
+		parserSkipWhitespace(parser);
 		if (parserExpectingChar(parser, '>')) {
 			break;
+		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
+			const auto group_id = shapeAttrsGetID(group->m_Attrs);
+			SSVG_WARN(false, "Empty group element id=\"%.*s\"", group_id.getLength(), group_id.getPtr());
+			parser->m_Ptr += 2;
+			return true;
 		}
-
 		bx::StringView name, value;
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;

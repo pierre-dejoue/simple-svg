@@ -523,6 +523,13 @@ void pointListCalcBounds(const PointList* ptList, float* bounds)
 	}
 }
 
+bx::StringView shapeAttrsGetID(const ShapeAttributes* attrs)
+{
+	uint32_t len = 0;
+	while (len < SSVG_CONFIG_ID_MAX_LEN && attrs->m_ID[len] != '\0') { len++; }
+	return bx::StringView(&attrs->m_ID[0], len);
+}
+
 void shapeAttrsSetID(ShapeAttributes* attrs, const bx::StringView& value)
 {
 	uint32_t maxLen = bx::min<uint32_t>(SSVG_CONFIG_ID_MAX_LEN - 1, value.getLength());
