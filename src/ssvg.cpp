@@ -1,8 +1,11 @@
 #include <ssvg/ssvg.h>
+#include "ssvg_debug.h"
+
 #include <bx/bx.h>
 #include <bx/allocator.h>
 #include <bx/string.h>
 #include <bx/math.h>
+
 #include <float.h> // FLT_MAX
 
 namespace ssvg

@@ -1,4 +1,6 @@
 #include <ssvg/ssvg.h>
+#include "ssvg_debug.h"
+
 #include <bx/bx.h>
 #include <bx/string.h>
 #include <bx/math.h>
@@ -501,11 +503,11 @@ static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArg
 
 	// Approximate the arc using cubic spline segments.
 	float t[6];
-	t[0] = cosrx; 
+	t[0] = cosrx;
 	t[1] = sinrx;
-	t[2] = -sinrx; 
+	t[2] = -sinrx;
 	t[3] = cosrx;
-	t[4] = cx; 
+	t[4] = cx;
 	t[5] = cy;
 
 	// Split arc into max 90 degree segments.

@@ -1,7 +1,10 @@
 #include <ssvg/ssvg.h>
+#include "ssvg_debug.h"
+
 #include <bx/bx.h>
 #include <bx/string.h>
 #include <bx/math.h>
+
 #include <float.h> // FLT_MAX
 
 BX_PRAGMA_DIAGNOSTIC_IGNORED_MSVC(4127) // conditional expression is constant

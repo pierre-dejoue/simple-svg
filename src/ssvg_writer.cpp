@@ -1,4 +1,6 @@
 #include <ssvg/ssvg.h>
+#include "ssvg_debug.h"
+
 #include <bx/readerwriter.h>
 #include <bx/string.h>
 
@@ -141,7 +143,7 @@ bool pathToString(const Path* path, bx::WriterI* writer)
 {
 	bx::Error err;
 
-	// TODO: Extra minification can be achieved by using relative commands 
+	// TODO: Extra minification can be achieved by using relative commands
 	// (because adjacent commands/coords are usually close to the last position).
 	const uint32_t numCommands = path->m_NumCommands;
 	for (uint32_t iCmd = 0; iCmd < numCommands; ++iCmd) {
@@ -447,7 +449,7 @@ bool writeShapeList(bx::WriterI* writer, const ShapeList* shapeList, const Shape
 bool imageSave(const Image* img, bx::WriterI* writer)
 {
 	bx::Error err;
-	
+
 	bx::write(writer, &err, "<svg ");
 	if (img->m_Width != 0.0f) {
 		bx::write(writer, &err, "width=\"%g\" ", img->m_Width);
