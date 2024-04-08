@@ -573,6 +573,8 @@ bool pathFromString(Path* path, const bx::StringView& str, uint32_t flags)
 	float lastCPY = 0.0f;
 	char lastCommand = 0;
 
+	ptr = skipWhitespace(ptr, end);
+
 	while (ptr != end) {
 		char ch = *ptr;
 
