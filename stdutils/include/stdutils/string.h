@@ -39,6 +39,14 @@ std::ostream& operator<<(std::ostream& out, const HexEscape& hex_escape);
 
 } // namespace ascii
 
+/**
+ * String length with a boundary size
+ *
+ * Note: If strnlen returns max_len, the null-termination character wasn't found
+ */
+constexpr std::size_t DEFAULT_MAX_LEN = 1048576u;       // 2^20
+std::size_t strnlen(const char* str, std::size_t max_len = DEFAULT_MAX_LEN);
+
 namespace string {
 
 /**
@@ -48,14 +56,6 @@ std::string tolower(std::string_view in);
 std::string toupper(std::string_view in);
 std::string capitalize(std::string_view in);
 std::string remove_all_spaces(std::string_view in);
-
-/**
- * String length with max size
- *
- * Note: If strnlen returns max_len, the null-termination character wasn't found
- */
-constexpr std::size_t DEFAULT_MAX_LEN = 1048576u;       // 2^20
-std::size_t strnlen(const char* str, std::size_t max_len = DEFAULT_MAX_LEN);
 
 /**
  * Validate that a string is null terminated

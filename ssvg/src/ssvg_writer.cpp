@@ -2,7 +2,8 @@
 #include "ssvg_debug.h"
 
 #include <bx/readerwriter.h>
-#include <bx/string.h>
+
+#include <cstring>
 
 namespace ssvg {
 
@@ -283,7 +284,7 @@ static bool writeShapeAttributes(bx::WriterI* writer, const ShapeAttributes* att
 
 	if ((flags & SaveAttr::Font) != 0) {
 		const char* fontFamily = attrs->m_FontFamily;
-		if (fontFamily[0] != '\0' && bx::strCmp(fontFamily, parentAttrs->m_FontFamily)) {
+		if (fontFamily[0] != '\0' && std::strncmp(fontFamily, &parentAttrs->m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN)) {
 			bx::write(writer, &err, "font-family=\"%s\" ", fontFamily);
 		}
 

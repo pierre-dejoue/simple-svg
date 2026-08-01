@@ -4,7 +4,6 @@
 #include "ssvg_math.h"
 
 #include <bx/bx.h>
-#include <bx/string.h>
 
 #include <stdutils/macros.h>
 

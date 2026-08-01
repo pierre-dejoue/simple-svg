@@ -5,15 +5,26 @@
 
 #include <bx/bx.h>
 #include <bx/allocator.h>
-#include <bx/string.h>
 
 #include <stdutils/macros.h>
 #include <stdutils/minmax.h>
+#include <stdutils/string.h>
 
 #include <cmath>
+#include <string_view>
 
 namespace ssvg
 {
+
+namespace {
+
+int strlenint(std::string_view str)
+{
+	return static_cast<int>(str.length());
+}
+
+} // namespace
+
 struct ShapeAttributeFreeListNode
 {
 	ShapeAttributeFreeListNode* m_Next;
@@ -530,35 +541,35 @@ void pointListCalcBounds(const PointList* ptList, float* bounds)
 	}
 }
 
-bx::StringView shapeAttrsGetID(const ShapeAttributes* attrs)
+std::string_view shapeAttrsGetID(const ShapeAttributes* attrs)
 {
 	uint32_t len = 0;
 	while (len < SSVG_CONFIG_ID_MAX_LEN && attrs->m_ID[len] != '\0') { len++; }
-	return bx::StringView(&attrs->m_ID[0], len);
+	return std::string_view(&attrs->m_ID[0], len);
 }
 
-void shapeAttrsSetID(ShapeAttributes* attrs, const bx::StringView& value)
+void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& value)
 {
-	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_ID_MAX_LEN - 1, value.getLength());
-	SSVG_WARN((int32_t)maxLen >= value.getLength(), "id \"%.*s\" truncated to %d characters", value.getLength(), value.getPtr(), maxLen);
-	bx::memCopy(&attrs->m_ID[0], value.getPtr(), maxLen);
+	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_ID_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
+	SSVG_WARN((int32_t)maxLen >= strlenint(value), "id \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
+	bx::memCopy(&attrs->m_ID[0], value.data(), maxLen);
 	attrs->m_ID[maxLen] = '\0';
 }
 
-void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const bx::StringView& value)
+void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& value)
 {
-	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1, value.getLength());
-	SSVG_WARN((int32_t)maxLen >= value.getLength(), "font-family \"%.*s\" truncated to %d characters", value.getLength(), value.getPtr(), maxLen);
-	bx::memCopy(&attrs->m_FontFamily[0], value.getPtr(), maxLen);
+	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
+	SSVG_WARN((int32_t)maxLen >= strlenint(value), "font-family \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
+	bx::memCopy(&attrs->m_FontFamily[0], value.data(), maxLen);
 	attrs->m_FontFamily[maxLen] = '\0';
 }
 
-void shapeAttrsSetClass(ShapeAttributes* attrs, const bx::StringView& value)
+void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value)
 {
 #if SSVG_CONFIG_CLASS_MAX_LEN
-	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_CLASS_MAX_LEN - 1, value.getLength());
-	SSVG_WARN((int32_t)maxLen >= value.getLength(), "class \"%.*s\" truncated to %d characters", value.getLength(), value.getPtr(), maxLen);
-	bx::memCopy(&attrs->m_Class[0], value.getPtr(), maxLen);
+	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_CLASS_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
+	SSVG_WARN((int32_t)maxLen >= strlenint(value), "class \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
+	bx::memCopy(&attrs->m_Class[0], value.data(), maxLen);
 	attrs->m_Class[maxLen] = '\0';
 #else
 	UNUSED(attrs);
@@ -665,7 +676,7 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 		dstText->y = srcText->y;
 		dstText->m_Anchor = srcText->m_Anchor;
 
-		const uint32_t len = bx::strLen(srcText->m_String);
+		const uint32_t len = stdutils::strnlen(srcText->m_String);
 		dstText->m_String = (char*)BX_ALLOC(s_Allocator, sizeof(char) * (len + 1));
 		bx::memCopy(dstText->m_String, srcText->m_String, len);
 		dstText->m_String[len] = '\0';

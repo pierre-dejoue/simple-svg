@@ -39,6 +39,15 @@ std::ostream& operator<<(std::ostream& out, const HexEscape& hex_escape)
 
 } // namespace ascii
 
+std::size_t strnlen(const char* str, std::size_t max_len)
+{
+    if (str == nullptr)
+        return 0;
+    std::size_t len = 0;
+    while(*str++ && len < max_len) { len++; }
+    return len;
+}
+
 namespace string {
 
 std::string tolower(std::string_view in)
@@ -67,15 +76,6 @@ std::string remove_all_spaces(std::string_view in)
     std::string out;
     std::copy_if(std::cbegin(in), std::cend(in), std::back_inserter(out), [](const char c) { return !ascii::isspace(c); });
     return out;
-}
-
-std::size_t strnlen(const char* str, std::size_t max_len)
-{
-    if (str == nullptr)
-        return 0;
-    std::size_t len = 0;
-    while(*str++ && len < max_len) { len++; }
-    return len;
 }
 
 bool is_null_terminated(const char* str, std::size_t max_len)

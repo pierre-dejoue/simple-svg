@@ -4,17 +4,32 @@
 #include "ssvg_math.h"
 
 #include <bx/bx.h>
-#include <bx/string.h>
 
 #include <stdutils/macros.h>
 #include <stdutils/string.h>
 
 #include <cassert>
 #include <cmath>
+#include <cstring>
+#include <string_view>
 
 BX_PRAGMA_DIAGNOSTIC_IGNORED_MSVC(4127) // conditional expression is constant
 
 namespace ssvg {
+
+namespace {
+
+const char* strend(std::string_view str)
+{
+	return str.data() + str.length();
+}
+
+int strlenint(std::string_view str)
+{
+	return static_cast<int>(str.length());
+}
+
+} // namespace
 
 extern bx::AllocatorI* s_Allocator;
 
@@ -37,7 +52,7 @@ struct ParserState
 
 struct CSSColor
 {
-	bx::StringView m_Name;
+	std::string_view m_Name;
 	uint32_t m_ABGR;
 };
 
@@ -81,11 +96,11 @@ static const CSSColor kCSSColors[] = {
 	{ "wheat",            0xFFB3DEF5 }, { "whitesmoke",           0xFFF5F5F5 }, { "yellowgreen",       0xFF32CD9A }, { "rebeccapurple",   0xFF993366 },
 };
 
-static const uint32_t kNumCSSColors = BX_COUNTOF(kCSSColors);
+static const uint32_t kNumCSSColors = sizeof(kCSSColors) / sizeof(CSSColor);
 
 static bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAttributes* parentAttrs, const char* closingTag, uint32_t closingTagLen);
 static const char* parseCoord(const char* str, const char* end, float* coord);
-static ParseAttr::Result parseGenericShapeAttribute(const bx::StringView& name, const bx::StringView& value, ShapeAttributes* attrs);
+static ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs);
 
 inline uint8_t charToNibble(char ch)
 {
@@ -148,7 +163,7 @@ static bool parserMatchString(ParserState* parser, const char* str, uint32_t len
 {
 	parserSkipWhitespace(parser);
 
-	return !bx::strCmp(bx::StringView(parser->m_Ptr, len), bx::StringView(str, len), (int32_t)len);
+	return !std::strncmp(parser->m_Ptr, str, len);
 }
 
 inline bool parserExpectingString(ParserState* parser, const char* str, uint32_t len)
@@ -211,8 +226,10 @@ static void parserSkipComment(ParserState* parser)
 	}
 }
 
-static bool parserGetTag(ParserState* parser, bx::StringView* tag)
+static bool parserGetTag(ParserState* parser, std::string_view* tag)
 {
+	assert(parser);
+	assert(tag);
 	if (!parserExpectingChar(parser, '<')) {
 		return false;
 	}
@@ -230,9 +247,10 @@ static bool parserGetTag(ParserState* parser, bx::StringView* tag)
 		return false;
 	}
 
-	tag->set(tagPtr, parser->m_Ptr);
+	assert(tagPtr <= parser->m_Ptr);
+	*tag = std::string_view(tagPtr, parser->m_Ptr - tagPtr);
 
-	if (!bx::strCmp(*tag, "!--", 3)) {
+	if (*tag == "!--") {
 		parserSkipComment(parser);
 		return parserGetTag(parser, tag);
 	}
@@ -240,7 +258,7 @@ static bool parserGetTag(ParserState* parser, bx::StringView* tag)
 	return true;
 }
 
-static bool parserGetAttribute(ParserState* parser, bx::StringView* name, bx::StringView* value)
+static bool parserGetAttribute(ParserState* parser, std::string_view* name, std::string_view* value)
 {
 	parserSkipWhitespace(parser);
 
@@ -258,7 +276,8 @@ static bool parserGetAttribute(ParserState* parser, bx::StringView* name, bx::St
 		++parser->m_Ptr;
 	}
 
-	name->set(namePtr, parser->m_Ptr);
+	assert(namePtr <= parser->m_Ptr);
+	*name = std::string_view(namePtr, parser->m_Ptr - namePtr);
 
 	// Check of the equal sign
 	parserSkipWhitespace(parser);
@@ -285,19 +304,20 @@ static bool parserGetAttribute(ParserState* parser, bx::StringView* name, bx::St
 		++parser->m_Ptr;
 	}
 
-	value->set(valuePtr, parser->m_Ptr);
+	assert(valuePtr <= parser->m_Ptr);
+	*value = std::string_view(valuePtr, parser->m_Ptr - valuePtr);
 
 	++parser->m_Ptr;
 
 	return true;
 }
 
-static bool parseVersion(const bx::StringView& verStr, uint16_t* maj, uint16_t* min)
+static bool parseVersion(const std::string_view& verStr, uint16_t* maj, uint16_t* min)
 {
 	assert(maj);
 	assert(min);
 
-	const float fver = static_cast<float>(atof(verStr.getPtr()));
+	const float fver = static_cast<float>(atof(verStr.data()));
 	*maj = static_cast<uint16_t>(std::floor(fver));
 	const float fmaj = static_cast<float>(*maj);
 	*min = static_cast<uint16_t>(std::floor((fver - fmaj) * 10.0f));
@@ -305,61 +325,61 @@ static bool parseVersion(const bx::StringView& verStr, uint16_t* maj, uint16_t* 
 	return true;
 }
 
-static bool parseNumber(const bx::StringView& str, float* val, float min = -math::kFloatMax, float max = math::kFloatMax)
+static bool parseNumber(const std::string_view& str, float* val, float min = -math::kFloatMax, float max = math::kFloatMax)
 {
-	*val = bx::clamp<float>((float)atof(str.getPtr()), min, max);
+	*val = bx::clamp<float>((float)atof(str.data()), min, max);
 
 	return true;
 }
 
-static bool parseLength(const bx::StringView& str, float* len)
+static bool parseLength(const std::string_view& str, float* len)
 {
 	// TODO: Parse length units and convert to pixels based on parser state.
 	return parseNumber(str, len);
 }
 
-static bool parsePaint(const bx::StringView& str, Paint* paint)
+static bool parsePaint(const std::string_view& str, Paint* paint)
 {
 	// TODO: Handle more cases.
-	if (!bx::strCmp(str, "none", 4)) {
+	if (str == "none") {
 		paint->m_Type = PaintType::None;
-	} else if (!bx::strCmp(str, "transparent", 11)) {
+	} else if (str == "transparent") {
 		paint->m_Type = PaintType::Transparent;
 	} else {
 		paint->m_Type = PaintType::Color;
 
-		const char* ptr = str.getPtr();
+		const char* ptr = str.data();
 		paint->m_ColorABGR = 0xFF000000;
 		if (*ptr == '#') {
 			// Hex color
-			if (str.getLength() == 7) {
+			if (str.length() == 7) {
 				const uint8_t r = (charToNibble(ptr[1]) << 4) | charToNibble(ptr[2]);
 				const uint8_t g = (charToNibble(ptr[3]) << 4) | charToNibble(ptr[4]);
 				const uint8_t b = (charToNibble(ptr[5]) << 4) | charToNibble(ptr[6]);
 				paint->m_ColorABGR |= ((uint32_t)r) | ((uint32_t)g << 8) | ((uint32_t)b << 16);
-			} else if (str.getLength() == 4) {
+			} else if (str.length() == 4) {
 				const uint8_t r = charToNibble(ptr[1]);
 				const uint8_t g = charToNibble(ptr[2]);
 				const uint8_t b = charToNibble(ptr[3]);
 				const uint32_t rgb = ((uint32_t)r) | ((uint32_t)g << 8) | ((uint32_t)b << 16);
 				paint->m_ColorABGR |= rgb | (rgb << 4);
 			} else {
-				SSVG_WARN(false, "Unknown hex color format %.*s", str.getLength(), str.getPtr());
+				SSVG_WARN(false, "Unknown hex color format %.*s", strlenint(str), str.data());
 			}
-		} else if (!bx::strCmp(str, "rgb(", 4)) {
+		} else if (str == "rgb(") {
 			// TODO: This doesn't work with percentages.
 			float color[3];
-			const char* end = str.getTerm();
+			const char* end = strend(str);
 			ptr += 4;
 			ptr = parseCoord(ptr, end, &color[0]);
 			ptr = parseCoord(ptr, end, &color[1]);
 			ptr = parseCoord(ptr, end, &color[2]);
 
 			paint->m_ColorABGR |= ((uint32_t)color[0]) | ((uint32_t)color[1] << 8) | ((uint32_t)color[2] << 16);
-		} else if (!bx::strCmp(str, "rgba(", 5)) {
+		} else if (str == "rgba(") {
 			// TODO: This doesn't work with percentages.
 			float color[4];
-			const char* end = str.getTerm();
+			const char* end = strend(str);
 			ptr += 5;
 			ptr = parseCoord(ptr, end, &color[0]);
 			ptr = parseCoord(ptr, end, &color[1]);
@@ -371,7 +391,7 @@ static bool parsePaint(const bx::StringView& str, Paint* paint)
 			// Check if it's a known color.
 			bool found = false;
 			for (uint32_t i = 0; i < kNumCSSColors; ++i) {
-				if (!bx::strCmp(str, kCSSColors[i].m_Name)) {
+				if (str == kCSSColors[i].m_Name) {
 					paint->m_ColorABGR = kCSSColors[i].m_ABGR;
 					found = true;
 					break;
@@ -379,7 +399,7 @@ static bool parsePaint(const bx::StringView& str, Paint* paint)
 			}
 
 			if (!found) {
-				SSVG_WARN(false, "Unhandled paint value: %.*s", str.getLength(), str.getPtr());
+				SSVG_WARN(false, "Unhandled paint value: %.*s", strlenint(str), str.data());
 			}
 		}
 	}
@@ -417,10 +437,10 @@ static const char* parseFlag(const char* str, const char* end, float* flag)
 	return skipCommaWhitespace(ptr + 1, end);
 }
 
-static bool parseViewBox(const bx::StringView& str, float* viewBox)
+static bool parseViewBox(const std::string_view& str, float* viewBox)
 {
-	const char* ptr = str.getPtr();
-	const char* end = str.getTerm();
+	const char* ptr = str.data();
+	const char* end = strend(str);
 
 	ptr = parseCoord(ptr, end, &viewBox[0]);
 	ptr = parseCoord(ptr, end, &viewBox[1]);
@@ -433,7 +453,7 @@ static bool parseViewBox(const bx::StringView& str, float* viewBox)
 // Scans str and extracts type and value. Expected format is:
 //    type '(' value ')'
 // where type is an identifier and value is any kind of text
-static const char* parseTransformComponent(const char* str, const char* end, bx::StringView* type, bx::StringView* value)
+static const char* parseTransformComponent(const char* str, const char* end, std::string_view* type, std::string_view* value)
 {
 	SSVG_CHECK(stdutils::ascii::isalpha(*str), "Parse error: Excepted identifier");
 
@@ -447,7 +467,8 @@ static const char* parseTransformComponent(const char* str, const char* end, bx:
 		return nullptr;
 	}
 
-	type->set(str, (int32_t)(ptr - str));
+	assert(str <= ptr);
+	*type = std::string_view(str, ptr - str);
 
 	ptr = skipWhitespace(ptr, end);
 
@@ -478,20 +499,24 @@ static const char* parseTransformComponent(const char* str, const char* end, bx:
 		--ptr;
 	}
 
-	value->set(valuePtr, (int32_t)(ptr - valuePtr));
+	if (ptr < valuePtr) {
+		SSVG_CHECK(false, "Parse error: Walk back too far");
+		return nullptr;
+	}
+	*value = std::string_view(valuePtr, ptr - valuePtr);
 
 	return endPtr;
 }
 
-static bool parseTransform(const bx::StringView& str, float* transform)
+static bool parseTransform(const std::string_view& str, float* transform)
 {
-	const char* ptr = str.getPtr();
-	const char* end = str.getTerm();
+	const char* ptr = str.data();
+	const char* end = strend(str);
 
 	transformIdentity(transform);
 	ptr = skipWhitespace(ptr, end);
 	while (ptr != end) {
-		bx::StringView type, value;
+		std::string_view type, value;
 
 		ptr = parseTransformComponent(ptr, end, &type, &value);
 		if (!ptr) {
@@ -502,12 +527,12 @@ static bool parseTransform(const bx::StringView& str, float* transform)
 		ptr = skipCommaWhitespace(ptr, end);
 
 		// Parse the transform value.
-		const char* valuePtr = value.getPtr();
-		const char* valueEnd = value.getTerm();
+		const char* valuePtr = value.data();
+		const char* valueEnd = strend(value);
 
 		float comp[6];
 		transformIdentity(&comp[0]);
-		if (!bx::strCmp(type, "matrix", 6)) {
+		if (type == "matrix") {
 			valuePtr = parseCoord(valuePtr, valueEnd, &comp[0]);
 			valuePtr = parseCoord(valuePtr, valueEnd, &comp[1]);
 			valuePtr = parseCoord(valuePtr, valueEnd, &comp[2]);
@@ -515,19 +540,19 @@ static bool parseTransform(const bx::StringView& str, float* transform)
 			valuePtr = parseCoord(valuePtr, valueEnd, &comp[4]);
 			valuePtr = parseCoord(valuePtr, valueEnd, &comp[5]);
 
-		} else if (!bx::strCmp(type, "translate", 9)) {
+		} else if (type == "translate") {
 			valuePtr = parseCoord(valuePtr, valueEnd, &comp[4]);
 			if (valuePtr != valueEnd) {
 				valuePtr = parseCoord(valuePtr, valueEnd, &comp[5]);
 			}
-		} else if (!bx::strCmp(type, "scale", 5)) {
+		} else if (type == "scale") {
 			valuePtr = parseCoord(valuePtr, valueEnd, &comp[0]);
 			if (valuePtr != valueEnd) {
 				valuePtr = parseCoord(valuePtr, valueEnd, &comp[3]);
 			} else {
 				comp[3] = comp[0];
 			}
-		} else if (!bx::strCmp(type, "rotate", 6)) {
+		} else if (type == "rotate") {
 			float angle_deg;
 			valuePtr = parseCoord(valuePtr, valueEnd, &angle_deg);
 
@@ -548,20 +573,20 @@ static bool parseTransform(const bx::StringView& str, float* transform)
 				comp[4] = cX * (1.0f - cosAngle) + cY * sinAngle;
 				comp[5] = cY * (1.0f - cosAngle) - cX * sinAngle;
 			}
-		} else if (!bx::strCmp(type, "skewX", 5)) {
+		} else if (type == "skewX") {
 			float angle_deg;
 			valuePtr = parseCoord(valuePtr, valueEnd, &angle_deg);
 
 			const float angle_rad = math::to_rad(angle_deg);
 			comp[2] = std::tan(angle_rad);
-		} else if (!bx::strCmp(type, "skewY", 5)) {
+		} else if (type == "skewY") {
 			float angle_deg;
 			valuePtr = parseCoord(valuePtr, valueEnd, &angle_deg);
 
 			const float angle_rad = math::to_rad(angle_deg);
 			comp[1] = std::tan(angle_rad);
 		} else {
-			SSVG_WARN(false, "Unknown transform component %.*s(%.*s)", type.getLength(), type.getPtr(), value.getLength(), value.getPtr());
+			SSVG_WARN(false, "Unknown transform component %.*s(%.*s)", strlenint(type), type.data(), strlenint(value), value.data());
 			valuePtr = valueEnd;
 		}
 
@@ -573,10 +598,10 @@ static bool parseTransform(const bx::StringView& str, float* transform)
 	return true;
 }
 
-bool pathFromString(Path* path, const bx::StringView& str, uint32_t flags)
+bool pathFromString(Path* path, const std::string_view& str, uint32_t flags)
 {
-	const char* ptr = str.getPtr();
-	const char* end = str.getTerm();
+	const char* ptr = str.data();
+	const char* end = strend(str);
 	float firstX = 0.0f;
 	float firstY = 0.0f;
 	float lastX = 0.0f;
@@ -816,10 +841,10 @@ bool pathFromString(Path* path, const bx::StringView& str, uint32_t flags)
 	return true;
 }
 
-bool pointListFromString(PointList* ptList, const bx::StringView& str)
+bool pointListFromString(PointList* ptList, const std::string_view& str)
 {
-	const char* ptr = str.getPtr();
-	const char* end = str.getTerm();
+	const char* ptr = str.data();
+	const char* end = strend(str);
 	while (ptr != end) {
 		float* pt = pointListAllocPoints(ptList, 1);
 		ptr = parseCoord(ptr, end, &pt[0]);
@@ -831,10 +856,10 @@ bool pointListFromString(PointList* ptList, const bx::StringView& str)
 	return true;
 }
 
-static ParseAttr::Result parseStyle(const bx::StringView& str, ShapeAttributes* attrs)
+static ParseAttr::Result parseStyle(const std::string_view& str, ShapeAttributes* attrs)
 {
-	const char* end = str.getTerm();
-	const char* ptr = skipWhitespace(str.getPtr(), end);
+	const char* end = strend(str);
+	const char* ptr = skipWhitespace(str.data(), end);
 	while (ptr != end) {
 		const char* nameStart = ptr;
 		while (ptr != end && (stdutils::ascii::isalpha(*ptr) || *ptr == '-')) {
@@ -845,7 +870,8 @@ static ParseAttr::Result parseStyle(const bx::StringView& str, ShapeAttributes* 
 			return ParseAttr::Fail;
 		}
 
-		const bx::StringView name(nameStart, ptr);
+		assert(nameStart <= ptr);
+		const std::string_view name(nameStart, ptr - nameStart);
 
 		ptr = skipWhitespace(ptr, end);
 
@@ -860,7 +886,8 @@ static ParseAttr::Result parseStyle(const bx::StringView& str, ShapeAttributes* 
 			++ptr;
 		}
 
-		const bx::StringView value(valueStart, ptr);
+		assert(valueStart <= ptr);
+		const std::string_view value(valueStart, ptr - valueStart);
 
 		ptr = skipWhitespace(ptr + (ptr != end ? 1 : 0), end);
 
@@ -872,64 +899,64 @@ static ParseAttr::Result parseStyle(const bx::StringView& str, ShapeAttributes* 
 	return ParseAttr::OK;
 }
 
-static ParseAttr::Result parseGenericShapeAttribute(const bx::StringView& name, const bx::StringView& value, ShapeAttributes* attrs)
+static ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs)
 {
-	if (!bx::strCmp(name, "style", 5)) {
+	if (name == "style") {
 		return parseStyle(value, attrs);
-	} else if (!bx::strCmp(name, "stroke", 6)) {
-		const bx::StringView partialName(name.getPtr() + 6, name.getLength() - 6);
-		if (partialName.getLength() == 0) {
+	} else if (name == "stroke") {
+		const std::string_view partialName(name.data() + 6, name.length() - 6);
+		if (partialName.length() == 0) {
 			attrs->m_Flags &= ~AttribFlags::StrokePaintInherit;
 			return parsePaint(value, &attrs->m_StrokePaint) ? ParseAttr::OK : ParseAttr::Fail;
-		} else if (!bx::strCmp(partialName, "-miterlimit", 11)) {
+		} else if (partialName == "-miterlimit") {
 			attrs->m_Flags &= ~AttribFlags::StrokeMiterLimitInherit;
 			return parseNumber(value, &attrs->m_StrokeMiterLimit, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
-		} else if (!bx::strCmp(partialName, "-linejoin", 9)) {
+		} else if (partialName == "-linejoin") {
 			attrs->m_Flags &= ~AttribFlags::StrokeLineJoinInherit;
-			if (!bx::strCmp(value, "miter", 5)) {
+			if (value == "miter") {
 				attrs->m_StrokeLineJoin = LineJoin::Miter;
-			} else if (!bx::strCmp(value, "round", 5)) {
+			} else if (value == "round") {
 				attrs->m_StrokeLineJoin = LineJoin::Round;
-			} else if (!bx::strCmp(value, "bevel", 5)) {
+			} else if (value == "bevel") {
 				attrs->m_StrokeLineJoin = LineJoin::Bevel;
 			} else {
 				return ParseAttr::Fail;
 			}
 
 			return ParseAttr::OK;
-		} else if (!bx::strCmp(partialName, "-linecap", 8)) {
+		} else if (partialName == "-linecap") {
 			attrs->m_Flags &= ~AttribFlags::StrokeLineCapInherit;
-			if (!bx::strCmp(value, "butt", 4)) {
+			if (value == "butt") {
 				attrs->m_StrokeLineCap = LineCap::Butt;
-			} else if (!bx::strCmp(value, "round", 5)) {
+			} else if (value == "round") {
 				attrs->m_StrokeLineCap = LineCap::Round;
-			} else if (!bx::strCmp(value, "square", 6)) {
+			} else if (value == "square") {
 				attrs->m_StrokeLineCap = LineCap::Square;
 			} else {
 				return ParseAttr::Fail;
 			}
 
 			return ParseAttr::OK;
-		} else if (!bx::strCmp(partialName, "-opacity", 8)) {
+		} else if (partialName == "-opacity") {
 			attrs->m_Flags &= ~AttribFlags::StrokeOpacityInherit;
 			return parseNumber(value, &attrs->m_StrokeOpacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
-		} else if (!bx::strCmp(partialName, "-width", 6)) {
+		} else if (partialName == "-width") {
 			attrs->m_Flags &= ~AttribFlags::StrokeWidthInherit;
 			return parseLength(value, &attrs->m_StrokeWidth) ? ParseAttr::OK : ParseAttr::Fail;
 		}
-	} else if (!bx::strCmp(name, "fill", 4)) {
-		const bx::StringView partialName(name.getPtr() + 4, name.getLength() - 4);
-		if (partialName.getLength() == 0) {
+	} else if (name == "fill") {
+		const std::string_view partialName(name.data() + 4, name.length() - 4);
+		if (partialName.length() == 0) {
 			attrs->m_Flags &= ~AttribFlags::FillPaintInherit;
 			return parsePaint(value, &attrs->m_FillPaint) ? ParseAttr::OK : ParseAttr::Fail;
-		} else if (!bx::strCmp(partialName, "-opacity", 8)) {
+		} else if (partialName == "-opacity") {
 			attrs->m_Flags &= ~AttribFlags::FillOpacityInherit;
 			return parseNumber(value, &attrs->m_FillOpacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
-		} else if (!bx::strCmp(partialName, "-rule", 5)) {
+		} else if (partialName == "-rule") {
 			attrs->m_Flags &= ~AttribFlags::FillRuleInherit;
-			if (!bx::strCmp(value, "nonzero", 7)) {
+			if (value == "nonzero") {
 				attrs->m_FillRule = FillRule::NonZero;
-			} else if (!bx::strCmp(value, "evenodd", 7)) {
+			} else if (value == "evenodd") {
 				attrs->m_FillRule = FillRule::EvenOdd;
 			} else {
 				return ParseAttr::Fail;
@@ -937,27 +964,27 @@ static ParseAttr::Result parseGenericShapeAttribute(const bx::StringView& name, 
 
 			return ParseAttr::OK;
 		}
-	} else if (!bx::strCmp(name, "font", 4)) {
-		const bx::StringView partialName(name.getPtr() + 4, name.getLength() - 4);
-		if (!bx::strCmp(partialName, "-family", 7)) {
+	} else if (name == "font") {
+		const std::string_view partialName(name.data() + 4, name.length() - 4);
+		if (partialName == "-family") {
 			attrs->m_Flags &= ~AttribFlags::FontFamilyInherit;
 			shapeAttrsSetFontFamily(attrs, value);
 			return ParseAttr::OK;
-		} else if (!bx::strCmp(partialName, "-size", 5)) {
+		} else if (partialName == "-size") {
 			attrs->m_Flags &= ~AttribFlags::FontSizeInherit;
 			return parseLength(value, &attrs->m_FontSize) ? ParseAttr::OK : ParseAttr::Fail;
 		}
-	} else if (!bx::strCmp(name, "transform", 9)) {
+	} else if (name == "transform") {
 		return parseTransform(value, &attrs->m_Transform[0]) ? ParseAttr::OK : ParseAttr::Fail;
-	} else if (!bx::strCmp(name, "id", 2)) {
+	} else if (name == "id") {
 		shapeAttrsSetID(attrs, value);
 		return ParseAttr::OK;
-	} else if (!bx::strCmp(name, "class", 5)) {
+	} else if (name == "class") {
 #if SSVG_CONFIG_CLASS_MAX_LEN
 		shapeAttrsSetClass(attrs, value);
 #endif
 		return ParseAttr::OK;
-	} else if (!bx::strCmp(name, "opacity", 7)) {
+	} else if (name == "opacity") {
 		return parseNumber(value, &attrs->m_Opacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
 	}
 
@@ -973,11 +1000,11 @@ static bool parseShape_Group(ParserState* parser, Shape* group)
 			break;
 		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
 			const auto group_id = shapeAttrsGetID(group->m_Attrs);
-			SSVG_WARN(false, "Empty group element id=\"%.*s\"", group_id.getLength(), group_id.getPtr());
+			SSVG_WARN(false, "Empty group element id=\"%.*s\"", strlenint(group_id), group_id.data());
 			parser->m_Ptr += 2;
 			return true;
 		}
-		bx::StringView name, value;
+		std::string_view name, value;
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
@@ -987,7 +1014,7 @@ static bool parseShape_Group(ParserState* parser, Shape* group)
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
 				// No specific attributes for groups. Ignore it.
-				SSVG_WARN(false, "Ignoring g attribute: %.*s=\"%.*s\"", name.getLength(), name.getPtr(), value.getLength(), value.getPtr());
+				SSVG_WARN(false, "Ignoring g attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 			}
 		}
 	}
@@ -1008,7 +1035,7 @@ static bool parseShape_Text(ParserState* parser, Shape* text)
 			break;
 		}
 
-		bx::StringView name, value;
+		std::string_view name, value;
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
@@ -1018,22 +1045,22 @@ static bool parseShape_Text(ParserState* parser, Shape* text)
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
 				// Text specific attributes
-				if (!bx::strCmp(name, "x", 1)) {
+				if (name == "x") {
 					err = !parseLength(value, &text->m_Text.x);
-				} else if (!bx::strCmp(name, "y", 1)) {
+				} else if (name == "y") {
 					err = !parseLength(value, &text->m_Text.y);
-				} else if (!bx::strCmp(name, "text-anchor", 11)) {
-					if (!bx::strCmp(value, "start", 5)) {
+				} else if (name == "text-anchor") {
+					if (value == "start") {
 						text->m_Text.m_Anchor = TextAnchor::Start;
-					} else if (!bx::strCmp(value, "middle", 6)) {
+					} else if (value == "middle") {
 						text->m_Text.m_Anchor = TextAnchor::Middle;
-					} else if (!bx::strCmp(value, "end", 3)) {
+					} else if (value == "end") {
 						text->m_Text.m_Anchor = TextAnchor::End;
 					} else {
 						err = true;
 					}
 				} else {
-					SSVG_WARN(false, "Ignoring text attribute: %.*s=\"%.*s\"", name.getLength(), name.getPtr(), value.getLength(), value.getPtr());
+					SSVG_WARN(false, "Ignoring text attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
 			}
 		}
@@ -1080,7 +1107,7 @@ static bool parseShape_Path(ParserState* parser, Shape* path)
 			break;
 		}
 
-		bx::StringView name, value;
+		std::string_view name, value;
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
@@ -1090,10 +1117,10 @@ static bool parseShape_Path(ParserState* parser, Shape* path)
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
 				// Path specific attributes.
-				if (!bx::strCmp(name, "d", 1)) {
+				if (name == "d") {
 					err = !pathFromString(&path->m_Path, value, parser->m_Flags);
 				} else {
-					SSVG_WARN(false, "Ignoring path attribute: %.*s=\"%.*s\"", name.getLength(), name.getPtr(), value.getLength(), value.getPtr());
+					SSVG_WARN(false, "Ignoring path attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
 			}
 		}
@@ -1122,7 +1149,7 @@ static bool parseShape_Rect(ParserState* parser, Shape* rect)
 			break;
 		}
 
-		bx::StringView name, value;
+		std::string_view name, value;
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
@@ -1132,20 +1159,20 @@ static bool parseShape_Rect(ParserState* parser, Shape* rect)
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
 				// Rect specific attributes.
-				if (!bx::strCmp(name, "width", 5)) {
+				if (name == "width") {
 					err = !parseLength(value, &rect->m_Rect.width);
-				} else if (!bx::strCmp(name, "height", 6)) {
+				} else if (name == "height") {
 					err = !parseLength(value, &rect->m_Rect.height);
-				} else if (!bx::strCmp(name, "rx", 2)) {
+				} else if (name == "rx") {
 					err = !parseLength(value, &rect->m_Rect.rx);
-				} else if (!bx::strCmp(name, "ry", 2)) {
+				} else if (name == "ry") {
 					err = !parseLength(value, &rect->m_Rect.ry);
-				} else if (!bx::strCmp(name, "x", 1)) {
+				} else if (name == "x") {
 					err = !parseLength(value, &rect->m_Rect.x);
-				} else if (!bx::strCmp(name, "y", 1)) {
+				} else if (name == "y") {
 					err = !parseLength(value, &rect->m_Rect.y);
 				} else {
-					SSVG_WARN(false, "Ignoring rect attribute: %.*s=\"%.*s\"", name.getLength(), name.getPtr(), value.getLength(), value.getPtr());
+					SSVG_WARN(false, "Ignoring rect attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
 			}
 		}
@@ -1174,7 +1201,7 @@ static bool parseShape_Circle(ParserState* parser, Shape* circle)
 			break;
 		}
 
-		bx::StringView name, value;
+		std::string_view name, value;
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
@@ -1184,14 +1211,14 @@ static bool parseShape_Circle(ParserState* parser, Shape* circle)
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
 				// Circle specific attributes.
-				if (!bx::strCmp(name, "cx", 2)) {
+				if (name == "cx") {
 					err = !parseLength(value, &circle->m_Circle.cx);
-				} else if (!bx::strCmp(name, "cy", 2)) {
+				} else if (name == "cy") {
 					err = !parseLength(value, &circle->m_Circle.cy);
-				} else if (!bx::strCmp(name, "r", 1)) {
+				} else if (name == "r") {
 					err = !parseLength(value, &circle->m_Circle.r);
 				} else {
-					SSVG_WARN(false, "Ignoring circle attribute: %.*s=\"%.*s\"", name.getLength(), name.getPtr(), value.getLength(), value.getPtr());
+					SSVG_WARN(false, "Ignoring circle attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
 			}
 		}
@@ -1220,7 +1247,7 @@ static bool parseShape_Line(ParserState* parser, Shape* line)
 			break;
 		}
 
-		bx::StringView name, value;
+		std::string_view name, value;
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
@@ -1230,16 +1257,16 @@ static bool parseShape_Line(ParserState* parser, Shape* line)
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
 				// Line specific attributes.
-				if (!bx::strCmp(name, "x1", 2)) {
+				if (name == "x1") {
 					err = !parseLength(value, &line->m_Line.x1);
-				} else if (!bx::strCmp(name, "x2", 2)) {
+				} else if (name == "x2") {
 					err = !parseLength(value, &line->m_Line.x2);
-				} else if (!bx::strCmp(name, "y1", 2)) {
+				} else if (name == "y1") {
 					err = !parseLength(value, &line->m_Line.y1);
-				} else if (!bx::strCmp(name, "y2", 2)) {
+				} else if (name == "y2") {
 					err = !parseLength(value, &line->m_Line.y2);
 				} else {
-					SSVG_WARN(false, "Ignoring line attribute: %.*s=\"%.*s\"", name.getLength(), name.getPtr(), value.getLength(), value.getPtr());
+					SSVG_WARN(false, "Ignoring line attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
 			}
 		}
@@ -1268,7 +1295,7 @@ static bool parseShape_Ellipse(ParserState* parser, Shape* ellipse)
 			break;
 		}
 
-		bx::StringView name, value;
+		std::string_view name, value;
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
@@ -1278,16 +1305,16 @@ static bool parseShape_Ellipse(ParserState* parser, Shape* ellipse)
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
 				// Ellipse specific attributes.
-				if (!bx::strCmp(name, "cx", 2)) {
+				if (name == "cx") {
 					err = !parseLength(value, &ellipse->m_Ellipse.cx);
-				} else if (!bx::strCmp(name, "cy", 2)) {
+				} else if (name == "cy") {
 					err = !parseLength(value, &ellipse->m_Ellipse.cy);
-				} else if (!bx::strCmp(name, "rx", 2)) {
+				} else if (name == "rx") {
 					err = !parseLength(value, &ellipse->m_Ellipse.rx);
-				} else if (!bx::strCmp(name, "ry", 2)) {
+				} else if (name == "ry") {
 					err = !parseLength(value, &ellipse->m_Ellipse.ry);
 				} else {
-					SSVG_WARN(false, "Ignoring ellipse attribute: %.*s=\"%.*s\"", name.getLength(), name.getPtr(), value.getLength(), value.getPtr());
+					SSVG_WARN(false, "Ignoring ellipse attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
 			}
 		}
@@ -1316,7 +1343,7 @@ static bool parseShape_PointList(ParserState* parser, Shape* shape)
 			break;
 		}
 
-		bx::StringView name, value;
+		std::string_view name, value;
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
@@ -1325,7 +1352,7 @@ static bool parseShape_PointList(ParserState* parser, Shape* shape)
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
-				if (!bx::strCmp(name, "points", 6)) {
+				if (name == "points") {
 					PointList ptList;
 					bx::memSet(&ptList, 0, sizeof(PointList));
 					err = !pointListFromString(&ptList, value);
@@ -1357,7 +1384,7 @@ static bool parseShape_PointList(ParserState* parser, Shape* shape)
 						bx::memCopy(&shape->m_PointList, &ptList, sizeof(PointList));
 					}
 				} else {
-					SSVG_WARN(false, "Ignoring polygon/polyline attribute: %.*s=\"%.*s\"", name.getLength(), name.getPtr(), value.getLength(), value.getPtr());
+					SSVG_WARN(false, "Ignoring polygon/polyline attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
 			}
 		}
@@ -1374,23 +1401,23 @@ static bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAt
 {
 	struct ParseFunc
 	{
-		bx::StringView tag;
+		std::string_view tag;
 		ShapeType::Enum type;
 		bool(*parseFunc)(ParserState*, Shape*);
 	};
 
 	static const ParseFunc parseFuncs[] = {
-		{ bx::StringView("polyline"), ShapeType::Polyline, parseShape_PointList },
-		{ bx::StringView("polygon"), ShapeType::Polygon, parseShape_PointList },
-		{ bx::StringView("ellipse"), ShapeType::Ellipse, parseShape_Ellipse },
-		{ bx::StringView("circle"), ShapeType::Circle, parseShape_Circle },
-		{ bx::StringView("line"), ShapeType::Line, parseShape_Line },
-		{ bx::StringView("rect"), ShapeType::Rect, parseShape_Rect },
-		{ bx::StringView("path"), ShapeType::Path, parseShape_Path },
-		{ bx::StringView("text"), ShapeType::Text, parseShape_Text },
-		{ bx::StringView("g"), ShapeType::Group, parseShape_Group }
+		{ std::string_view("polyline"), ShapeType::Polyline, parseShape_PointList },
+		{ std::string_view("polygon"),  ShapeType::Polygon,  parseShape_PointList },
+		{ std::string_view("ellipse"),  ShapeType::Ellipse,  parseShape_Ellipse   },
+		{ std::string_view("circle"),   ShapeType::Circle,   parseShape_Circle    },
+		{ std::string_view("line"),     ShapeType::Line,     parseShape_Line      },
+		{ std::string_view("rect"),     ShapeType::Rect,     parseShape_Rect      },
+		{ std::string_view("path"),     ShapeType::Path,     parseShape_Path      },
+		{ std::string_view("text"),     ShapeType::Text,     parseShape_Text      },
+		{ std::string_view("g"),        ShapeType::Group,    parseShape_Group     },
 	};
-	static const uint32_t numParseFuncs = BX_COUNTOF(parseFuncs);
+	static const uint32_t numParseFuncs = sizeof(parseFuncs) / sizeof(ParseFunc);
 
 	SSVG_WARN(numParseFuncs == ShapeType::NumTypes, "Some shapes won't be parsed");
 
@@ -1402,7 +1429,7 @@ static bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAt
 			break;
 		}
 
-		bx::StringView tag;
+		std::string_view tag;
 		if (!parserGetTag(parser, &tag)) {
 			err = true;
 			break;
@@ -1410,7 +1437,7 @@ static bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAt
 
 		bool found = false;
 		for (uint32_t i = 0; i < numParseFuncs; ++i) {
-			if (!bx::strCmp(tag, parseFuncs[i].tag, parseFuncs[i].tag.getLength())) {
+			if (tag == parseFuncs[i].tag) {
 				Shape* shape = shapeListAllocShape(shapeList, parseFuncs[i].type, parentAttrs);
 				SSVG_CHECK(shape != nullptr, "Shape allocation failed");
 
@@ -1425,7 +1452,7 @@ static bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAt
 		}
 
 		if (!found) {
-			SSVG_WARN(false, "Ignoring element %.*s", tag.getLength(), tag.getPtr());
+			SSVG_WARN(false, "Ignoring element %.*s", strlenint(tag), tag.data());
 			parserSkipTag(parser);
 		}
 	}
@@ -1449,34 +1476,34 @@ static bool parseTag_svg(ParserState* parser, Image* img)
 			break;
 		}
 
-		bx::StringView name, value;
+		std::string_view name, value;
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
-			if (!bx::strCmp(name, "version", 7)) {
+			if (name == "version") {
 				parseVersion(value, &img->m_VerMajor, &img->m_VerMinor);
-			} else if (!bx::strCmp(name, "baseProfile", 11)) {
-				if (!bx::strCmp(value, "full", 4)) {
+			} else if (name == "baseProfile") {
+				if (value == "full") {
 					img->m_BaseProfile = BaseProfile::Full;
-				} else if (!bx::strCmp(value, "basic", 5)) {
+				} else if (value == "basic") {
 					img->m_BaseProfile = BaseProfile::Basic;
-				} else if (!bx::strCmp(value, "tiny", 4)) {
+				} else if (value == "tiny") {
 					img->m_BaseProfile = BaseProfile::Tiny;
 				} else {
 					// Unknown base profile. Ignore.
-					SSVG_WARN(false, "Unknown baseProfile \"%.*s\"", value.getLength(), value.getPtr());
+					SSVG_WARN(false, "Unknown baseProfile \"%.*s\"", strlenint(value), value.data());
 				}
-			} else if (!bx::strCmp(name, "width", 5)) {
-				img->m_Width = (float)atof(value.getPtr());
-			} else if (!bx::strCmp(name, "height", 6)) {
-				img->m_Height = (float)atof(value.getPtr());
-			} else if (!bx::strCmp(name, "viewBox", 7)) {
+			} else if (name == "width") {
+				img->m_Width = (float)atof(value.data());
+			} else if (name == "height") {
+				img->m_Height = (float)atof(value.data());
+			} else if (name == "viewBox") {
 				parseViewBox(value, &img->m_ViewBox[0]);
-			} else if (!bx::strCmp(name, "xmlns", 5)) {
+			} else if (name == "xmlns") {
 				// Ignore. This is here in order to shut up the trace message below.
 			} else {
 				// Unknown attribute. Ignore it (parser has already moved forward)
-				SSVG_WARN(false, "Ignoring svg attribute: %.*s=\"%.*s\"", name.getLength(), name.getPtr(), value.getLength(), value.getPtr());
+				SSVG_WARN(false, "Ignoring svg attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 			}
 		}
 	}
@@ -1503,11 +1530,11 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 
 	bool err = false;
 	while (!parserDone(&parser) && !err) {
-		bx::StringView tag;
+		std::string_view tag;
 		if (!parserGetTag(&parser, &tag)) {
 			err = true;
 		} else {
-			if (!bx::strCmp(tag, "?xml", 4)) {
+			if (tag == "?xml") {
 				// Special case: Search for "?>".
 				while (!parserDone(&parser)) {
 					if (parser.m_Ptr[0] == '?' && parser.m_Ptr[1] == '>') {
@@ -1518,7 +1545,7 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 				}
 
 				err = parserDone(&parser);
-			} else if (!bx::strCmp(tag, "!DOCTYPE", 8)) {
+			} else if (tag == "!DOCTYPE") {
 				// Special case: Search for first '>'.
 				while (!parserDone(&parser)) {
 					char ch = *parser.m_Ptr++;
@@ -1528,13 +1555,13 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 				}
 
 				err = parserDone(&parser);
-			} else if (!bx::strCmp(tag, "svg", 3)) {
+			} else if (tag == "svg") {
 				err = !parseTag_svg(&parser, img);
 				if (!err && (parser.m_Flags & ImageLoadFlags::CalcShapeBounds) != 0) {
 					shapeListCalcBounds(&img->m_ShapeList, &img->m_BoundingRect[0]);
 				}
 			} else {
-				SSVG_WARN(false, "Ignoring unknown root tag %.*s", tag.getLength(), tag.getPtr());
+				SSVG_WARN(false, "Ignoring unknown root tag %.*s", strlenint(tag), tag.data());
 				parserSkipTag(&parser);
 			}
 		}

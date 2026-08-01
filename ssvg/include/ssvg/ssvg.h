@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include <string_view>
+
 #ifndef SSVG_CONFIG_ID_MAX_LEN
 #	define SSVG_CONFIG_ID_MAX_LEN  16
 #endif
@@ -19,7 +21,6 @@ namespace bx
 {
 struct AllocatorI;
 struct WriterI;
-class StringView;
 }
 
 namespace ssvg {
@@ -318,7 +319,7 @@ PathCmd* pathAllocCommands(Path* path, uint32_t n);
 PathCmd* pathInsertCommands(Path* path, uint32_t at, uint32_t n);
 void pathShrinkToFit(Path* path);
 void pathFree(Path* path);
-bool pathFromString(Path* path, const bx::StringView& str, uint32_t flags);
+bool pathFromString(Path* path, const std::string_view& str, uint32_t flags);
 bool pathToString(const Path* path, bx::WriterI* writer);
 uint32_t pathMoveTo(Path* path, float x, float y);
 uint32_t pathLineTo(Path* path, float x, float y);
@@ -332,15 +333,15 @@ void pathConvertCommand(Path* path, uint32_t cmdID, PathCmdType::Enum newType);
 float* pointListAllocPoints(PointList* ptList, uint32_t n);
 void pointListShrinkToFit(PointList* ptList);
 void pointListFree(PointList* ptList);
-bool pointListFromString(PointList* ptList, const bx::StringView& str);
+bool pointListFromString(PointList* ptList, const std::string_view& str);
 bool pointListToString(const PointList* ptList, bx::WriterI* writer);
 void pointListCalcBounds(const PointList* ptList, float* bounds);
 
-bx::StringView shapeAttrsGetID(const ShapeAttributes* attrs);
+std::string_view shapeAttrsGetID(const ShapeAttributes* attrs);
 
-void shapeAttrsSetID(ShapeAttributes* attrs, const bx::StringView& id);
-void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const bx::StringView& fontFamily);
-void shapeAttrsSetClass(ShapeAttributes* attrs, const bx::StringView& c);
+void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& id);
+void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& fontFamily);
+void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& c);
 
 void shapeFree(Shape* shape);
 bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs = true);
