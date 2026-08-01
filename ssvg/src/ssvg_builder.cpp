@@ -1,11 +1,14 @@
 #include <ssvg/ssvg.h>
+
 #include "ssvg_debug.h"
+#include "ssvg_math.h"
 
 #include <bx/bx.h>
 #include <bx/string.h>
-#include <bx/math.h>
 
 #include <stdutils/macros.h>
+
+#include <cmath>
 
 BX_PRAGMA_DIAGNOSTIC_IGNORED_GCC("-Wmaybe-uninitialized")
 
@@ -419,22 +422,22 @@ void pathConvertCommand(Path* path, uint32_t cmdID, PathCmdType::Enum newType)
 
 static float nsvg__vecang(float ux, float uy, float vx, float vy)
 {
-	const float umag = bx::sqrt(ux * ux + uy * uy);
-	const float vmag = bx::sqrt(vx * vx + vy * vy);
+	const float umag = std::sqrt(ux * ux + uy * uy);
+	const float vmag = std::sqrt(vx * vx + vy * vy);
 	const float u_dot_v = ux * vx + uy * vy;
 	const float r = bx::clamp<float>(u_dot_v / (umag * vmag), -1.0f, 1.0f);
-	return bx::sign(ux * vy - uy * vx) * bx::acos(r);
+	return math::sign(ux * vy - uy * vx) * std::acos(r);
 }
 
 // nsvg__pathArcTo(NSVGparser* p, float* cpx, float* cpy, float* args, int rel)
 static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArgs, const float* lastPt)
 {
 	// Ported from canvg (https://code.google.com/p/canvg/)
-	float rx = bx::abs(arcToArgs[0]);                    // x radius
-	float ry = bx::abs(arcToArgs[1]);                    // y radius
-	const float rotx = bx::toRad(arcToArgs[2]);          // x rotation angle
-	const int fa = bx::abs(arcToArgs[3]) > 1e-6 ? 1 : 0; // Large arc
-	const int fs = bx::abs(arcToArgs[4]) > 1e-6 ? 1 : 0; // Sweep direction
+	float rx = std::abs(arcToArgs[0]);                    // x radius
+	float ry = std::abs(arcToArgs[1]);                    // y radius
+	const float rotx = math::to_rad(arcToArgs[2]);          // x rotation angle
+	const int fa = std::abs(arcToArgs[3]) > 1e-6 ? 1 : 0; // Large arc
+	const int fs = std::abs(arcToArgs[4]) > 1e-6 ? 1 : 0; // Sweep direction
 	const float x1 = lastPt[0];                          // start point x
 	const float y1 = lastPt[1];                          // start point y
 	const float x2 = arcToArgs[5];                       // end point x
@@ -442,7 +445,7 @@ static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArg
 
 	float dx = x1 - x2;
 	float dy = y1 - y2;
-	float d = bx::sqrt(dx * dx + dy * dy);
+	float d = std::sqrt(dx * dx + dy * dy);
 	if (d < 1e-6f || rx < 1e-6f || ry < 1e-6f) {
 		// The arc degenerates to a line
 		PathCmd* cmd = &path->m_Commands[cmdID];
@@ -452,8 +455,8 @@ static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArg
 		return;
 	}
 
-	const float sinrx = bx::sin(rotx);
-	const float cosrx = bx::cos(rotx);
+	const float sinrx = std::sin(rotx);
+	const float cosrx = std::cos(rotx);
 
 	// Convert to center point parameterization.
 	// http://www.w3.org/TR/SVG11/implnote.html#ArcImplementationNotes
@@ -462,7 +465,7 @@ static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArg
 	const float y1p = -sinrx * dx / 2.0f + cosrx * dy / 2.0f;
 	d = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
 	if (d > 1) {
-		d = bx::sqrt(d);
+		d = std::sqrt(d);
 		rx *= d;
 		ry *= d;
 	}
@@ -475,7 +478,7 @@ static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArg
 		sa = 0.0f;
 	}
 	if (sb > 0.0f) {
-		s = bx::sqrt(sa / sb);
+		s = std::sqrt(sa / sb);
 	}
 	if (fa == fs) {
 		s = -s;
@@ -496,9 +499,9 @@ static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArg
 
 	float da = nsvg__vecang(ux, uy, vx, vy);     // Delta angle
 	if (fs == 0 && da > 0) {
-		da -= bx::kPi2;
+		da -= math::kPi2;
 	} else if (fs == 1 && da < 0) {
-		da += bx::kPi2;
+		da += math::kPi2;
 	}
 
 	// Approximate the arc using cubic spline segments.
@@ -512,9 +515,9 @@ static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArg
 
 	// Split arc into max 90 degree segments.
 	// The loop assumes an iteration per end point (including start and end), this +1.
-	const int ndivs = (int)(bx::abs(da) / bx::kPiHalf + 1.0f);
+	const int ndivs = (int)(std::abs(da) / math::kPiHalf + 1.0f);
 	const float hda = (da / (float)ndivs) / 2.0f;
-	float kappa = bx::abs(4.0f / 3.0f * (1.0f - bx::cos(hda)) / bx::sin(hda));
+	float kappa = std::abs(4.0f / 3.0f * (1.0f - std::cos(hda)) / std::sin(hda));
 	if (da < 0.0f) {
 		kappa = -kappa;
 	}
@@ -534,8 +537,8 @@ static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArg
 
 	for (int i = 0; i <= ndivs; i++) {
 		const float a = a1 + da * ((float)i / (float)ndivs);
-		dx = bx::cos(a);
-		dy = bx::sin(a);
+		dx = std::cos(a);
+		dy = std::sin(a);
 
 		const float dxrx = dx * rx;
 		const float dyry = dy * ry;

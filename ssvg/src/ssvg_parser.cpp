@@ -1,14 +1,16 @@
 #include <ssvg/ssvg.h>
+
 #include "ssvg_debug.h"
+#include "ssvg_math.h"
 
 #include <bx/bx.h>
 #include <bx/string.h>
-#include <bx/math.h>
 
 #include <stdutils/macros.h>
 #include <stdutils/string.h>
 
-#include <float.h> // FLT_MAX
+#include <cassert>
+#include <cmath>
 
 BX_PRAGMA_DIAGNOSTIC_IGNORED_MSVC(4127) // conditional expression is constant
 
@@ -292,14 +294,18 @@ static bool parserGetAttribute(ParserState* parser, bx::StringView* name, bx::St
 
 static bool parseVersion(const bx::StringView& verStr, uint16_t* maj, uint16_t* min)
 {
-	const float fver = (float)atof(verStr.getPtr());
-	*maj = (uint16_t)bx::floor(fver);
-	*min = (uint16_t)bx::floor((fver - *maj) * 10.0f);
+	assert(maj);
+	assert(min);
+
+	const float fver = static_cast<float>(atof(verStr.getPtr()));
+	*maj = static_cast<uint16_t>(std::floor(fver));
+	const float fmaj = static_cast<float>(*maj);
+	*min = static_cast<uint16_t>(std::floor((fver - fmaj) * 10.0f));
 
 	return true;
 }
 
-static bool parseNumber(const bx::StringView& str, float* val, float min = -FLT_MAX, float max = FLT_MAX)
+static bool parseNumber(const bx::StringView& str, float* val, float min = -math::kFloatMax, float max = math::kFloatMax)
 {
 	*val = bx::clamp<float>((float)atof(str.getPtr()), min, max);
 
@@ -525,9 +531,9 @@ static bool parseTransform(const bx::StringView& str, float* transform)
 			float angle_deg;
 			valuePtr = parseCoord(valuePtr, valueEnd, &angle_deg);
 
-			const float angle_rad = bx::toRad(angle_deg);
-			const float cosAngle = bx::cos(angle_rad);
-			const float sinAngle = bx::sin(angle_rad);
+			const float angle_rad = math::to_rad(angle_deg);
+			const float cosAngle = std::cos(angle_rad);
+			const float sinAngle = std::sin(angle_rad);
 			comp[0] = cosAngle;
 			comp[1] = sinAngle;
 			comp[2] = -sinAngle;
@@ -546,14 +552,14 @@ static bool parseTransform(const bx::StringView& str, float* transform)
 			float angle_deg;
 			valuePtr = parseCoord(valuePtr, valueEnd, &angle_deg);
 
-			const float angle_rad = bx::toRad(angle_deg);
-			comp[2] = bx::tan(angle_rad);
+			const float angle_rad = math::to_rad(angle_deg);
+			comp[2] = std::tan(angle_rad);
 		} else if (!bx::strCmp(type, "skewY", 5)) {
 			float angle_deg;
 			valuePtr = parseCoord(valuePtr, valueEnd, &angle_deg);
 
-			const float angle_rad = bx::toRad(angle_deg);
-			comp[1] = bx::tan(angle_rad);
+			const float angle_rad = math::to_rad(angle_deg);
+			comp[1] = std::tan(angle_rad);
 		} else {
 			SSVG_WARN(false, "Unknown transform component %.*s(%.*s)", type.getLength(), type.getPtr(), value.getLength(), value.getPtr());
 			valuePtr = valueEnd;

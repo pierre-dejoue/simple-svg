@@ -1,14 +1,15 @@
 #include <ssvg/ssvg.h>
+
 #include "ssvg_debug.h"
+#include "ssvg_math.h"
 
 #include <bx/bx.h>
 #include <bx/allocator.h>
 #include <bx/string.h>
-#include <bx/math.h>
 
 #include <stdutils/macros.h>
 
-#include <float.h> // FLT_MAX
+#include <cmath>
 
 namespace ssvg
 {
@@ -209,10 +210,10 @@ void shapeListCalcBounds(ShapeList* shapeList, float* bounds)
 		return;
 	}
 
-	bounds[0] = FLT_MAX;
-	bounds[1] = FLT_MAX;
-	bounds[2] = -FLT_MAX;
-	bounds[3] = -FLT_MAX;
+	bounds[0] = math::kFloatMax;
+	bounds[1] = math::kFloatMax;
+	bounds[2] = -math::kFloatMax;
+	bounds[3] = -math::kFloatMax;
 	for (uint32_t i = 0; i < numShapes; ++i) {
 		Shape* shape = &shapeList->m_Shapes[i];
 		shapeUpdateBounds(shape);
@@ -289,15 +290,15 @@ void pathFree(Path* path)
 
 inline uint32_t solveQuad(float a, float b, float c, float* t)
 {
-	if (bx::abs(a) < 1e-5f) {
-		if (bx::abs(b) > 1e-5f) {
+	if (std::abs(a) < 1e-5f) {
+		if (std::abs(b) > 1e-5f) {
 			t[0] = -c / b;
 			return 1;
 		}
 	} else {
 		const float desc = b * b - 4.0f * a * c;
-		if (bx::abs(desc) > 1e-5f) {
-			const float desc_sqrt = bx::sqrt(desc);
+		if (std::abs(desc) > 1e-5f) {
+			const float desc_sqrt = std::sqrt(desc);
 			t[0] = (-b + desc_sqrt) / (2.0f * a);
 			t[1] = (-b - desc_sqrt) / (2.0f * a);
 
@@ -344,8 +345,8 @@ void pathCalcBounds(const Path* path, float* bounds)
 	const uint32_t numCommands = path->m_NumCommands;
 	if (!numCommands) {
 		// No commands -> invalid bounding rect
-		bounds[0] = bounds[1] = FLT_MAX;
-		bounds[2] = bounds[3] = -FLT_MAX;
+		bounds[0] = bounds[1] = math::kFloatMax;
+		bounds[2] = bounds[3] = -math::kFloatMax;
 		return;
 	}
 
@@ -426,7 +427,7 @@ void pathCalcBounds(const Path* path, float* bounds)
 				const float a = (c2 - c1);
 				const float b = (c1 - c0);
 
-				if (bx::abs(a) > 1e-5f) {
+				if (std::abs(a) > 1e-5f) {
 					const float t = -b / a;
 
 					if (t > 1e-5f && t < (1.0f - 1e-5f)) {
@@ -509,8 +510,8 @@ void pointListCalcBounds(const PointList* ptList, float* bounds)
 	const uint32_t numPoints = ptList->m_NumPoints;
 	if (!numPoints) {
 		// No points -> invalid bounding rect
-		bounds[0] = bounds[1] = FLT_MAX;
-		bounds[2] = bounds[3] = -FLT_MAX;
+		bounds[0] = bounds[1] = math::kFloatMax;
+		bounds[2] = bounds[3] = -math::kFloatMax;
 		return;
 	}
 
@@ -703,7 +704,7 @@ void shapeFree(Shape* shape)
 
 void shapeUpdateBounds(Shape* shape)
 {
-	float bounds[4] = { FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX };
+	float bounds[4] = { math::kFloatMax, math::kFloatMax, -math::kFloatMax, -math::kFloatMax };
 
 	const ShapeType::Enum type = shape->m_Type;
 	switch (type) {
