@@ -29,7 +29,6 @@ target_include_directories(ssvg
 # Debug trace
 target_compile_definitions(ssvg PRIVATE
     $<$<CONFIG:Debug>:SSVG_CONFIG_DEBUG=1>
-    $<$<CONFIG:Debug>:SSVG_CONFIG_BX_DEBUG=0>
 )
 
 target_link_libraries(ssvg

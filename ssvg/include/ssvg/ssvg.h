@@ -1,5 +1,5 @@
-#ifndef SVG_SVG_H
-#define SVG_SVG_H
+#ifndef SVG_SSVG_H
+#define SVG_SSVG_H
 
 #include <stdint.h>
 
