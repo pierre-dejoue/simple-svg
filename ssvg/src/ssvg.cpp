@@ -6,6 +6,8 @@
 #include <bx/string.h>
 #include <bx/math.h>
 
+#include <stdutils/macros.h>
+
 #include <float.h> // FLT_MAX
 
 namespace ssvg
@@ -557,7 +559,8 @@ void shapeAttrsSetClass(ShapeAttributes* attrs, const bx::StringView& value)
 	bx::memCopy(&attrs->m_Class[0], value.getPtr(), maxLen);
 	attrs->m_Class[maxLen] = '\0';
 #else
-	BX_UNUSED(attrs, value);
+	UNUSED(attrs);
+	UNUSED(value);
 #endif
 }
 

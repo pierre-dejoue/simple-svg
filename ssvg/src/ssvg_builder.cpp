@@ -5,6 +5,8 @@
 #include <bx/string.h>
 #include <bx/math.h>
 
+#include <stdutils/macros.h>
+
 BX_PRAGMA_DIAGNOSTIC_IGNORED_GCC("-Wmaybe-uninitialized")
 
 namespace ssvg
@@ -264,9 +266,7 @@ uint32_t pathArcTo(Path* path, float rx, float ry, float xAxisRotation, int larg
 uint32_t pathClose(Path* path)
 {
 	PathCmd* cmd = pathAllocCommand(path, PathCmdType::ClosePath);
-
-	BX_UNUSED(cmd);
-
+	UNUSED(cmd);
 	return path->m_NumCommands - 1;
 }
 

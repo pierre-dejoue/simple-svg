@@ -35,6 +35,7 @@ target_compile_definitions(ssvg PRIVATE
 target_link_libraries(ssvg
     PRIVATE
     bx
+    stdutils
 )
 
 if(MSVC)

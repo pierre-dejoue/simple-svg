@@ -5,6 +5,9 @@
 #include <bx/string.h>
 #include <bx/math.h>
 
+#include <stdutils/macros.h>
+#include <stdutils/string.h>
+
 #include <float.h> // FLT_MAX
 
 BX_PRAGMA_DIAGNOSTIC_IGNORED_MSVC(4127) // conditional expression is constant
@@ -99,7 +102,7 @@ inline uint8_t charToNibble(char ch)
 
 inline const char* skipWhitespace(const char* ptr, const char* end)
 {
-	while (ptr != end && bx::isSpace(*ptr) && *ptr != '\0') {
+	while (ptr != end && stdutils::ascii::isspace(*ptr) && *ptr != '\0') {
 		++ptr;
 	}
 
@@ -217,7 +220,7 @@ static bool parserGetTag(ParserState* parser, bx::StringView* tag)
 	++parser->m_Ptr;
 
 	// Search for the next whitespace or closing angle bracket
-	while (!parserDone(parser) && !bx::isSpace(*parser->m_Ptr) && *parser->m_Ptr != '>') {
+	while (!parserDone(parser) && !stdutils::ascii::isspace(*parser->m_Ptr) && *parser->m_Ptr != '>') {
 		++parser->m_Ptr;
 	}
 
@@ -239,14 +242,14 @@ static bool parserGetAttribute(ParserState* parser, bx::StringView* name, bx::St
 {
 	parserSkipWhitespace(parser);
 
-	if (!bx::isAlpha(*parser->m_Ptr)) {
+	if (!stdutils::ascii::isalpha(*parser->m_Ptr)) {
 		return false;
 	}
 
 	const char* namePtr = parser->m_Ptr;
 
 	// Skip the identifier
-	while (bx::isAlphaNum(*parser->m_Ptr)
+	while (stdutils::ascii::isalnum(*parser->m_Ptr)
 		|| *parser->m_Ptr == '-'
 		|| *parser->m_Ptr == '_'
 		|| *parser->m_Ptr == ':') {
@@ -382,7 +385,7 @@ static const char* parseCoord(const char* str, const char* end, float* coord)
 {
 	const char* ptr = skipCommaWhitespace(str, end);
 
-	SSVG_CHECK(ptr != end && !bx::isAlpha(*ptr), "Parse error");
+	SSVG_CHECK(ptr != end && !stdutils::ascii::isalpha(*ptr), "Parse error");
 
 	char* coordEnd;
 	*coord = strtof(ptr, &coordEnd);
@@ -397,7 +400,7 @@ static const char* parseFlag(const char* str, const char* end, float* flag)
 {
 	const char* ptr = skipCommaWhitespace(str, end);
 
-	SSVG_CHECK(ptr != end && !bx::isAlpha(*ptr), "Parse error");
+	SSVG_CHECK(ptr != end && !stdutils::ascii::isalpha(*ptr), "Parse error");
 
 	if (*ptr == '0') {
 		*flag = 0.0f;
@@ -426,10 +429,10 @@ static bool parseViewBox(const bx::StringView& str, float* viewBox)
 // where type is an identifier and value is any kind of text
 static const char* parseTransformComponent(const char* str, const char* end, bx::StringView* type, bx::StringView* value)
 {
-	SSVG_CHECK(bx::isAlpha(*str), "Parse error: Excepted identifier");
+	SSVG_CHECK(stdutils::ascii::isalpha(*str), "Parse error: Excepted identifier");
 
 	const char* ptr = str;
-	while (ptr != end && bx::isAlpha(*ptr)) {
+	while (ptr != end && stdutils::ascii::isalpha(*ptr)) {
 		++ptr;
 	}
 
@@ -465,7 +468,7 @@ static const char* parseTransformComponent(const char* str, const char* end, bx:
 	const char* endPtr = ptr + 1;
 
 	// Walk back ptr to get a tight value string (without trailing whitespaces)
-	while (ptr != valuePtr && bx::isSpace(*ptr)) {
+	while (ptr != valuePtr && stdutils::ascii::isspace(*ptr)) {
 		--ptr;
 	}
 
@@ -581,15 +584,15 @@ bool pathFromString(Path* path, const bx::StringView& str, uint32_t flags)
 	while (ptr != end) {
 		char ch = *ptr;
 
-		SSVG_CHECK(!bx::isSpace(ch) && ch != ',', "Parse error");
+		SSVG_CHECK(!stdutils::ascii::isspace(ch) && ch != ',', "Parse error");
 
-		if (bx::isAlpha(ch)) {
+		if (stdutils::ascii::isalpha(ch)) {
 			++ptr;
 		} else {
 			ch = lastCommand;
 		}
 
-		const char lch = bx::toLower(ch);
+		const char lch = stdutils::ascii::tolower(ch);
 
 		if (lch == 'm') {
 			// MoveTo
@@ -612,7 +615,7 @@ bool pathFromString(Path* path, const bx::StringView& str, uint32_t flags)
 			// first element of the path, then it is treated as a pair of absolute coordinates. In this case,
 			// subsequent pairs of coordinates are treated as relative even though the initial moveto is
 			// interpreted as an absolute moveto.
-			ch = bx::isLower(ch) ? 'l' : 'L';
+			ch = stdutils::ascii::islower(ch) ? 'l' : 'L';
 		} else if (lch == 'l') {
 			// LineTo abs
 			PathCmd* cmd = pathAllocCommand(path, PathCmdType::LineTo);
@@ -653,7 +656,7 @@ bool pathFromString(Path* path, const bx::StringView& str, uint32_t flags)
 		} else if (lch == 'z') {
 			// ClosePath
 			PathCmd* cmd = pathAllocCommand(path, PathCmdType::ClosePath);
-			BX_UNUSED(cmd);
+			UNUSED(cmd);
 			lastX = firstX;
 			lastY = firstY;
 			// No data
@@ -693,7 +696,7 @@ bool pathFromString(Path* path, const bx::StringView& str, uint32_t flags)
 			// the previous command relative to the current point. (If there is no previous command or
 			// if the previous command was not an C, c, S or s, assume the first control point is
 			// coincident with the current point.)
-			const char lastCmdLower = bx::toLower(lastCommand);
+			const char lastCmdLower = stdutils::ascii::tolower(lastCommand);
 			if (lastCmdLower == 'c' || lastCmdLower == 's') {
 				const float dx = lastX - lastCPX;
 				const float dy = lastY - lastCPY;
@@ -748,7 +751,7 @@ bool pathFromString(Path* path, const bx::StringView& str, uint32_t flags)
 			// previous command relative to the current point. (If there is no previous command
 			// or if the previous command was not a Q, q, T or t, assume the control point is
 			// coincident with the current point.)
-			const char lastCmdLower = bx::toLower(lastCommand);
+			const char lastCmdLower = stdutils::ascii::tolower(lastCommand);
 			if (lastCmdLower == 'q' || lastCmdLower == 't') {
 				const float dx = lastX - lastCPX;
 				const float dy = lastY - lastCPY;
@@ -828,7 +831,7 @@ static ParseAttr::Result parseStyle(const bx::StringView& str, ShapeAttributes* 
 	const char* ptr = skipWhitespace(str.getPtr(), end);
 	while (ptr != end) {
 		const char* nameStart = ptr;
-		while (ptr != end && (bx::isAlpha(*ptr) || *ptr == '-')) {
+		while (ptr != end && (stdutils::ascii::isalpha(*ptr) || *ptr == '-')) {
 			ptr++;
 		}
 
