@@ -27,7 +27,7 @@ uint8_t* loadFile(const bx::FilePath& filePath)
 	return buffer;
 }
 
-bool testParser(const char* filename)
+bool testParser(const char* filename, const ssvg::ShapeAttributes* baseAttrs)
 {
 	printf("Loading \"%s\"...\n", filename);
 
@@ -38,20 +38,16 @@ bool testParser(const char* filename)
 	}
 
 	ssvg::Image* img = nullptr;
-
-	int64_t startTime = bx::getHPCounter();
 	{
-		img = ssvg::imageLoad((char*)svgFileBuffer);
+		constexpr uint32_t svg_parser_flags = 0;
+		img = ssvg::imageLoad((char*)svgFileBuffer, svg_parser_flags, baseAttrs);
 	}
-	int64_t deltaTime = bx::getHPCounter() - startTime;
 
 	if (!img) {
 		printf("(x) Failed to parse svg file.\n");
 		return false;
 	}
 
-	double t = (double)deltaTime / (double)bx::getHPFrequency();
-	printf("- Time: %g msec\n", t * 1000.0f);
 	printf("- Root element contains %d shapes\n", img->m_ShapeList.m_NumShapes);
 
 	ssvg::imageDestroy(img);
@@ -85,7 +81,7 @@ bool testBuilder(const char* filename)
 	textAttrs.m_FillPaint.m_ColorABGR = 0xFF000000;
 	textAttrs.m_StrokePaint.m_Type = ssvg::PaintType::None;
 
-	ssvg::Image* img = ssvg::imageCreate();
+	ssvg::Image* img = ssvg::imageCreate(&textAttrs);
 
 	ssvg::ShapeList* imgShapeList = &img->m_ShapeList;
 
@@ -111,7 +107,7 @@ bool testBuilder(const char* filename)
 		uint32_t groupID = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs, nullptr, 0);
 
 		float groupTransform[6] = { 1.0f, 0.0f, 0.0f, 1.0f, 400.0f, 0.0f };
-		bx::memCopy(&imgShapeList->m_Shapes[groupID].m_Attrs.m_Transform[0], &groupTransform[0], sizeof(float) * 6);
+		bx::memCopy(&imgShapeList->m_Shapes[groupID].m_Attrs->m_Transform[0], &groupTransform[0], sizeof(float) * 6);
 
 		ssvg::ShapeList* groupShapeList = &imgShapeList->m_Shapes[groupID].m_ShapeList;
 		uint32_t rectID = ssvg::shapeListAddRect(groupShapeList, &defaultAttrs, 100.0f, 100.0f, 200.0f, 200.0f, 0.0f, 0.0f);
@@ -134,7 +130,7 @@ bool testBuilder(const char* filename)
 
 		// Transform the group
 		float groupTransform[6] = { 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 400.0f };
-		bx::memCopy(&imgShapeList->m_Shapes[groupID].m_Attrs.m_Transform[0], &groupTransform[0], sizeof(float) * 6);
+		bx::memCopy(&imgShapeList->m_Shapes[groupID].m_Attrs->m_Transform[0], &groupTransform[0], sizeof(float) * 6);
 	}
 
 	bx::Error err;
@@ -153,7 +149,7 @@ bool testBuilder(const char* filename)
 	return true;
 }
 
-bool testRoundTrip(const char* input, const char* output)
+bool testRoundTrip(const char* input, const char* output, const ssvg::ShapeAttributes* baseAttrs)
 {
 	printf("Converting \"%s\" to \"%s\"...\n", input, output);
 
@@ -163,7 +159,8 @@ bool testRoundTrip(const char* input, const char* output)
 		return false;
 	}
 
-	ssvg::Image* img = ssvg::imageLoad((char*)svgFileBuffer);
+	constexpr uint32_t svg_parser_flags = 0;
+	ssvg::Image* img = ssvg::imageLoad((char*)svgFileBuffer, svg_parser_flags, baseAttrs);
 	if (!img) {
 		printf("(x) Failed to parse svg file.\n");
 		return false;
@@ -204,13 +201,12 @@ int main()
 	ssvg::transformIdentity(&defaultAttrs.m_Transform[0]);
 	shapeAttrsSetFontFamily(&defaultAttrs, "sans-serif");
 
-	ssvg::initLib(&g_Allocator, &defaultAttrs);
+	ssvg::initLib(&g_Allocator);
 
-	testParser("./Ghostscript_Tiger.svg");
+	testParser("./Ghostscript_Tiger.svg", &defaultAttrs);
 	testBuilder("./output.svg");
-	testRoundTrip("./Ghostscript_Tiger.svg", "./tiger.svg");
-
-	testParser("./tiger.svg");
+	testRoundTrip("./Ghostscript_Tiger.svg", "./tiger.svg", &defaultAttrs);
+	testParser("./tiger.svg", &defaultAttrs);
 
 	return 0;
 }

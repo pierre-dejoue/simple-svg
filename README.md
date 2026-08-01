@@ -1,4 +1,6 @@
-# simple-svg
+simple-svg
+==========
+
 SVG parser, writer and helper functions
 
 ### Code
@@ -9,7 +11,7 @@ SVG parser, writer and helper functions
 	- `ssvg_parser.cpp`: SVG parser
 	- `ssvg_writer.cpp`: SVG writer
 	- `ssvg_builder.cpp`: Helper functions for building images
-* Demo: 
+* Demo:
 	- `examples/main.cpp`
 
 ### Dependencies
