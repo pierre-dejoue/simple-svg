@@ -1,5 +1,5 @@
-#ifndef SVG_SSVG_H
-#define SVG_SSVG_H
+#ifndef SSVG_SSVG_H
+#define SSVG_SSVG_H
 
 #include <stdint.h>
 
@@ -356,4 +356,4 @@ void transformBoundingRect(const float* transform, const float* localRect, float
 
 } // namespace ssvg
 
-#endif
+#endif		// SSVG_SSVG_H

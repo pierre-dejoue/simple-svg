@@ -1,5 +1,5 @@
-#ifndef SVG_SSVG_MATH_H
-#define SVG_SSVG_MATH_H
+#ifndef SSVG_SSVG_MATH_H
+#define SSVG_SSVG_MATH_H
 
 #include <stdutils/constants.h>
 
@@ -16,15 +16,15 @@ inline constexpr float kPiHalf = stdutils::constants::pi_v<float> / 2.f;
 
 inline constexpr float to_rad(float deg)
 {
-    return deg * (kPi / 180.f);
+	return deg * (kPi / 180.f);
 }
 
 inline constexpr float sign(float a)
 {
-    return static_cast<float>( (0.0f < a) - (0.0f > a) );
+	return static_cast<float>( (0.0f < a) - (0.0f > a) );
 }
 
 } // namespace math
 } // namespace ssvg
 
-#endif
+#endif		// SSVG_SSVG_MATH_H

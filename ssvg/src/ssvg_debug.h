@@ -1,5 +1,5 @@
-#ifndef SVG_SSVG_DEBUG_H
-#define SVG_SSVG_DEBUG_H
+#ifndef SSVG_SSVG_DEBUG_H
+#define SSVG_SSVG_DEBUG_H
 
 #ifndef SSVG_CONFIG_DEBUG
 #	define SSVG_CONFIG_DEBUG 0
@@ -45,4 +45,4 @@
 	} while(0)
 #endif
 
-#endif
+#endif		// SSVG_SSVG_DEBUG_H
