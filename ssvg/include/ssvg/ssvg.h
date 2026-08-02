@@ -19,7 +19,6 @@
 
 namespace bx
 {
-struct AllocatorI;
 struct WriterI;
 }
 
@@ -288,7 +287,7 @@ struct ImageLoadFlags
 	};
 };
 
-void initLib(bx::AllocatorI* allocator);
+void initLib();
 void shutdownLib();
 
 Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* baseAttrs);
@@ -296,6 +295,7 @@ bool imageSave(const Image* img, bx::WriterI* writer);
 Image* imageCreate(const ShapeAttributes* baseAttrs);
 void imageDestroy(Image* img);
 
+bool shapeListIsReadOnly(ShapeList* shapeList);
 Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const ShapeAttributes* parentAttrs);
 void shapeListShrinkToFit(ShapeList* shapeList);
 void shapeListFree(ShapeList* shapeList);

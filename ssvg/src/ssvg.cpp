@@ -4,13 +4,14 @@
 #include "ssvg_math.h"
 
 #include <bx/bx.h>
-#include <bx/allocator.h>
 
 #include <stdutils/macros.h>
 #include <stdutils/minmax.h>
 #include <stdutils/string.h>
 
+#include <cassert>
 #include <cmath>
+#include <cstdlib>
 #include <string_view>
 
 namespace ssvg
@@ -35,7 +36,6 @@ struct ShapeAttributeFreeListNode
 	uint32_t m_NumFree;
 };
 
-bx::AllocatorI* s_Allocator = nullptr;
 static ShapeAttributeFreeListNode* s_ShapeAttrFreeListHead = nullptr;
 
 static ShapeAttributes* shapeAttrsAlloc();
@@ -98,19 +98,26 @@ void transformBoundingRect(const float* transform, const float* localRect, float
 	globalRect[3] = stdutils::max<float>(transformedRect[1], transformedRect[3]);
 }
 
+bool shapeListIsReadOnly(ShapeList* shapeList)
+{
+	// We may use a ShapeList as a temporary reference to another, in which case the ShapeList does not own the memory buffer
+	return shapeList->m_Shapes != nullptr && shapeList->m_Capacity == 0;
+}
+
 Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const ShapeAttributes* parentAttrs)
 {
-	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Trying to expand a read-only shape list?");
+	SSVG_CHECK(!shapeListIsReadOnly(shapeList), "Trying to expand a read-only shape list?");
+	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Invalid capacity of a shape list (expand)");
 
 	if (shapeList->m_NumShapes + 1 > shapeList->m_Capacity) {
 		const uint32_t oldCapacity = shapeList->m_Capacity;
 
-		// TODO: Since shapes are fairly large objects, check if allocating a constant amount each time
-		// somehow helps.
+		// TODO: Since shapes are fairly large objects, check if allocating a constant amount each time somehow helps
 		shapeList->m_Capacity = oldCapacity ? (oldCapacity * 3) / 2 : 4;
-		shapeList->m_Shapes = (Shape*)BX_REALLOC(s_Allocator, shapeList->m_Shapes, sizeof(Shape) * shapeList->m_Capacity);
+		shapeList->m_Shapes = (Shape*)std::realloc(shapeList->m_Shapes, sizeof(Shape) * shapeList->m_Capacity);
 		bx::memSet(&shapeList->m_Shapes[oldCapacity], 0, sizeof(Shape) * (shapeList->m_Capacity - oldCapacity));
 	}
+	assert(shapeList->m_NumShapes + 1 <= shapeList->m_Capacity);
 
 	Shape* shape = &shapeList->m_Shapes[shapeList->m_NumShapes++];
 	shape->m_Type = type;
@@ -130,21 +137,24 @@ Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const Sha
 
 void shapeListShrinkToFit(ShapeList* shapeList)
 {
-	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Trying to shrink a read-only shape list?");
+	SSVG_CHECK(!shapeListIsReadOnly(shapeList), "Trying to shrink a read-only shape list?");
+	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Invalid capacity of a shape list (shrink)");
 
-	if (!shapeList->m_NumShapes && shapeList->m_Capacity) {
-		BX_FREE(s_Allocator, shapeList->m_Shapes);
+	if (shapeList->m_NumShapes == 0 && shapeList->m_Capacity > 0) {
+		std::free(shapeList->m_Shapes);
 		shapeList->m_Shapes = nullptr;
 		shapeList->m_Capacity = 0;
 	} else if (shapeList->m_NumShapes != shapeList->m_Capacity) {
-		shapeList->m_Shapes = (Shape*)BX_REALLOC(s_Allocator, shapeList->m_Shapes, sizeof(Shape) * shapeList->m_NumShapes);
+		shapeList->m_Shapes = (Shape*)std::realloc(shapeList->m_Shapes, sizeof(Shape) * shapeList->m_NumShapes);
 		shapeList->m_Capacity = shapeList->m_NumShapes;
 	}
+	assert(shapeList->m_NumShapes == shapeList->m_Capacity);
 }
 
 void shapeListFree(ShapeList* shapeList)
 {
-	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Trying to free a read-only shape list?");
+	SSVG_CHECK(!shapeListIsReadOnly(shapeList), "Trying to free a read-only shape list?");
+	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Invalid capacity of a shape list (free)");
 
 	const uint32_t n = shapeList->m_NumShapes;
 	for (uint32_t i = 0; i < n; ++i) {
@@ -152,7 +162,7 @@ void shapeListFree(ShapeList* shapeList)
 		shapeFree(shape);
 	}
 
-	BX_FREE(s_Allocator, shapeList->m_Shapes);
+	std::free(shapeList->m_Shapes);
 	shapeList->m_Shapes = nullptr;
 	shapeList->m_Capacity = 0;
 	shapeList->m_NumShapes = 0;
@@ -160,15 +170,19 @@ void shapeListFree(ShapeList* shapeList)
 
 void shapeListReserve(ShapeList* shapeList, uint32_t capacity)
 {
+	SSVG_CHECK(!shapeListIsReadOnly(shapeList), "Trying to reserve memory for a read-only shape list?");
+	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Invalid capacity of a shape list (reserve)");
+
 	const uint32_t oldCapacity = shapeList->m_Capacity;
 	if (capacity <= oldCapacity) {
 		return;
 	}
 
+	shapeList->m_Shapes = (Shape*)std::realloc(shapeList->m_Shapes, sizeof(Shape) * capacity);
 	shapeList->m_Capacity = capacity;
-	shapeList->m_Shapes = (Shape*)BX_REALLOC(s_Allocator, shapeList->m_Shapes, sizeof(Shape) * shapeList->m_Capacity);
 	assert(oldCapacity <= shapeList->m_Capacity);
 	bx::memSet(&shapeList->m_Shapes[oldCapacity], 0, sizeof(Shape) * (shapeList->m_Capacity - oldCapacity));
+	assert(shapeList->m_NumShapes <= shapeList->m_Capacity);
 }
 
 uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeID)
@@ -248,11 +262,11 @@ PathCmd* pathAllocCommands(Path* path, uint32_t n)
 	if (path->m_NumCommands + n > path->m_Capacity) {
 		const uint32_t oldCapacity = path->m_Capacity;
 		const uint32_t newCapacity = oldCapacity ? (oldCapacity * 3) / 2 : 4;
-
 		path->m_Capacity = stdutils::max<uint32_t>(newCapacity, oldCapacity + n);
-		path->m_Commands = (PathCmd*)BX_REALLOC(s_Allocator, path->m_Commands, sizeof(PathCmd) * path->m_Capacity);
+		path->m_Commands = (PathCmd*)std::realloc(path->m_Commands, sizeof(PathCmd) * path->m_Capacity);
 		bx::memSet(&path->m_Commands[oldCapacity], 0, sizeof(PathCmd) * (path->m_Capacity - oldCapacity));
 	}
+	assert(path->m_NumCommands + n <= path->m_Capacity);
 
 	PathCmd* firstCmd = &path->m_Commands[path->m_NumCommands];
 	path->m_NumCommands += n;
@@ -283,19 +297,21 @@ PathCmd* pathInsertCommands(Path* path, uint32_t at, uint32_t n)
 
 void pathShrinkToFit(Path* path)
 {
-	if (!path->m_NumCommands && path->m_Capacity) {
-		BX_FREE(s_Allocator, path->m_Commands);
+	if (path->m_NumCommands == 0 && path->m_Capacity > 0) {
+		std::free(path->m_Commands);
 		path->m_Commands = nullptr;
 		path->m_Capacity = 0;
 	} else if (path->m_NumCommands != path->m_Capacity) {
-		path->m_Commands = (PathCmd*)BX_REALLOC(s_Allocator, path->m_Commands, sizeof(PathCmd) * path->m_NumCommands);
+		assert(path->m_NumCommands < path->m_Capacity);
+		path->m_Commands = (PathCmd*)std::realloc(path->m_Commands, sizeof(PathCmd) * path->m_NumCommands);
 		path->m_Capacity = path->m_NumCommands;
 	}
+	assert(path->m_NumCommands == path->m_Capacity);
 }
 
 void pathFree(Path* path)
 {
-	BX_FREE(s_Allocator, path->m_Commands);
+	std::free(path->m_Commands);
 	path->m_Commands = nullptr;
 	path->m_NumCommands = 0;
 	path->m_Capacity = 0;
@@ -489,8 +505,9 @@ float* pointListAllocPoints(PointList* ptList, uint32_t n)
 		const uint32_t newCapacity = oldCapacity ? (oldCapacity * 3) / 2 : 8;
 
 		ptList->m_Capacity = stdutils::max<uint32_t>(newCapacity, oldCapacity + n);
-		ptList->m_Coords = (float*)BX_REALLOC(s_Allocator, ptList->m_Coords, sizeof(float) * 2 * ptList->m_Capacity);
+		ptList->m_Coords = (float*)std::realloc(ptList->m_Coords, sizeof(float) * 2 * ptList->m_Capacity);
 	}
+	assert(ptList->m_NumPoints + n <= ptList->m_Capacity);
 
 	float* coords = &ptList->m_Coords[ptList->m_NumPoints << 1];
 	ptList->m_NumPoints += n;
@@ -500,20 +517,22 @@ float* pointListAllocPoints(PointList* ptList, uint32_t n)
 
 void pointListShrinkToFit(PointList* ptList)
 {
-	if (!ptList->m_NumPoints && ptList->m_Capacity) {
-		BX_FREE(s_Allocator, ptList->m_Coords);
+	if (ptList->m_NumPoints == 0 && ptList->m_Capacity > 0) {
+		std::free(ptList->m_Coords);
 		ptList->m_Coords = nullptr;
 		ptList->m_Capacity = 0;
 	} else if (ptList->m_NumPoints != ptList->m_Capacity) {
-		ptList->m_Coords = (float*)BX_REALLOC(s_Allocator, ptList->m_Coords, sizeof(float) * 2 * ptList->m_NumPoints);
+		assert(ptList->m_NumPoints < ptList->m_Capacity);
+		ptList->m_Coords = (float*)std::realloc(ptList->m_Coords, sizeof(float) * 2 * ptList->m_NumPoints);
 		ptList->m_Capacity = ptList->m_NumPoints;
 	}
+	assert(ptList->m_NumPoints == ptList->m_Capacity);
 }
 
 void pointListFree(PointList* ptList)
 {
-	BX_FREE(s_Allocator, ptList->m_Coords);
-	ptList->m_Coords = 0;
+	std::free(ptList->m_Coords);
+	ptList->m_Coords = nullptr;
 	ptList->m_NumPoints = 0;
 	ptList->m_Capacity = 0;
 }
@@ -580,7 +599,7 @@ void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value)
 
 Image* imageCreate(const ShapeAttributes* baseAttrs)
 {
-	Image* img = (Image*)BX_ALLOC(s_Allocator, sizeof(Image));
+	Image* img = (Image*)std::malloc(sizeof(Image));
 	bx::memSet(img, 0, sizeof(Image));
 	bx::memCopy(&img->m_BaseAttrs, baseAttrs, sizeof(ShapeAttributes));
 
@@ -590,12 +609,11 @@ Image* imageCreate(const ShapeAttributes* baseAttrs)
 void imageDestroy(Image* img)
 {
 	shapeListFree(&img->m_ShapeList);
-	BX_FREE(s_Allocator, img);
+	std::free(img);
 }
 
-void initLib(bx::AllocatorI* allocator)
+void initLib()
 {
-	s_Allocator = allocator;
 	s_ShapeAttrFreeListHead = nullptr;
 }
 
@@ -605,8 +623,8 @@ void shutdownLib()
 	while (node) {
 		ShapeAttributeFreeListNode* next = node->m_Next;
 
-		BX_FREE(s_Allocator, node->m_Attrs);
-		BX_FREE(s_Allocator, node);
+		std::free(node->m_Attrs);
+		std::free(node);
 
 		node = next;
 	}
@@ -678,7 +696,7 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 		dstText->m_Anchor = srcText->m_Anchor;
 
 		const uint32_t len = stdutils::strnlen(srcText->m_String);
-		dstText->m_String = (char*)BX_ALLOC(s_Allocator, sizeof(char) * (len + 1));
+		dstText->m_String = (char*)std::malloc(sizeof(char) * (len + 1));
 		bx::memCopy(dstText->m_String, srcText->m_String, len);
 		dstText->m_String[len] = '\0';
 	}
@@ -705,7 +723,7 @@ void shapeFree(Shape* shape)
 		pointListFree(&shape->m_PointList);
 		break;
 	case ShapeType::Text:
-		BX_FREE(s_Allocator, shape->m_Text.m_String);
+		std::free(shape->m_Text.m_String);
 		shape->m_Text.m_String = nullptr;
 		break;
 	default:
@@ -792,10 +810,10 @@ static ShapeAttributes* shapeAttrsAlloc()
 		node = node->m_Next;
 	}
 
-	node = (ShapeAttributeFreeListNode*)BX_ALLOC(s_Allocator, sizeof(ShapeAttributeFreeListNode));
+	node = (ShapeAttributeFreeListNode*)std::malloc(sizeof(ShapeAttributeFreeListNode));
 	SSVG_CHECK(node != nullptr, "Failed to allocate shape attributes");
 
-	node->m_Attrs = (ShapeAttributes*)BX_ALLOC(s_Allocator, sizeof(ShapeAttributes) * kNumShapeAttributesPerBatch);
+	node->m_Attrs = (ShapeAttributes*)std::malloc(sizeof(ShapeAttributes) * kNumShapeAttributesPerBatch);
 	node->m_NumAttrs = kNumShapeAttributesPerBatch;
 	node->m_Next = s_ShapeAttrFreeListHead;
 	node->m_Prev = nullptr;
@@ -837,7 +855,7 @@ static void shapeAttrsFree(ShapeAttributes* attrs)
 
 	node->m_NumFree++;
 	if (node->m_NumFree == node->m_NumAttrs) {
-		BX_FREE(s_Allocator, node->m_Attrs);
+		std::free(node->m_Attrs);
 
 		ShapeAttributeFreeListNode* prev = node->m_Prev;
 		ShapeAttributeFreeListNode* next = node->m_Next;
@@ -852,7 +870,7 @@ static void shapeAttrsFree(ShapeAttributes* attrs)
 			s_ShapeAttrFreeListHead = next;
 		}
 
-		BX_FREE(s_Allocator, node);
+		std::free(node);
 	}
 }
 

@@ -42,7 +42,7 @@ uint32_t shapeListAddGroup(ShapeList* shapeList, const ShapeAttributes* parentAt
 		Shape tmpGroup;
 		bx::memSet(&tmpGroup, 0, sizeof(Shape));
 		tmpGroup.m_Type = ShapeType::Group;
-		tmpGroup.m_ShapeList.m_Shapes = (Shape*)children; // NOTE: Casting a const to not-const should be ok in this case since the tmpGroup is passed as const to shapeCopy().
+		tmpGroup.m_ShapeList.m_Shapes = const_cast<Shape*>(children); // NOTE: Casting a const to not-const should be ok in this case since the tmpGroup is passed as const to shapeCopy().
 		tmpGroup.m_ShapeList.m_NumShapes = numChildren;
 		tmpGroup.m_ShapeList.m_Capacity = 0; // capacity < count == list is read-only (should assert in debug mode if you try to alloc/shrink the list).
 

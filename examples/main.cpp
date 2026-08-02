@@ -1,11 +1,9 @@
-#include <stdint.h>
-#include <stdio.h>
-#include <bx/allocator.h>
 #include <bx/file.h>
 #include <bx/timer.h>
 #include <ssvg/ssvg.h>
 
-bx::DefaultAllocator g_Allocator;
+#include <cstdlib>
+#include <stdio.h>
 
 constexpr const char* DEFAULT_INPUT_SVG_FILE = "./Ghostscript_Tiger.svg";
 constexpr const char* TEST_OUTPUT_FILE       = "./test_output.svg";
@@ -22,7 +20,7 @@ uint8_t* loadFile(const bx::FilePath& filePath)
 	int32_t fileSize = (int32_t)reader.seek(0, bx::Whence::End);
 	reader.seek(0, bx::Whence::Begin);
 
-	uint8_t* buffer = (uint8_t*)BX_ALLOC(&g_Allocator, fileSize + 1);
+	uint8_t* buffer = (uint8_t*)std::malloc(fileSize + 1);
 	reader.read(buffer, fileSize, &err);
 	buffer[fileSize] = 0;
 
@@ -56,7 +54,7 @@ bool testParser(const char* filename, const ssvg::ShapeAttributes* baseAttrs)
 
 	ssvg::imageDestroy(img);
 
-	BX_FREE(&g_Allocator, svgFileBuffer);
+	std::free(svgFileBuffer);
 
 	return true;
 }
@@ -183,7 +181,7 @@ bool testRoundTrip(const char* input, const char* output, const ssvg::ShapeAttri
 
 	ssvg::imageDestroy(img);
 
-	BX_FREE(&g_Allocator, svgFileBuffer);
+	std::free(svgFileBuffer);
 
 	return true;
 }
@@ -205,7 +203,7 @@ int main()
 	ssvg::transformIdentity(&defaultAttrs.m_Transform[0]);
 	shapeAttrsSetFontFamily(&defaultAttrs, "sans-serif");
 
-	ssvg::initLib(&g_Allocator);
+	ssvg::initLib();
 
 	testParser(DEFAULT_INPUT_SVG_FILE, &defaultAttrs);
 	testBuilder(TEST_OUTPUT_FILE);
