@@ -8,6 +8,7 @@
 #include <bx/string.h>
 
 #include <stdutils/macros.h>
+#include <stdutils/minmax.h>
 
 #include <cmath>
 
@@ -80,10 +81,10 @@ void transformBoundingRect(const float* transform, const float* localRect, float
 	transformPoint(transform, &localRect[0], &transformedRect[0]);
 	transformPoint(transform, &localRect[2], &transformedRect[2]);
 
-	globalRect[0] = bx::min<float>(transformedRect[0], transformedRect[2]);
-	globalRect[1] = bx::min<float>(transformedRect[1], transformedRect[3]);
-	globalRect[2] = bx::max<float>(transformedRect[0], transformedRect[2]);
-	globalRect[3] = bx::max<float>(transformedRect[1], transformedRect[3]);
+	globalRect[0] = stdutils::min<float>(transformedRect[0], transformedRect[2]);
+	globalRect[1] = stdutils::min<float>(transformedRect[1], transformedRect[3]);
+	globalRect[2] = stdutils::max<float>(transformedRect[0], transformedRect[2]);
+	globalRect[3] = stdutils::max<float>(transformedRect[1], transformedRect[3]);
 }
 
 Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const ShapeAttributes* parentAttrs)
@@ -223,10 +224,10 @@ void shapeListCalcBounds(ShapeList* shapeList, float* bounds)
 		float childTransformedRect[4];
 		transformBoundingRect(&shape->m_Attrs->m_Transform[0], &shape->m_BoundingRect[0], &childTransformedRect[0]);
 
-		bounds[0] = bx::min<float>(bounds[0], childTransformedRect[0]);
-		bounds[1] = bx::min<float>(bounds[1], childTransformedRect[1]);
-		bounds[2] = bx::max<float>(bounds[2], childTransformedRect[2]);
-		bounds[3] = bx::max<float>(bounds[3], childTransformedRect[3]);
+		bounds[0] = stdutils::min<float>(bounds[0], childTransformedRect[0]);
+		bounds[1] = stdutils::min<float>(bounds[1], childTransformedRect[1]);
+		bounds[2] = stdutils::max<float>(bounds[2], childTransformedRect[2]);
+		bounds[3] = stdutils::max<float>(bounds[3], childTransformedRect[3]);
 	}
 }
 
@@ -236,7 +237,7 @@ PathCmd* pathAllocCommands(Path* path, uint32_t n)
 		const uint32_t oldCapacity = path->m_Capacity;
 		const uint32_t newCapacity = oldCapacity ? (oldCapacity * 3) / 2 : 4;
 
-		path->m_Capacity = bx::max<uint32_t>(newCapacity, oldCapacity + n);
+		path->m_Capacity = stdutils::max<uint32_t>(newCapacity, oldCapacity + n);
 		path->m_Commands = (PathCmd*)BX_REALLOC(s_Allocator, path->m_Commands, sizeof(PathCmd) * path->m_Capacity);
 		bx::memSet(&path->m_Commands[oldCapacity], 0, sizeof(PathCmd) * (path->m_Capacity - oldCapacity));
 	}
@@ -362,10 +363,10 @@ void pathCalcBounds(const Path* path, float* bounds)
 		switch (cmd->m_Type) {
 		case PathCmdType::MoveTo:
 		case PathCmdType::LineTo:
-			bounds[0] = bx::min<float>(bounds[0], cmd->m_Data[0]);
-			bounds[1] = bx::min<float>(bounds[1], cmd->m_Data[1]);
-			bounds[2] = bx::max<float>(bounds[2], cmd->m_Data[0]);
-			bounds[3] = bx::max<float>(bounds[3], cmd->m_Data[1]);
+			bounds[0] = stdutils::min<float>(bounds[0], cmd->m_Data[0]);
+			bounds[1] = stdutils::min<float>(bounds[1], cmd->m_Data[1]);
+			bounds[2] = stdutils::max<float>(bounds[2], cmd->m_Data[0]);
+			bounds[3] = stdutils::max<float>(bounds[3], cmd->m_Data[1]);
 
 			last[0] = cmd->m_Data[0];
 			last[1] = cmd->m_Data[1];
@@ -373,10 +374,10 @@ void pathCalcBounds(const Path* path, float* bounds)
 		case PathCmdType::CubicTo:
 		{
 			// Bezier end point
-			bounds[0] = bx::min<float>(bounds[0], cmd->m_Data[4]);
-			bounds[1] = bx::min<float>(bounds[1], cmd->m_Data[5]);
-			bounds[2] = bx::max<float>(bounds[2], cmd->m_Data[4]);
-			bounds[3] = bx::max<float>(bounds[3], cmd->m_Data[5]);
+			bounds[0] = stdutils::min<float>(bounds[0], cmd->m_Data[4]);
+			bounds[1] = stdutils::min<float>(bounds[1], cmd->m_Data[5]);
+			bounds[2] = stdutils::max<float>(bounds[2], cmd->m_Data[4]);
+			bounds[3] = stdutils::max<float>(bounds[3], cmd->m_Data[5]);
 
 			// Extremities
 			for (uint32_t dim = 0; dim < 2; ++dim) {
@@ -398,10 +399,10 @@ void pathCalcBounds(const Path* path, float* bounds)
 						float pos[2];
 						evalCubicBezierAt(t, &last[0], &cmd->m_Data[0], &cmd->m_Data[2], &cmd->m_Data[4], &pos[0]);
 
-						bounds[0] = bx::min<float>(bounds[0], pos[0]);
-						bounds[1] = bx::min<float>(bounds[1], pos[1]);
-						bounds[2] = bx::max<float>(bounds[2], pos[0]);
-						bounds[3] = bx::max<float>(bounds[3], pos[1]);
+						bounds[0] = stdutils::min<float>(bounds[0], pos[0]);
+						bounds[1] = stdutils::min<float>(bounds[1], pos[1]);
+						bounds[2] = stdutils::max<float>(bounds[2], pos[0]);
+						bounds[3] = stdutils::max<float>(bounds[3], pos[1]);
 					}
 				}
 			}
@@ -412,10 +413,10 @@ void pathCalcBounds(const Path* path, float* bounds)
 		break;
 		case PathCmdType::QuadraticTo:
 			// Bezier end point
-			bounds[0] = bx::min<float>(bounds[0], cmd->m_Data[2]);
-			bounds[1] = bx::min<float>(bounds[1], cmd->m_Data[3]);
-			bounds[2] = bx::max<float>(bounds[2], cmd->m_Data[2]);
-			bounds[3] = bx::max<float>(bounds[3], cmd->m_Data[3]);
+			bounds[0] = stdutils::min<float>(bounds[0], cmd->m_Data[2]);
+			bounds[1] = stdutils::min<float>(bounds[1], cmd->m_Data[3]);
+			bounds[2] = stdutils::max<float>(bounds[2], cmd->m_Data[2]);
+			bounds[3] = stdutils::max<float>(bounds[3], cmd->m_Data[3]);
 
 			// Extremities
 			for (uint32_t dim = 0; dim < 2; ++dim) {
@@ -434,10 +435,10 @@ void pathCalcBounds(const Path* path, float* bounds)
 						float pos[2];
 						evalQuadraticBezierAt(t, &last[0], &cmd->m_Data[0], &cmd->m_Data[2], &pos[0]);
 
-						bounds[0] = bx::min<float>(bounds[0], pos[0]);
-						bounds[1] = bx::min<float>(bounds[1], pos[1]);
-						bounds[2] = bx::max<float>(bounds[2], pos[0]);
-						bounds[3] = bx::max<float>(bounds[3], pos[1]);
+						bounds[0] = stdutils::min<float>(bounds[0], pos[0]);
+						bounds[1] = stdutils::min<float>(bounds[1], pos[1]);
+						bounds[2] = stdutils::max<float>(bounds[2], pos[0]);
+						bounds[3] = stdutils::max<float>(bounds[3], pos[1]);
 					}
 				}
 			}
@@ -449,10 +450,10 @@ void pathCalcBounds(const Path* path, float* bounds)
 			// TODO: Find the true bounds of the arc.
 
 			// End point
-			bounds[0] = bx::min<float>(bounds[0], cmd->m_Data[5]);
-			bounds[1] = bx::min<float>(bounds[1], cmd->m_Data[6]);
-			bounds[2] = bx::max<float>(bounds[2], cmd->m_Data[5]);
-			bounds[3] = bx::max<float>(bounds[3], cmd->m_Data[6]);
+			bounds[0] = stdutils::min<float>(bounds[0], cmd->m_Data[5]);
+			bounds[1] = stdutils::min<float>(bounds[1], cmd->m_Data[6]);
+			bounds[2] = stdutils::max<float>(bounds[2], cmd->m_Data[5]);
+			bounds[3] = stdutils::max<float>(bounds[3], cmd->m_Data[6]);
 
 			last[0] = cmd->m_Data[5];
 			last[1] = cmd->m_Data[6];
@@ -475,7 +476,7 @@ float* pointListAllocPoints(PointList* ptList, uint32_t n)
 		const uint32_t oldCapacity = ptList->m_Capacity;
 		const uint32_t newCapacity = oldCapacity ? (oldCapacity * 3) / 2 : 8;
 
-		ptList->m_Capacity = bx::max<uint32_t>(newCapacity, oldCapacity + n);
+		ptList->m_Capacity = stdutils::max<uint32_t>(newCapacity, oldCapacity + n);
 		ptList->m_Coords = (float*)BX_REALLOC(s_Allocator, ptList->m_Coords, sizeof(float) * 2 * ptList->m_Capacity);
 	}
 
@@ -522,10 +523,10 @@ void pointListCalcBounds(const PointList* ptList, float* bounds)
 		const float x = ptList->m_Coords[i * 2 + 0];
 		const float y = ptList->m_Coords[i * 2 + 1];
 
-		bounds[0] = bx::min<float>(bounds[0], x);
-		bounds[1] = bx::min<float>(bounds[1], y);
-		bounds[2] = bx::max<float>(bounds[2], x);
-		bounds[3] = bx::max<float>(bounds[3], y);
+		bounds[0] = stdutils::min<float>(bounds[0], x);
+		bounds[1] = stdutils::min<float>(bounds[1], y);
+		bounds[2] = stdutils::max<float>(bounds[2], x);
+		bounds[3] = stdutils::max<float>(bounds[3], y);
 	}
 }
 
@@ -538,7 +539,7 @@ bx::StringView shapeAttrsGetID(const ShapeAttributes* attrs)
 
 void shapeAttrsSetID(ShapeAttributes* attrs, const bx::StringView& value)
 {
-	uint32_t maxLen = bx::min<uint32_t>(SSVG_CONFIG_ID_MAX_LEN - 1, value.getLength());
+	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_ID_MAX_LEN - 1, value.getLength());
 	SSVG_WARN((int32_t)maxLen >= value.getLength(), "id \"%.*s\" truncated to %d characters", value.getLength(), value.getPtr(), maxLen);
 	bx::memCopy(&attrs->m_ID[0], value.getPtr(), maxLen);
 	attrs->m_ID[maxLen] = '\0';
@@ -546,7 +547,7 @@ void shapeAttrsSetID(ShapeAttributes* attrs, const bx::StringView& value)
 
 void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const bx::StringView& value)
 {
-	uint32_t maxLen = bx::min<uint32_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1, value.getLength());
+	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1, value.getLength());
 	SSVG_WARN((int32_t)maxLen >= value.getLength(), "font-family \"%.*s\" truncated to %d characters", value.getLength(), value.getPtr(), maxLen);
 	bx::memCopy(&attrs->m_FontFamily[0], value.getPtr(), maxLen);
 	attrs->m_FontFamily[maxLen] = '\0';
@@ -555,7 +556,7 @@ void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const bx::StringView& value
 void shapeAttrsSetClass(ShapeAttributes* attrs, const bx::StringView& value)
 {
 #if SSVG_CONFIG_CLASS_MAX_LEN
-	uint32_t maxLen = bx::min<uint32_t>(SSVG_CONFIG_CLASS_MAX_LEN - 1, value.getLength());
+	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_CLASS_MAX_LEN - 1, value.getLength());
 	SSVG_WARN((int32_t)maxLen >= value.getLength(), "class \"%.*s\" truncated to %d characters", value.getLength(), value.getPtr(), maxLen);
 	bx::memCopy(&attrs->m_Class[0], value.getPtr(), maxLen);
 	attrs->m_Class[maxLen] = '\0';
@@ -730,10 +731,10 @@ void shapeUpdateBounds(Shape* shape)
 		bounds[3] = shape->m_Ellipse.cy + shape->m_Ellipse.ry;
 		break;
 	case ShapeType::Line:
-		bounds[0] = bx::min<float>(shape->m_Line.x1, shape->m_Line.x2);
-		bounds[1] = bx::min<float>(shape->m_Line.y1, shape->m_Line.y2);
-		bounds[2] = bx::max<float>(shape->m_Line.x1, shape->m_Line.x2);
-		bounds[3] = bx::max<float>(shape->m_Line.y1, shape->m_Line.y2);
+		bounds[0] = stdutils::min<float>(shape->m_Line.x1, shape->m_Line.x2);
+		bounds[1] = stdutils::min<float>(shape->m_Line.y1, shape->m_Line.y2);
+		bounds[2] = stdutils::max<float>(shape->m_Line.x1, shape->m_Line.x2);
+		bounds[3] = stdutils::max<float>(shape->m_Line.y1, shape->m_Line.y2);
 		break;
 	case ShapeType::Polyline:
 	case ShapeType::Polygon:
