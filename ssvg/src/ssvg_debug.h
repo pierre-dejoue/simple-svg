@@ -5,12 +5,12 @@
 #	define SSVG_CONFIG_DEBUG 0
 #endif
 
-
 #if SSVG_CONFIG_DEBUG
 #include <cassert>
+#define SSVG_DEBUG_BREAK assert(0)
+
 #include <cstdio>
 #define SSVG_DEBUG_PRINTF(_format, ...) std::printf(_format, ##__VA_ARGS__)
-#define SSVG_DEBUG_BREAK assert(0)
 
 #define SSVG_STRINGIZE_(_x) #_x
 #define SSVG_STRINGIZE(_x) SSVG_STRINGIZE_(_x)
@@ -36,9 +36,13 @@
 		} \
 	} while(0)
 #else
+#include <cassert>
 #define SSVG_TRACE(_format, ...)
 #define SSVG_WARN(_condition, _format, ...)
-#define SSVG_CHECK(_condition, _format, ...)
+#define SSVG_CHECK(_condition, _format, ...) \
+	do { \
+		assert((_condition)); \
+	} while(0)
 #endif
 
 #endif
