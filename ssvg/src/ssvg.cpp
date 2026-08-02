@@ -161,12 +161,13 @@ void shapeListFree(ShapeList* shapeList)
 void shapeListReserve(ShapeList* shapeList, uint32_t capacity)
 {
 	const uint32_t oldCapacity = shapeList->m_Capacity;
-	if (oldCapacity <= capacity) {
+	if (capacity <= oldCapacity) {
 		return;
 	}
 
 	shapeList->m_Capacity = capacity;
 	shapeList->m_Shapes = (Shape*)BX_REALLOC(s_Allocator, shapeList->m_Shapes, sizeof(Shape) * shapeList->m_Capacity);
+	assert(oldCapacity <= shapeList->m_Capacity);
 	bx::memSet(&shapeList->m_Shapes[oldCapacity], 0, sizeof(Shape) * (shapeList->m_Capacity - oldCapacity));
 }
 
