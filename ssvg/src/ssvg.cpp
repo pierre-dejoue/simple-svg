@@ -6,6 +6,7 @@
 #include <bx/bx.h>
 
 #include <stdutils/macros.h>
+#include <stdutils/memory.h>
 #include <stdutils/minmax.h>
 #include <stdutils/string.h>
 
@@ -43,7 +44,7 @@ static void shapeAttrsFree(ShapeAttributes* attrs);
 
 void transformIdentity(float* transform)
 {
-	bx::memSet(transform, 0, sizeof(float) * 6);
+	stdutils::memset<float>(transform, TRANSFORM_ARRAY_SZ, 0, sizeof(float) * TRANSFORM_ARRAY_SZ);
 	transform[0] = 1.0f;
 	transform[3] = 1.0f;
 }
@@ -68,7 +69,7 @@ void transformMultiply(float* a, const float* b)
 	res[3] = a[1] * b[2] + a[3] * b[3];
 	res[4] = a[0] * b[4] + a[2] * b[5] + a[4];
 	res[5] = a[1] * b[4] + a[3] * b[5] + a[5];
-	bx::memCopy(a, res, sizeof(float) * 6);
+	stdutils::memcpy<float>(a, TRANSFORM_ARRAY_SZ, res, sizeof(float) * TRANSFORM_ARRAY_SZ);
 }
 
 void transformTranslate(float* transform, float x, float y)
@@ -113,16 +114,20 @@ Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const Sha
 		const uint32_t oldCapacity = shapeList->m_Capacity;
 
 		// TODO: Since shapes are fairly large objects, check if allocating a constant amount each time somehow helps
-		shapeList->m_Capacity = oldCapacity ? (oldCapacity * 3) / 2 : 4;
-		shapeList->m_Shapes = (Shape*)std::realloc(shapeList->m_Shapes, sizeof(Shape) * shapeList->m_Capacity);
-		bx::memSet(&shapeList->m_Shapes[oldCapacity], 0, sizeof(Shape) * (shapeList->m_Capacity - oldCapacity));
+		const uint32_t newCapacity = stdutils::max<uint32_t>(oldCapacity ? (oldCapacity * 3) / 2 : 4, shapeList->m_NumShapes + 1);
+		if (newCapacity > oldCapacity) {
+			shapeList->m_Capacity = newCapacity;
+			shapeList->m_Shapes = (Shape*)std::realloc(shapeList->m_Shapes, sizeof(Shape) * newCapacity);
+			const uint32_t capacityIncr = newCapacity - oldCapacity;
+			stdutils::memset<Shape>(&shapeList->m_Shapes[oldCapacity], capacityIncr, 0, sizeof(Shape) * capacityIncr);
+		}
 	}
 	assert(shapeList->m_NumShapes + 1 <= shapeList->m_Capacity);
 
 	Shape* shape = &shapeList->m_Shapes[shapeList->m_NumShapes++];
 	shape->m_Type = type;
 	shape->m_Attrs = shapeAttrsAlloc();
-	bx::memSet(shape->m_Attrs, 0, sizeof(ShapeAttributes));
+	stdutils::memset<ShapeAttributes>(shape->m_Attrs, 0);
 	shape->m_Attrs->m_Parent = parentAttrs;
 	shape->m_Attrs->m_Flags = AttribFlags::InheritAll;
 	shape->m_Attrs->m_Opacity = 1.0f;
@@ -180,8 +185,8 @@ void shapeListReserve(ShapeList* shapeList, uint32_t capacity)
 
 	shapeList->m_Shapes = (Shape*)std::realloc(shapeList->m_Shapes, sizeof(Shape) * capacity);
 	shapeList->m_Capacity = capacity;
-	assert(oldCapacity <= shapeList->m_Capacity);
-	bx::memSet(&shapeList->m_Shapes[oldCapacity], 0, sizeof(Shape) * (shapeList->m_Capacity - oldCapacity));
+	assert(oldCapacity <= capacity);
+	stdutils::memset<Shape>(&shapeList->m_Shapes[oldCapacity], capacity - oldCapacity, 0, sizeof(Shape) * (capacity - oldCapacity));
 	assert(shapeList->m_NumShapes <= shapeList->m_Capacity);
 }
 
@@ -193,9 +198,9 @@ uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeID)
 	}
 
 	Shape tmp;
-	bx::memCopy(&tmp, &shapeList->m_Shapes[shapeID - 1], sizeof(Shape));
-	bx::memCopy(&shapeList->m_Shapes[shapeID - 1], &shapeList->m_Shapes[shapeID], sizeof(Shape));
-	bx::memCopy(&shapeList->m_Shapes[shapeID], &tmp, sizeof(Shape));
+	stdutils::memcpy<Shape>(&tmp, &shapeList->m_Shapes[shapeID - 1]);
+	stdutils::memcpy<Shape>(&shapeList->m_Shapes[shapeID - 1], &shapeList->m_Shapes[shapeID]);
+	stdutils::memcpy<Shape>(&shapeList->m_Shapes[shapeID], &tmp);
 
 	return shapeID - 1;
 }
@@ -208,9 +213,9 @@ uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeID)
 	}
 
 	Shape tmp;
-	bx::memCopy(&tmp, &shapeList->m_Shapes[shapeID + 1], sizeof(Shape));
-	bx::memCopy(&shapeList->m_Shapes[shapeID + 1], &shapeList->m_Shapes[shapeID], sizeof(Shape));
-	bx::memCopy(&shapeList->m_Shapes[shapeID], &tmp, sizeof(Shape));
+	stdutils::memcpy<Shape>(&tmp, &shapeList->m_Shapes[shapeID + 1]);
+	stdutils::memcpy<Shape>(&shapeList->m_Shapes[shapeID + 1], &shapeList->m_Shapes[shapeID]);
+	stdutils::memcpy<Shape>(&shapeList->m_Shapes[shapeID], &tmp);
 
 	return shapeID + 1;
 }
@@ -221,9 +226,9 @@ void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeID)
 
 	shapeFree(&shapeList->m_Shapes[shapeID]);
 
-	const uint32_t numShapesToMove = shapeList->m_NumShapes - 1 - shapeID;
-	if (numShapesToMove != 0) {
-		bx::memMove(&shapeList->m_Shapes[shapeID], &shapeList->m_Shapes[shapeID + 1], sizeof(Shape) * numShapesToMove);
+	const uint32_t numShapesToMove = shapeList->m_NumShapes > (1 + shapeID) ? (shapeList->m_NumShapes - 1 - shapeID) : 0;
+	if (numShapesToMove > 0) {
+		stdutils::memmove<Shape>(&shapeList->m_Shapes[shapeID], numShapesToMove, &shapeList->m_Shapes[shapeID + 1], sizeof(Shape) * numShapesToMove);
 	}
 
 	shapeList->m_NumShapes--;
@@ -261,10 +266,12 @@ PathCmd* pathAllocCommands(Path* path, uint32_t n)
 {
 	if (path->m_NumCommands + n > path->m_Capacity) {
 		const uint32_t oldCapacity = path->m_Capacity;
-		const uint32_t newCapacity = oldCapacity ? (oldCapacity * 3) / 2 : 4;
-		path->m_Capacity = stdutils::max<uint32_t>(newCapacity, oldCapacity + n);
-		path->m_Commands = (PathCmd*)std::realloc(path->m_Commands, sizeof(PathCmd) * path->m_Capacity);
-		bx::memSet(&path->m_Commands[oldCapacity], 0, sizeof(PathCmd) * (path->m_Capacity - oldCapacity));
+		const uint32_t newCapacity = stdutils::max<uint32_t>(oldCapacity ? (oldCapacity * 3) / 2 : 4, oldCapacity + n);
+		assert(newCapacity >= oldCapacity);
+		const uint32_t capacityIncr = newCapacity - oldCapacity;
+		path->m_Capacity = newCapacity;
+		path->m_Commands = (PathCmd*)std::realloc(path->m_Commands, sizeof(PathCmd) * newCapacity);
+		stdutils::memset<PathCmd>(&path->m_Commands[oldCapacity], capacityIncr, 0, sizeof(PathCmd) * capacityIncr);
 	}
 	assert(path->m_NumCommands + n <= path->m_Capacity);
 
@@ -284,14 +291,19 @@ PathCmd* pathAllocCommand(Path* path, PathCmdType::Enum type)
 
 PathCmd* pathInsertCommands(Path* path, uint32_t at, uint32_t n)
 {
+	SSVG_CHECK(at <= path->m_NumCommands, "Out of bound index on buffer m_commands");
+	at = at > path->m_NumCommands ? path->m_NumCommands : at;
+
 	if (at == path->m_NumCommands) {
 		// Insert at the end == alloc
 		return pathAllocCommands(path, n);
 	}
 
 	const uint32_t numOldCommands = path->m_NumCommands;
+	assert(at <= numOldCommands);
+	const uint32_t commandsIncr = numOldCommands - at;
 	pathAllocCommands(path, n);
-	bx::memMove(&path->m_Commands[at + n], &path->m_Commands[at], sizeof(PathCmd) * (numOldCommands - at));
+	stdutils::memmove<PathCmd>(&path->m_Commands[at + n], commandsIncr, &path->m_Commands[at], sizeof(PathCmd) * commandsIncr);
 	return &path->m_Commands[at];
 }
 
@@ -572,7 +584,7 @@ void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& value)
 {
 	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_ID_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
 	SSVG_WARN((int32_t)maxLen >= strlenint(value), "id \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
-	bx::memCopy(&attrs->m_ID[0], value.data(), maxLen);
+	stdutils::memcpy<char>(&attrs->m_ID[0], SSVG_CONFIG_ID_MAX_LEN, value.data(), maxLen);
 	attrs->m_ID[maxLen] = '\0';
 }
 
@@ -580,7 +592,7 @@ void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& val
 {
 	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
 	SSVG_WARN((int32_t)maxLen >= strlenint(value), "font-family \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
-	bx::memCopy(&attrs->m_FontFamily[0], value.data(), maxLen);
+	stdutils::memcpy<char>(&attrs->m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN, value.data(), maxLen);
 	attrs->m_FontFamily[maxLen] = '\0';
 }
 
@@ -589,7 +601,7 @@ void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value)
 #if SSVG_CONFIG_CLASS_MAX_LEN
 	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_CLASS_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
 	SSVG_WARN((int32_t)maxLen >= strlenint(value), "class \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
-	bx::memCopy(&attrs->m_Class[0], value.data(), maxLen);
+	stdutils::memcpy<char>(&attrs->m_Class[0], SSVG_CONFIG_CLASS_MAX_LEN, value.data(), maxLen);
 	attrs->m_Class[maxLen] = '\0';
 #else
 	UNUSED(attrs);
@@ -599,9 +611,10 @@ void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value)
 
 Image* imageCreate(const ShapeAttributes* baseAttrs)
 {
+	assert(baseAttrs);
 	Image* img = (Image*)std::malloc(sizeof(Image));
-	bx::memSet(img, 0, sizeof(Image));
-	bx::memCopy(&img->m_BaseAttrs, baseAttrs, sizeof(ShapeAttributes));
+	stdutils::memset<Image>(img, 0);
+	stdutils::memcpy<ShapeAttributes>(&img->m_BaseAttrs, baseAttrs);
 
 	return img;
 }
@@ -636,9 +649,9 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 	const ShapeType::Enum type = src->m_Type;
 
 	dst->m_Type = type;
-	bx::memCopy(&dst->m_BoundingRect[0], &src->m_BoundingRect[0], sizeof(float) * 4);
+	stdutils::memcpy<float>(&dst->m_BoundingRect[0], BOUNDING_RECT_ARRAY_SZ, &src->m_BoundingRect[0], sizeof(float) * BOUNDING_RECT_ARRAY_SZ);
 	if (copyAttrs) {
-		bx::memCopy(dst->m_Attrs, src->m_Attrs, sizeof(ShapeAttributes));
+		stdutils::memcpy<ShapeAttributes>(dst->m_Attrs, src->m_Attrs);
 	}
 
 	switch (type) {
@@ -658,21 +671,22 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 	}
 	break;
 	case ShapeType::Rect:
-		bx::memCopy(&dst->m_Rect, &src->m_Rect, sizeof(Rect));
+		stdutils::memcpy<Rect>(&dst->m_Rect, &src->m_Rect);
 		break;
 	case ShapeType::Circle:
-		bx::memCopy(&dst->m_Circle, &src->m_Circle, sizeof(Circle));
+		stdutils::memcpy<Circle>(&dst->m_Circle, &src->m_Circle);
 		break;
 	case ShapeType::Ellipse:
-		bx::memCopy(&dst->m_Ellipse, &src->m_Ellipse, sizeof(Ellipse));
+		stdutils::memcpy<Ellipse>(&dst->m_Ellipse, &src->m_Ellipse);
 		break;
 	case ShapeType::Line:
-		bx::memCopy(&dst->m_Line, &src->m_Line, sizeof(Line));
+		stdutils::memcpy<Line>(&dst->m_Line, &src->m_Line);
 		break;
 	case ShapeType::Polyline:
 	case ShapeType::Polygon:
-		bx::memCopy(
+		stdutils::memcpy<float>(
 			pointListAllocPoints(&dst->m_PointList, src->m_PointList.m_NumPoints),
+			2 * dst->m_PointList.m_Capacity,
 			src->m_PointList.m_Coords,
 			sizeof(float) * 2 * src->m_PointList.m_NumPoints);
 		break;
@@ -683,7 +697,7 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 
 		Path* dstPath = &dst->m_Path;
 		PathCmd* dstCommands = pathAllocCommands(dstPath, numCommands);
-		bx::memCopy(dstCommands, srcPath->m_Commands, sizeof(PathCmd) * numCommands);
+		stdutils::memcpy<PathCmd>(dstCommands, dstPath->m_Capacity, srcPath->m_Commands, sizeof(PathCmd) * numCommands);
 	}
 	break;
 	case ShapeType::Text:
@@ -697,7 +711,7 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 
 		const uint32_t len = stdutils::strnlen(srcText->m_String);
 		dstText->m_String = (char*)std::malloc(sizeof(char) * (len + 1));
-		bx::memCopy(dstText->m_String, srcText->m_String, len);
+		stdutils::memcpy<char>(dstText->m_String, len, srcText->m_String, len);
 		dstText->m_String[len] = '\0';
 	}
 	break;
@@ -781,7 +795,7 @@ void shapeUpdateBounds(Shape* shape)
 		break;
 	}
 
-	bx::memCopy(&shape->m_BoundingRect[0], &bounds[0], sizeof(float) * 4);
+	stdutils::memcpy<float>(&shape->m_BoundingRect[0], BOUNDING_RECT_ARRAY_SZ, &bounds[0], sizeof(float) * 4);
 }
 
 static ShapeAttributes* shapeAttrsAllocFromNode(ShapeAttributeFreeListNode* node)

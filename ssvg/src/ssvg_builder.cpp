@@ -6,6 +6,7 @@
 #include <bx/bx.h>
 
 #include <stdutils/macros.h>
+#include <stdutils/memory.h>
 
 #include <cmath>
 
@@ -40,7 +41,7 @@ uint32_t shapeListAddGroup(ShapeList* shapeList, const ShapeAttributes* parentAt
 	if (children && numChildren) {
 		// Create a temp group on the stack and use shapeCopy()
 		Shape tmpGroup;
-		bx::memSet(&tmpGroup, 0, sizeof(Shape));
+		stdutils::memset<Shape>(&tmpGroup, 0);
 		tmpGroup.m_Type = ShapeType::Group;
 		tmpGroup.m_ShapeList.m_Shapes = const_cast<Shape*>(children); // NOTE: Casting a const to not-const should be ok in this case since the tmpGroup is passed as const to shapeCopy().
 		tmpGroup.m_ShapeList.m_NumShapes = numChildren;
@@ -132,7 +133,7 @@ uint32_t shapeListAddPolyline(ShapeList* shapeList, const ShapeAttributes* paren
 
 	if (coords && numPoints) {
 		float* dstCoords = pointListAllocPoints(&polyline->m_PointList, numPoints);
-		bx::memCopy(dstCoords, coords, sizeof(float) * 2 * numPoints);
+		stdutils::memcpy<float>(dstCoords, 2 * polyline->m_PointList.m_Capacity, coords, sizeof(float) * 2 * numPoints);
 	}
 
 	shapeUpdateBounds(polyline);
@@ -149,7 +150,7 @@ uint32_t shapeListAddPolygon(ShapeList* shapeList, const ShapeAttributes* parent
 
 	if (coords && numPoints) {
 		float* dstCoords = pointListAllocPoints(&polygon->m_PointList, numPoints);
-		bx::memCopy(dstCoords, coords, sizeof(float) * 2 * numPoints);
+		stdutils::memcpy<float>(dstCoords, 2 * polygon->m_PointList.m_Capacity, coords, sizeof(float) * 2 * numPoints);
 	}
 
 	shapeUpdateBounds(polygon);
@@ -166,7 +167,7 @@ uint32_t shapeListAddPath(ShapeList* shapeList, const ShapeAttributes* parentAtt
 
 	if (commands && numCommands) {
 		Shape tmpPath;
-		bx::memSet(&tmpPath, 0, sizeof(Shape));
+		stdutils::memset<Shape>(&tmpPath, 0);
 		tmpPath.m_Type = ShapeType::Path;
 		tmpPath.m_Path.m_Commands = (PathCmd*)commands;
 		tmpPath.m_Path.m_NumCommands = numCommands;
@@ -189,7 +190,7 @@ uint32_t shapeListAddText(ShapeList* shapeList, const ShapeAttributes* parentAtt
 
 	if (str) {
 		Shape tmpText;
-		bx::memSet(&tmpText, 0, sizeof(Shape));
+		stdutils::memset<Shape>(&tmpText, 0);
 		tmpText.m_Type = ShapeType::Text;
 		tmpText.m_Text.x = x;
 		tmpText.m_Text.y = y;

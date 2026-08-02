@@ -6,6 +6,7 @@
 #include <bx/bx.h>
 
 #include <stdutils/macros.h>
+#include <stdutils/memory.h>
 #include <stdutils/string.h>
 
 #include <cassert>
@@ -1085,7 +1086,7 @@ static bool parseShape_Text(ParserState* parser, Shape* text)
 
 	const uint32_t txtLen = (uint32_t)(parser->m_Ptr - txtPtr);
 	text->m_Text.m_String = (char*)std::malloc(sizeof(char) * (txtLen + 1));
-	bx::memCopy(text->m_Text.m_String, txtPtr, txtLen);
+	stdutils::memcpy<char>(text->m_Text.m_String, txtLen, txtPtr, txtLen);
 	text->m_Text.m_String[txtLen] = 0;
 #endif
 
@@ -1353,7 +1354,7 @@ static bool parseShape_PointList(ParserState* parser, Shape* shape)
 			} else if (res == ParseAttr::Unknown) {
 				if (name == "points") {
 					PointList ptList;
-					bx::memSet(&ptList, 0, sizeof(PointList));
+					stdutils::memset<PointList>(&ptList, 0);
 					err = !pointListFromString(&ptList, value);
 
 					if (!err && ptList.m_NumPoints >= 2 &&
@@ -1380,7 +1381,7 @@ static bool parseShape_PointList(ParserState* parser, Shape* shape)
 						pointListFree(&ptList);
 						shape->m_Type = ShapeType::Path;
 					} else {
-						bx::memCopy(&shape->m_PointList, &ptList, sizeof(PointList));
+						stdutils::memcpy<PointList>(&shape->m_PointList, &ptList);
 					}
 				} else {
 					SSVG_WARN(false, "Ignoring polygon/polyline attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());

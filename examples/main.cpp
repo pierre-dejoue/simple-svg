@@ -2,6 +2,8 @@
 #include <bx/timer.h>
 #include <ssvg/ssvg.h>
 
+#include <stdutils/memory.h>
+
 #include <cstdlib>
 #include <stdio.h>
 
@@ -62,7 +64,7 @@ bool testParser(const char* filename, const ssvg::ShapeAttributes* baseAttrs)
 bool testBuilder(const char* filename)
 {
 	ssvg::ShapeAttributes defaultAttrs;
-	bx::memSet(&defaultAttrs, 0, sizeof(ssvg::ShapeAttributes));
+	stdutils::memset<ssvg::ShapeAttributes>(&defaultAttrs, 0);
 	defaultAttrs.m_StrokeWidth = 1.0f;
 	defaultAttrs.m_StrokeMiterLimit = 4.0f;
 	defaultAttrs.m_StrokeOpacity = 1.0f;
@@ -76,7 +78,7 @@ bool testBuilder(const char* filename)
 	ssvg::transformIdentity(&defaultAttrs.m_Transform[0]);
 
 	ssvg::ShapeAttributes textAttrs;
-	bx::memCopy(&textAttrs, &defaultAttrs, sizeof(ssvg::ShapeAttributes));
+	stdutils::memcpy<ssvg::ShapeAttributes>(&textAttrs, &defaultAttrs);
 	ssvg::shapeAttrsSetFontFamily(&textAttrs, "sans-serif");
 	textAttrs.m_FontSize = 20.0f;
 	textAttrs.m_FillPaint.m_Type = ssvg::PaintType::Color;
@@ -109,7 +111,7 @@ bool testBuilder(const char* filename)
 		uint32_t groupID = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs, nullptr, 0);
 
 		float groupTransform[6] = { 1.0f, 0.0f, 0.0f, 1.0f, 400.0f, 0.0f };
-		bx::memCopy(&imgShapeList->m_Shapes[groupID].m_Attrs->m_Transform[0], &groupTransform[0], sizeof(float) * 6);
+		stdutils::memcpy<float>(&imgShapeList->m_Shapes[groupID].m_Attrs->m_Transform[0], ssvg::TRANSFORM_ARRAY_SZ, &groupTransform[0], sizeof(float) * 6);
 
 		ssvg::ShapeList* groupShapeList = &imgShapeList->m_Shapes[groupID].m_ShapeList;
 		uint32_t rectID = ssvg::shapeListAddRect(groupShapeList, &defaultAttrs, 100.0f, 100.0f, 200.0f, 200.0f, 0.0f, 0.0f);
@@ -120,7 +122,7 @@ bool testBuilder(const char* filename)
 	{
 		// Create a temporary shape list
 		ssvg::ShapeList tempShapeList;
-		bx::memSet(&tempShapeList, 0, sizeof(ssvg::ShapeList));
+		stdutils::memset<ssvg::ShapeList>(&tempShapeList, 0);
 		uint32_t rectID = ssvg::shapeListAddRect(&tempShapeList, &defaultAttrs, 100.0f, 100.0f, 200.0f, 200.0f, 0.0f, 0.0f);
 		uint32_t circleID = ssvg::shapeListAddCircle(&tempShapeList, &defaultAttrs, 200.0f, 200.0f, 80.0f);
 
@@ -132,7 +134,7 @@ bool testBuilder(const char* filename)
 
 		// Transform the group
 		float groupTransform[6] = { 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 400.0f };
-		bx::memCopy(&imgShapeList->m_Shapes[groupID].m_Attrs->m_Transform[0], &groupTransform[0], sizeof(float) * 6);
+		stdutils::memcpy<float>(&imgShapeList->m_Shapes[groupID].m_Attrs->m_Transform[0], ssvg::TRANSFORM_ARRAY_SZ, &groupTransform[0], sizeof(float) * 6);
 	}
 
 	bx::Error err;
@@ -189,7 +191,7 @@ bool testRoundTrip(const char* input, const char* output, const ssvg::ShapeAttri
 int main()
 {
 	ssvg::ShapeAttributes defaultAttrs;
-	bx::memSet(&defaultAttrs, 0, sizeof(ssvg::ShapeAttributes));
+	stdutils::memset<ssvg::ShapeAttributes>(&defaultAttrs, 0);
 	defaultAttrs.m_StrokeWidth = 1.0f;
 	defaultAttrs.m_StrokeMiterLimit = 4.0f;
 	defaultAttrs.m_StrokeOpacity = 1.0f;

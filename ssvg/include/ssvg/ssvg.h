@@ -219,12 +219,16 @@ struct AttribFlags
 	};
 };
 
+constexpr uint32_t TRANSFORM_ARRAY_SZ = 6;
+constexpr uint32_t BOUNDING_RECT_ARRAY_SZ = 4;
+constexpr uint32_t VIEW_BOX_ARRAY_SZ = 4;
+
 struct ShapeAttributes
 {
 	const ShapeAttributes* m_Parent;
 	Paint m_StrokePaint;
 	Paint m_FillPaint;
-	float m_Transform[6];
+	float m_Transform[TRANSFORM_ARRAY_SZ];
 	float m_StrokeMiterLimit;
 	float m_StrokeOpacity;
 	float m_StrokeWidth;
@@ -242,11 +246,13 @@ struct ShapeAttributes
 #endif
 };
 
+
+
 struct Shape
 {
 	ShapeType::Enum m_Type;
 	ShapeAttributes* m_Attrs;
-	float m_BoundingRect[4]; // NOTE: Transformation independent axis-aligned bounding rect {minx, miny, maxx, maxy}
+	float m_BoundingRect[BOUNDING_RECT_ARRAY_SZ]; // NOTE: Transformation independent axis-aligned bounding rect {minx, miny, maxx, maxy}
 
 	union
 	{
@@ -267,8 +273,8 @@ struct Image
 	ShapeAttributes m_BaseAttrs;
 	float m_Width;
 	float m_Height;
-	float m_ViewBox[4];
-	float m_BoundingRect[4];
+	float m_ViewBox[VIEW_BOX_ARRAY_SZ];
+	float m_BoundingRect[BOUNDING_RECT_ARRAY_SZ];
 	BaseProfile::Enum m_BaseProfile;
 	uint16_t m_VerMajor;
 	uint16_t m_VerMinor;

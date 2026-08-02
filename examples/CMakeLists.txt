@@ -7,6 +7,7 @@ target_link_libraries(examples
     PRIVATE
     bx
     ssvg
+    stdutils
 )
 
 if(MSVC)
