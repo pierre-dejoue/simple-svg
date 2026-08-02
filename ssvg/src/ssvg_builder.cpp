@@ -12,8 +12,8 @@
 
 BX_PRAGMA_DIAGNOSTIC_IGNORED_GCC("-Wmaybe-uninitialized")
 
-namespace ssvg
-{
+namespace ssvg {
+
 static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArgs, const float* lastPt);
 
 uint32_t shapeListAddShape(ShapeList* shapeList, const Shape* shape)
@@ -567,4 +567,5 @@ static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArg
 		ptany = tany;
 	}
 }
-}
+
+} // namespace ssvg

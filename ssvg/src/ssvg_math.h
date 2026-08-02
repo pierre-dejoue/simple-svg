@@ -5,10 +5,8 @@
 
 #include <limits>
 
-namespace ssvg
-{
-namespace math
-{
+namespace ssvg {
+namespace math {
 
 inline constexpr float kFloatMax = std::numeric_limits<float>::max();           // FLT_MAX
 

@@ -14,8 +14,8 @@
 
 BX_PRAGMA_DIAGNOSTIC_IGNORED_MSVC(4127) // conditional expression is constant
 
-namespace ssvg
-{
+namespace ssvg {
+
 extern bx::AllocatorI* s_Allocator;
 
 struct ParseAttr
@@ -1547,4 +1547,5 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 
 	return img;
 }
-}
+
+} // namespace ssvg

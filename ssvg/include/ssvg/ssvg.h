@@ -22,8 +22,8 @@ struct WriterI;
 class StringView;
 }
 
-namespace ssvg
-{
+namespace ssvg {
+
 struct Shape;
 
 struct BaseProfile
@@ -352,6 +352,7 @@ void transformMultiply(float* a, const float* b);
 void transformTranslate(float* transform, float x, float y);
 void transformPoint(const float* transform, const float* localPos, float* globalPos);
 void transformBoundingRect(const float* transform, const float* localRect, float* globalRect);
-}
+
+} // namespace ssvg
 
 #endif

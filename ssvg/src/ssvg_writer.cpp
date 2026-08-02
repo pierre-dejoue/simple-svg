@@ -4,8 +4,8 @@
 #include <bx/readerwriter.h>
 #include <bx/string.h>
 
-namespace ssvg
-{
+namespace ssvg {
+
 struct SaveAttr
 {
 	enum Enum : uint32_t
@@ -476,4 +476,5 @@ bool imageSave(const Image* img, bx::WriterI* writer)
 
 	return true;
 }
-}
+
+} // namespace ssvg

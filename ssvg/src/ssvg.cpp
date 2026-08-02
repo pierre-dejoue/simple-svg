@@ -842,4 +842,5 @@ static void shapeAttrsFree(ShapeAttributes* attrs)
 		BX_FREE(s_Allocator, node);
 	}
 }
+
 } // namespace svg
