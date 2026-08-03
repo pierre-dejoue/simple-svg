@@ -7,15 +7,19 @@
 #include <string_view>
 
 #ifndef SSVG_CONFIG_ID_MAX_LEN
-#	define SSVG_CONFIG_ID_MAX_LEN  16
+#	define SSVG_CONFIG_ID_MAX_LEN 16
 #endif
 
 #ifndef SSVG_CONFIG_FONT_FAMILY_MAX_LEN
-#	define SSVG_CONFIG_FONT_FAMILY_MAX_LEN  16
+#	define SSVG_CONFIG_FONT_FAMILY_MAX_LEN 16
 #endif
 
 #ifndef SSVG_CONFIG_CLASS_MAX_LEN
 #	define SSVG_CONFIG_CLASS_MAX_LEN 0
+#endif
+
+#ifndef SSVG_CONFIG_OUTPUT_SVG_INDENT
+#	define SSVG_CONFIG_OUTPUT_SVG_INDENT 2
 #endif
 
 namespace ssvg {
