@@ -1,7 +1,13 @@
 simple-svg
 ==========
 
-SVG parser, writer and helper functions
+A simple SVG parser and writer in C++17.
+
+## About this fork of the library
+
+This fork of [jdryg/simple-svg](https://github.com/jdryg/simple-svg) removes the dependency on [bx](https://github.com/bkaradzic/bx). It also provides a few bug fixes and patches.
+
+There is no intent to provide any level of maintainance or support of this repository. It is open source and closed to contributions.
 
 ### Code
 
@@ -11,9 +17,10 @@ SVG parser, writer and helper functions
 	- `ssvg_parser.cpp`: SVG parser
 	- `ssvg_writer.cpp`: SVG writer
 	- `ssvg_builder.cpp`: Helper functions for building images
-* Demo:
+* Demo/Test:
 	- `examples/main.cpp`
 
 ### Dependencies
 
-* [bx](https://github.com/bkaradzic/bx)
+* C++17
+* Standard Template Library (STL)

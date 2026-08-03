@@ -5,7 +5,6 @@ add_executable(examples
 
 target_link_libraries(examples
     PRIVATE
-    bx
     ssvg
     stdutils
 )

@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 option(SSVG_BUILD_EXAMPLES "Build examples" OFF)
 
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/third_party/")
+#list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/third_party/")
 #list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/config/")
 
 add_subdirectory(stdutils)

@@ -2,7 +2,6 @@
 # Simple-SVG (SSVG) library
 #
 #include(compiler_options)
-include(bx)
 
 set(SOURCES
     src/ssvg.cpp
@@ -33,7 +32,6 @@ target_compile_definitions(ssvg PRIVATE
 
 target_link_libraries(ssvg
     PRIVATE
-    bx
     stdutils
 )
 
