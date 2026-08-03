@@ -365,7 +365,7 @@ static bool parsePaint(const std::string_view& str, Paint* paint)
 			} else {
 				SSVG_WARN(false, "Unknown hex color format %.*s", strlenint(str), str.data());
 			}
-		} else if (str == "rgb(") {
+		} else if (str.substr(0, 4) == "rgb(") {
 			// TODO: This doesn't work with percentages.
 			float color[3];
 			const char* end = strend(str);
@@ -375,7 +375,7 @@ static bool parsePaint(const std::string_view& str, Paint* paint)
 			ptr = parseCoord(ptr, end, &color[2]);
 
 			paint->m_ColorABGR |= ((uint32_t)color[0]) | ((uint32_t)color[1] << 8) | ((uint32_t)color[2] << 16);
-		} else if (str == "rgba(") {
+		} else if (str.substr(0, 5) ==  "rgba(") {
 			// TODO: This doesn't work with percentages.
 			float color[4];
 			const char* end = strend(str);
@@ -538,7 +538,6 @@ static bool parseTransform(const std::string_view& str, float* transform)
 			valuePtr = parseCoord(valuePtr, valueEnd, &comp[3]);
 			valuePtr = parseCoord(valuePtr, valueEnd, &comp[4]);
 			valuePtr = parseCoord(valuePtr, valueEnd, &comp[5]);
-
 		} else if (type == "translate") {
 			valuePtr = parseCoord(valuePtr, valueEnd, &comp[4]);
 			if (valuePtr != valueEnd) {
@@ -902,15 +901,15 @@ static ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name
 {
 	if (name == "style") {
 		return parseStyle(value, attrs);
-	} else if (name == "stroke") {
-		const std::string_view partialName(name.data() + 6, name.length() - 6);
-		if (partialName.length() == 0) {
+	} else if (name.substr(0, 6) == "stroke") {
+		const std::string_view nameSuffix = name.substr(6);
+		if (nameSuffix.length() == 0) {
 			attrs->m_Flags &= ~AttribFlags::StrokePaintInherit;
 			return parsePaint(value, &attrs->m_StrokePaint) ? ParseAttr::OK : ParseAttr::Fail;
-		} else if (partialName == "-miterlimit") {
+		} else if (nameSuffix == "-miterlimit") {
 			attrs->m_Flags &= ~AttribFlags::StrokeMiterLimitInherit;
 			return parseNumber(value, &attrs->m_StrokeMiterLimit, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
-		} else if (partialName == "-linejoin") {
+		} else if (nameSuffix == "-linejoin") {
 			attrs->m_Flags &= ~AttribFlags::StrokeLineJoinInherit;
 			if (value == "miter") {
 				attrs->m_StrokeLineJoin = LineJoin::Miter;
@@ -923,7 +922,7 @@ static ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name
 			}
 
 			return ParseAttr::OK;
-		} else if (partialName == "-linecap") {
+		} else if (nameSuffix == "-linecap") {
 			attrs->m_Flags &= ~AttribFlags::StrokeLineCapInherit;
 			if (value == "butt") {
 				attrs->m_StrokeLineCap = LineCap::Butt;
@@ -936,22 +935,22 @@ static ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name
 			}
 
 			return ParseAttr::OK;
-		} else if (partialName == "-opacity") {
+		} else if (nameSuffix == "-opacity") {
 			attrs->m_Flags &= ~AttribFlags::StrokeOpacityInherit;
 			return parseNumber(value, &attrs->m_StrokeOpacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
-		} else if (partialName == "-width") {
+		} else if (nameSuffix == "-width") {
 			attrs->m_Flags &= ~AttribFlags::StrokeWidthInherit;
 			return parseLength(value, &attrs->m_StrokeWidth) ? ParseAttr::OK : ParseAttr::Fail;
 		}
-	} else if (name == "fill") {
-		const std::string_view partialName(name.data() + 4, name.length() - 4);
-		if (partialName.length() == 0) {
+	} else if (name.substr(0, 4) == "fill") {
+		const std::string_view nameSuffix = name.substr(4);
+		if (nameSuffix.length() == 0) {
 			attrs->m_Flags &= ~AttribFlags::FillPaintInherit;
 			return parsePaint(value, &attrs->m_FillPaint) ? ParseAttr::OK : ParseAttr::Fail;
-		} else if (partialName == "-opacity") {
+		} else if (nameSuffix == "-opacity") {
 			attrs->m_Flags &= ~AttribFlags::FillOpacityInherit;
 			return parseNumber(value, &attrs->m_FillOpacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
-		} else if (partialName == "-rule") {
+		} else if (nameSuffix == "-rule") {
 			attrs->m_Flags &= ~AttribFlags::FillRuleInherit;
 			if (value == "nonzero") {
 				attrs->m_FillRule = FillRule::NonZero;
@@ -963,13 +962,13 @@ static ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name
 
 			return ParseAttr::OK;
 		}
-	} else if (name == "font") {
-		const std::string_view partialName(name.data() + 4, name.length() - 4);
-		if (partialName == "-family") {
+	} else if (name.substr(0, 4) == "font") {
+		const std::string_view nameSuffix = name.substr(4);
+		if (nameSuffix == "-family") {
 			attrs->m_Flags &= ~AttribFlags::FontFamilyInherit;
 			shapeAttrsSetFontFamily(attrs, value);
 			return ParseAttr::OK;
-		} else if (partialName == "-size") {
+		} else if (nameSuffix == "-size") {
 			attrs->m_Flags &= ~AttribFlags::FontSizeInherit;
 			return parseLength(value, &attrs->m_FontSize) ? ParseAttr::OK : ParseAttr::Fail;
 		}
@@ -1498,7 +1497,7 @@ static bool parseTag_svg(ParserState* parser, Image* img)
 				img->m_Height = (float)atof(value.data());
 			} else if (name == "viewBox") {
 				parseViewBox(value, &img->m_ViewBox[0]);
-			} else if (name == "xmlns") {
+			} else if (name == "xmlns" || name == "id") {
 				// Ignore. This is here in order to shut up the trace message below.
 			} else {
 				// Unknown attribute. Ignore it (parser has already moved forward)
