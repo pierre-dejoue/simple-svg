@@ -193,7 +193,7 @@ void shapeListReserve(ShapeList* shapeList, uint32_t capacity)
 
 uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeID)
 {
-	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Invalid shape ID");
+	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Out of bounds shape index");
 	if (shapeID == 0 || shapeList->m_NumShapes <= 1) {
 		return shapeID;
 	}
@@ -208,7 +208,7 @@ uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeID)
 
 uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeID)
 {
-	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Invalid shape ID");
+	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Out of bounds shape index");
 	if (shapeID == shapeList->m_NumShapes - 1) {
 		return shapeID;
 	}
@@ -223,7 +223,7 @@ uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeID)
 
 void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeID)
 {
-	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Invalid shape ID");
+	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Out of bounds shape index");
 
 	shapeFree(&shapeList->m_Shapes[shapeID]);
 
@@ -865,7 +865,7 @@ void shapeAttrsFree(ShapeAttributes* attrs)
 	SSVG_CHECK(node != nullptr, "Shape attributes not allocated via the free list (double deallocation?)");
 
 	const uint32_t id = (uint32_t)(attrs - node->m_Attrs);
-	SSVG_CHECK(id < node->m_NumAttrs, "Index out of bounds");
+	SSVG_CHECK(id < node->m_NumAttrs, "ShapeAttributes index is out of bounds");
 
 	*(uint32_t*)attrs = node->m_FirstFreeID;
 	node->m_FirstFreeID = id;

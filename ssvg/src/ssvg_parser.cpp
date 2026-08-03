@@ -1028,7 +1028,7 @@ bool parseShape_Text(ParserState* parser, Shape* text)
 {
 	bool err = false;
 	while (!parserDone(parser) && !err) {
-		SSVG_CHECK(!(parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>'), "Empty text element");
+		SSVG_CHECK(!(parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>'), "Empty <text> element");
 		if (parser->m_Ptr[0] == '>') {
 			break;
 		}
@@ -1450,7 +1450,7 @@ bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAttribute
 		}
 
 		if (!found) {
-			SSVG_WARN(false, "Ignoring element %.*s", strlenint(tag), tag.data());
+			SSVG_WARN(false, "Ignoring element <%.*s>", strlenint(tag), tag.data());
 			parserSkipTag(parser);
 		}
 	}

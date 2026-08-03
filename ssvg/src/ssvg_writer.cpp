@@ -494,7 +494,7 @@ bool imageSave(const Image* img, std::ostream& out)
 
 	StreamWriter writer(out, SSVG_FORMAT_BUFFER_LEN);
 
-	// Open <svg> element
+	// Open the <svg> element
 	writer.out() << "<svg";
 	if (img->m_Width != 0.0f) {
 		writer.write(" width=\"%g\"", img->m_Width);

@@ -303,10 +303,10 @@ inline void pathCmdGetEndPoint(const PathCmd* cmd, float* p)
 
 void pathConvertCommand(Path* path, uint32_t cmdID, PathCmdType::Enum newType)
 {
-	SSVG_CHECK(cmdID < path->m_NumCommands, "Invalid command ID");
+	SSVG_CHECK(cmdID < path->m_NumCommands, "Out of bounds command index");
 
 	if (cmdID == 0) {
-		SSVG_CHECK(newType == PathCmdType::MoveTo, "Cannot convert 1st command to other than MoveTo");
+		SSVG_CHECK(newType == PathCmdType::MoveTo, "Cannot convert the first command to other than MoveTo");
 		return;
 	}
 
