@@ -7,6 +7,10 @@
 
 bx::DefaultAllocator g_Allocator;
 
+constexpr const char* DEFAULT_INPUT_SVG_FILE = "./Ghostscript_Tiger.svg";
+constexpr const char* TEST_OUTPUT_FILE       = "./test_output.svg";
+constexpr const char* ROUND_TRIP_OUTPUT_FILE = "./round_trip_tiger.svg";
+
 uint8_t* loadFile(const bx::FilePath& filePath)
 {
 	bx::Error err;
@@ -203,10 +207,10 @@ int main()
 
 	ssvg::initLib(&g_Allocator);
 
-	testParser("./Ghostscript_Tiger.svg", &defaultAttrs);
-	testBuilder("./output.svg");
-	testRoundTrip("./Ghostscript_Tiger.svg", "./tiger.svg", &defaultAttrs);
-	testParser("./tiger.svg", &defaultAttrs);
+	testParser(DEFAULT_INPUT_SVG_FILE, &defaultAttrs);
+	testBuilder(TEST_OUTPUT_FILE);
+	testRoundTrip(DEFAULT_INPUT_SVG_FILE, ROUND_TRIP_OUTPUT_FILE, &defaultAttrs);
+	testParser(ROUND_TRIP_OUTPUT_FILE, &defaultAttrs);
 
 	return 0;
 }
