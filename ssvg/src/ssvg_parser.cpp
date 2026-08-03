@@ -30,8 +30,6 @@ int strlenint(std::string_view str)
 	return static_cast<int>(str.length());
 }
 
-} // namespace
-
 struct ParseAttr
 {
 	enum Result : uint32_t
@@ -55,7 +53,7 @@ struct CSSColor
 	uint32_t m_ABGR;
 };
 
-static const CSSColor kCSSColors[] = {
+const CSSColor kCSSColors[] = {
 	{ "black",            0xFF000000 }, { "silver",               0xFFC0C0C0 }, { "gray",              0xFF808080 }, { "white",           0xFFFFFFFF },
 	{ "maroon",           0xFF000080 }, { "red",                  0xFF0000FF }, { "purple",            0xFF800080 }, { "fuchsia",         0xFFFF00FF },
 	{ "green",            0xFF008000 }, { "lime",                 0xFF00FF00 }, { "olive",             0xFF008080 }, { "yellow",          0xFF00FFFF },
@@ -95,11 +93,11 @@ static const CSSColor kCSSColors[] = {
 	{ "wheat",            0xFFB3DEF5 }, { "whitesmoke",           0xFFF5F5F5 }, { "yellowgreen",       0xFF32CD9A }, { "rebeccapurple",   0xFF993366 },
 };
 
-static const uint32_t kNumCSSColors = sizeof(kCSSColors) / sizeof(CSSColor);
+constexpr uint32_t kNumCSSColors = sizeof(kCSSColors) / sizeof(CSSColor);
 
-static bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAttributes* parentAttrs, const char* closingTag, uint32_t closingTagLen);
-static const char* parseCoord(const char* str, const char* end, float* coord);
-static ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs);
+bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAttributes* parentAttrs, const char* closingTag, uint32_t closingTagLen);
+const char* parseCoord(const char* str, const char* end, float* coord);
+ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs);
 
 inline uint8_t charToNibble(char ch)
 {
@@ -146,7 +144,7 @@ inline void parserSkipWhitespace(ParserState* parser)
 	parser->m_Ptr = skipWhitespace(parser->m_Ptr, nullptr);
 }
 
-static bool parserExpectingChar(ParserState* parser, char ch)
+bool parserExpectingChar(ParserState* parser, char ch)
 {
 	parserSkipWhitespace(parser);
 
@@ -158,7 +156,7 @@ static bool parserExpectingChar(ParserState* parser, char ch)
 	return false;
 }
 
-static bool parserMatchString(ParserState* parser, const char* str, uint32_t len)
+bool parserMatchString(ParserState* parser, const char* str, uint32_t len)
 {
 	parserSkipWhitespace(parser);
 
@@ -177,7 +175,7 @@ inline bool parserExpectingString(ParserState* parser, const char* str, uint32_t
 }
 
 // Skips the currently entered tag by counting > and <.
-static void parserSkipTag(ParserState* parser)
+void parserSkipTag(ParserState* parser)
 {
 	uint32_t level = 0;
 	uint32_t numOpenBrackets = 1;
@@ -213,7 +211,7 @@ static void parserSkipTag(ParserState* parser)
 	}
 }
 
-static void parserSkipComment(ParserState* parser)
+void parserSkipComment(ParserState* parser)
 {
 	while (!parserDone(parser)) {
 		if (parser->m_Ptr[0] == '-' && parser->m_Ptr[1] == '-' && parser->m_Ptr[2] == '>') {
@@ -225,7 +223,7 @@ static void parserSkipComment(ParserState* parser)
 	}
 }
 
-static bool parserGetTag(ParserState* parser, std::string_view* tag)
+bool parserGetTag(ParserState* parser, std::string_view* tag)
 {
 	assert(parser);
 	assert(tag);
@@ -257,7 +255,7 @@ static bool parserGetTag(ParserState* parser, std::string_view* tag)
 	return true;
 }
 
-static bool parserGetAttribute(ParserState* parser, std::string_view* name, std::string_view* value)
+bool parserGetAttribute(ParserState* parser, std::string_view* name, std::string_view* value)
 {
 	parserSkipWhitespace(parser);
 
@@ -311,7 +309,7 @@ static bool parserGetAttribute(ParserState* parser, std::string_view* name, std:
 	return true;
 }
 
-static bool parseVersion(const std::string_view& verStr, uint16_t* maj, uint16_t* min)
+bool parseVersion(const std::string_view& verStr, uint16_t* maj, uint16_t* min)
 {
 	assert(maj);
 	assert(min);
@@ -324,20 +322,20 @@ static bool parseVersion(const std::string_view& verStr, uint16_t* maj, uint16_t
 	return true;
 }
 
-static bool parseNumber(const std::string_view& str, float* val, float min = -math::kFloatMax, float max = math::kFloatMax)
+bool parseNumber(const std::string_view& str, float* val, float min = -math::kFloatMax, float max = math::kFloatMax)
 {
 	*val = stdutils::clamp<float>((float)atof(str.data()), min, max);
 
 	return true;
 }
 
-static bool parseLength(const std::string_view& str, float* len)
+bool parseLength(const std::string_view& str, float* len)
 {
 	// TODO: Parse length units and convert to pixels based on parser state.
 	return parseNumber(str, len);
 }
 
-static bool parsePaint(const std::string_view& str, Paint* paint)
+bool parsePaint(const std::string_view& str, Paint* paint)
 {
 	// TODO: Handle more cases.
 	if (str == "none") {
@@ -406,7 +404,7 @@ static bool parsePaint(const std::string_view& str, Paint* paint)
 	return true;
 }
 
-static const char* parseCoord(const char* str, const char* end, float* coord)
+const char* parseCoord(const char* str, const char* end, float* coord)
 {
 	const char* ptr = skipCommaWhitespace(str, end);
 
@@ -421,7 +419,7 @@ static const char* parseCoord(const char* str, const char* end, float* coord)
 	return skipCommaWhitespace(coordEnd, end);
 }
 
-static const char* parseFlag(const char* str, const char* end, float* flag)
+const char* parseFlag(const char* str, const char* end, float* flag)
 {
 	const char* ptr = skipCommaWhitespace(str, end);
 
@@ -436,7 +434,7 @@ static const char* parseFlag(const char* str, const char* end, float* flag)
 	return skipCommaWhitespace(ptr + 1, end);
 }
 
-static bool parseViewBox(const std::string_view& str, float* viewBox)
+bool parseViewBox(const std::string_view& str, float* viewBox)
 {
 	const char* ptr = str.data();
 	const char* end = strend(str);
@@ -452,7 +450,7 @@ static bool parseViewBox(const std::string_view& str, float* viewBox)
 // Scans str and extracts type and value. Expected format is:
 //    type '(' value ')'
 // where type is an identifier and value is any kind of text
-static const char* parseTransformComponent(const char* str, const char* end, std::string_view* type, std::string_view* value)
+const char* parseTransformComponent(const char* str, const char* end, std::string_view* type, std::string_view* value)
 {
 	SSVG_CHECK(stdutils::ascii::isalpha(*str), "Parse error: Excepted identifier");
 
@@ -507,7 +505,7 @@ static const char* parseTransformComponent(const char* str, const char* end, std
 	return endPtr;
 }
 
-static bool parseTransform(const std::string_view& str, float* transform)
+bool parseTransform(const std::string_view& str, float* transform)
 {
 	const char* ptr = str.data();
 	const char* end = strend(str);
@@ -595,6 +593,8 @@ static bool parseTransform(const std::string_view& str, float* transform)
 
 	return true;
 }
+
+} // namespace
 
 bool pathFromString(Path* path, const std::string_view& str, uint32_t flags)
 {
@@ -854,7 +854,9 @@ bool pointListFromString(PointList* ptList, const std::string_view& str)
 	return true;
 }
 
-static ParseAttr::Result parseStyle(const std::string_view& str, ShapeAttributes* attrs)
+namespace {
+
+ParseAttr::Result parseStyle(const std::string_view& str, ShapeAttributes* attrs)
 {
 	const char* end = strend(str);
 	const char* ptr = skipWhitespace(str.data(), end);
@@ -897,7 +899,7 @@ static ParseAttr::Result parseStyle(const std::string_view& str, ShapeAttributes
 	return ParseAttr::OK;
 }
 
-static ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs)
+ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs)
 {
 	if (name == "style") {
 		return parseStyle(value, attrs);
@@ -989,7 +991,7 @@ static ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name
 	return ParseAttr::Unknown;
 }
 
-static bool parseShape_Group(ParserState* parser, Shape* group)
+bool parseShape_Group(ParserState* parser, Shape* group)
 {
 	bool err = false;
 	while (!parserDone(parser) && !err) {
@@ -1024,7 +1026,7 @@ static bool parseShape_Group(ParserState* parser, Shape* group)
 	return parseShapes(parser, &group->m_ShapeList, group->m_Attrs, "</g>", 4);
 }
 
-static bool parseShape_Text(ParserState* parser, Shape* text)
+bool parseShape_Text(ParserState* parser, Shape* text)
 {
 	bool err = false;
 	while (!parserDone(parser) && !err) {
@@ -1091,7 +1093,7 @@ static bool parseShape_Text(ParserState* parser, Shape* text)
 	return true;
 }
 
-static bool parseShape_Path(ParserState* parser, Shape* path)
+bool parseShape_Path(ParserState* parser, Shape* path)
 {
 	bool err = false;
 	bool hasContents = false;
@@ -1131,7 +1133,7 @@ static bool parseShape_Path(ParserState* parser, Shape* path)
 	return !err;
 }
 
-static bool parseShape_Rect(ParserState* parser, Shape* rect)
+bool parseShape_Rect(ParserState* parser, Shape* rect)
 {
 	bool err = false;
 	bool hasContents = false;
@@ -1183,7 +1185,7 @@ static bool parseShape_Rect(ParserState* parser, Shape* rect)
 	return !err;
 }
 
-static bool parseShape_Circle(ParserState* parser, Shape* circle)
+bool parseShape_Circle(ParserState* parser, Shape* circle)
 {
 	bool err = false;
 	bool hasContents = false;
@@ -1229,7 +1231,7 @@ static bool parseShape_Circle(ParserState* parser, Shape* circle)
 	return !err;
 }
 
-static bool parseShape_Line(ParserState* parser, Shape* line)
+bool parseShape_Line(ParserState* parser, Shape* line)
 {
 	bool err = false;
 	bool hasContents = false;
@@ -1277,7 +1279,7 @@ static bool parseShape_Line(ParserState* parser, Shape* line)
 	return !err;
 }
 
-static bool parseShape_Ellipse(ParserState* parser, Shape* ellipse)
+bool parseShape_Ellipse(ParserState* parser, Shape* ellipse)
 {
 	bool err = false;
 	bool hasContents = false;
@@ -1325,7 +1327,7 @@ static bool parseShape_Ellipse(ParserState* parser, Shape* ellipse)
 	return !err;
 }
 
-static bool parseShape_PointList(ParserState* parser, Shape* shape)
+bool parseShape_PointList(ParserState* parser, Shape* shape)
 {
 	bool err = false;
 	bool hasContents = false;
@@ -1395,7 +1397,7 @@ static bool parseShape_PointList(ParserState* parser, Shape* shape)
 	return !err;
 }
 
-static bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAttributes* parentAttrs, const char* closingTag, uint32_t closingTagLen)
+bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAttributes* parentAttrs, const char* closingTag, uint32_t closingTagLen)
 {
 	struct ParseFunc
 	{
@@ -1465,7 +1467,7 @@ static bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAt
 	return parserExpectingString(parser, closingTag, closingTagLen);
 }
 
-static bool parseTag_svg(ParserState* parser, Image* img)
+bool parseTag_svg(ParserState* parser, Image* img)
 {
 	// Parse svg tag attributes...
 	bool err = false;
@@ -1512,6 +1514,8 @@ static bool parseTag_svg(ParserState* parser, Image* img)
 
 	return parseShapes(parser, &img->m_ShapeList, &img->m_BaseAttrs, "</svg>", 6);
 }
+
+} // namespace
 
 Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* baseAttrs)
 {

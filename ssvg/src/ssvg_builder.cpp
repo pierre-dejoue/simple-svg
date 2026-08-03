@@ -13,7 +13,9 @@
 
 namespace ssvg {
 
-static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArgs, const float* lastPt);
+namespace {
+void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArgs, const float* lastPt);
+}
 
 uint32_t shapeListAddShape(ShapeList* shapeList, const Shape* shape)
 {
@@ -419,7 +421,9 @@ void pathConvertCommand(Path* path, uint32_t cmdID, PathCmdType::Enum newType)
 	}
 }
 
-static float nsvg__vecang(float ux, float uy, float vx, float vy)
+namespace {
+
+float nsvg__vecang(float ux, float uy, float vx, float vy)
 {
 	const float umag = std::sqrt(ux * ux + uy * uy);
 	const float vmag = std::sqrt(vx * vx + vy * vy);
@@ -429,7 +433,7 @@ static float nsvg__vecang(float ux, float uy, float vx, float vy)
 }
 
 // nsvg__pathArcTo(NSVGparser* p, float* cpx, float* cpy, float* args, int rel)
-static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArgs, const float* lastPt)
+void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArgs, const float* lastPt)
 {
 	// Ported from canvg (https://code.google.com/p/canvg/)
 	float rx = std::abs(arcToArgs[0]);                    // x radius
@@ -566,5 +570,7 @@ static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArg
 		ptany = tany;
 	}
 }
+
+} // namespace
 
 } // namespace ssvg

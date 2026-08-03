@@ -7,6 +7,8 @@
 
 namespace ssvg {
 
+namespace {
+
 struct SaveAttr
 {
 	enum Enum : uint32_t
@@ -31,7 +33,7 @@ struct SaveAttr
 	};
 };
 
-static const char* baseProfileToString(BaseProfile::Enum bp)
+const char* baseProfileToString(BaseProfile::Enum bp)
 {
 	switch (bp) {
 	case BaseProfile::Basic:
@@ -49,7 +51,7 @@ static const char* baseProfileToString(BaseProfile::Enum bp)
 	return "full";
 }
 
-static const char* lineJoinToString(LineJoin::Enum join)
+const char* lineJoinToString(LineJoin::Enum join)
 {
 	switch (join) {
 	case LineJoin::Miter:
@@ -65,7 +67,7 @@ static const char* lineJoinToString(LineJoin::Enum join)
 	return "miter";
 }
 
-static const char* lineCapToString(LineCap::Enum cap)
+const char* lineCapToString(LineCap::Enum cap)
 {
 	switch (cap) {
 	case LineCap::Butt:
@@ -81,7 +83,7 @@ static const char* lineCapToString(LineCap::Enum cap)
 	return "butt";
 }
 
-static const char* textAnchorToString(TextAnchor::Enum anchor)
+const char* textAnchorToString(TextAnchor::Enum anchor)
 {
 	switch (anchor) {
 	case TextAnchor::Start:
@@ -97,7 +99,7 @@ static const char* textAnchorToString(TextAnchor::Enum anchor)
 	return "start";
 }
 
-static const char* fillRuleToString(FillRule::Enum rule)
+const char* fillRuleToString(FillRule::Enum rule)
 {
 	switch (rule) {
 	case FillRule::NonZero:
@@ -111,7 +113,7 @@ static const char* fillRuleToString(FillRule::Enum rule)
 	return "nonzero";
 }
 
-static bool transformIsIdentity(const float* transform)
+bool transformIsIdentity(const float* transform)
 {
 	return transform[0] == 1.0f
 		&& transform[1] == 0.0f
@@ -121,7 +123,7 @@ static bool transformIsIdentity(const float* transform)
 		&& transform[5] == 0.0f;
 }
 
-static void colorToHexString(char* str, uint32_t len, uint32_t abgr)
+void colorToHexString(char* str, uint32_t len, uint32_t abgr)
 {
 	const uint32_t r = abgr & 0x000000FF;
 	const uint32_t g = (abgr >> 8) & 0x000000FF;
@@ -129,6 +131,8 @@ static void colorToHexString(char* str, uint32_t len, uint32_t abgr)
 
 	bx::snprintf(str, len, "#%02X%02X%02X", r, g, b);
 }
+
+} // namespace
 
 bool pointListToString(const PointList* pointList, bx::WriterI* writer)
 {
@@ -182,7 +186,9 @@ bool pathToString(const Path* path, bx::WriterI* writer)
 	return true;
 }
 
-static bool writeShapeAttributes(bx::WriterI* writer, const ShapeAttributes* attrs, const ShapeAttributes* parentAttrs, uint32_t flags)
+namespace {
+
+bool writeShapeAttributes(bx::WriterI* writer, const ShapeAttributes* attrs, const ShapeAttributes* parentAttrs, uint32_t flags)
 {
 	bx::Error err;
 
@@ -302,6 +308,8 @@ static bool writeShapeAttributes(bx::WriterI* writer, const ShapeAttributes* att
 
 	return true;
 }
+
+} // namespace
 
 bool writePointList(bx::WriterI* writer, const PointList* pointList)
 {

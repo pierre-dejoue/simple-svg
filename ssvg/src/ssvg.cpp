@@ -37,10 +37,12 @@ struct ShapeAttributeFreeListNode
 	uint32_t m_NumFree;
 };
 
-static ShapeAttributeFreeListNode* s_ShapeAttrFreeListHead = nullptr;
+namespace {
+ShapeAttributeFreeListNode* s_ShapeAttrFreeListHead = nullptr;
 
-static ShapeAttributes* shapeAttrsAlloc();
-static void shapeAttrsFree(ShapeAttributes* attrs);
+ShapeAttributes* shapeAttrsAlloc();
+void shapeAttrsFree(ShapeAttributes* attrs);
+} // namespace
 
 void transformIdentity(float* transform)
 {
@@ -798,7 +800,9 @@ void shapeUpdateBounds(Shape* shape)
 	stdutils::memcpy<float>(&shape->m_BoundingRect[0], BOUNDING_RECT_ARRAY_SZ, &bounds[0], sizeof(float) * 4);
 }
 
-static ShapeAttributes* shapeAttrsAllocFromNode(ShapeAttributeFreeListNode* node)
+namespace {
+
+ShapeAttributes* shapeAttrsAllocFromNode(ShapeAttributeFreeListNode* node)
 {
 	SSVG_CHECK(node->m_FirstFreeID != UINT32_MAX, "No free slot in free list node. This function shouldn't have been called");
 
@@ -811,9 +815,9 @@ static ShapeAttributes* shapeAttrsAllocFromNode(ShapeAttributeFreeListNode* node
 	return attrs;
 }
 
-static ShapeAttributes* shapeAttrsAlloc()
+ShapeAttributes* shapeAttrsAlloc()
 {
-	static const uint32_t kNumShapeAttributesPerBatch = 1024;
+	constexpr uint32_t kNumShapeAttributesPerBatch = 1024;
 
 	ShapeAttributeFreeListNode* node = s_ShapeAttrFreeListHead;
 	while (node) {
@@ -847,7 +851,7 @@ static ShapeAttributes* shapeAttrsAlloc()
 	return shapeAttrsAllocFromNode(node);
 }
 
-static void shapeAttrsFree(ShapeAttributes* attrs)
+void shapeAttrsFree(ShapeAttributes* attrs)
 {
 	// Find the free list node attrs belongs to
 	ShapeAttributeFreeListNode* node = s_ShapeAttrFreeListHead;
@@ -887,5 +891,7 @@ static void shapeAttrsFree(ShapeAttributes* attrs)
 		std::free(node);
 	}
 }
+
+} // namespace
 
 } // namespace svg
