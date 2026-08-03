@@ -16,8 +16,6 @@
 #include <cstring>
 #include <string_view>
 
-BX_PRAGMA_DIAGNOSTIC_IGNORED_MSVC(4127) // conditional expression is constant
-
 namespace ssvg {
 
 namespace {

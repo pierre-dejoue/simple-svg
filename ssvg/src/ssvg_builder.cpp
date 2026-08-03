@@ -11,8 +11,6 @@
 
 #include <cmath>
 
-BX_PRAGMA_DIAGNOSTIC_IGNORED_GCC("-Wmaybe-uninitialized")
-
 namespace ssvg {
 
 static void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArgs, const float* lastPt);
