@@ -5,9 +5,13 @@
 #include <stdutils/memory.h>
 
 #include <cstdlib>
+#include <exception>
 #include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <stdio.h>
 #include <string>
+#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -23,32 +27,48 @@ std::string build_output_round_trip_filename(const std::string& input_svg_file)
 	return input_path.parent_path().append(output_filename).string();
 }
 
-uint8_t* loadFile(const bx::FilePath& filePath)
+std::vector<char> loadFile(const fs::path& filepath)
 {
-	bx::Error err;
-	bx::FileReader reader;
-	if (!reader.open(filePath, &err)) {
-		return nullptr;
+	std::error_code err_code;
+	const auto sz = fs::file_size(filepath, err_code);
+	if (err_code)
+	{
+		std::stringstream oss;
+		oss << "std::filesystem::file_size(" << filepath.filename() << "): error_code=" << err_code;
+		printf("%s\n", oss.str().c_str());
+		return std::vector<char>();
 	}
-
-	int32_t fileSize = (int32_t)reader.seek(0, bx::Whence::End);
-	reader.seek(0, bx::Whence::Begin);
-
-	uint8_t* buffer = (uint8_t*)std::malloc(fileSize + 1);
-	reader.read(buffer, fileSize, &err);
-	buffer[fileSize] = 0;
-
-	reader.close();
-
-	return buffer;
+	try
+	{
+		std::basic_ifstream<char> istream(filepath, std::ios_base::in);
+		if (istream.is_open())
+		{
+			std::vector<char> buf(sz + 1, 0u);
+			istream.read(buf.data(), static_cast<std::streamsize>(sz));
+			return buf;
+		}
+		else
+		{
+			std::stringstream oss;
+			oss << "Cannot open file: " << filepath;
+			printf("%s\n", oss.str().c_str());
+		}
+	}
+	catch(const std::exception& e)
+	{
+		std::stringstream oss;
+		oss << "Exception in open_and_parse_file(" << filepath << "): " << e.what();
+		printf("%s\n", oss.str().c_str());
+	}
+	return std::vector<char>();
 }
 
 bool testParser(const char* filename, const ssvg::ShapeAttributes* baseAttrs)
 {
 	printf("Loading \"%s\"...\n", filename);
 
-	uint8_t* svgFileBuffer = loadFile(bx::FilePath(filename));
-	if (!svgFileBuffer) {
+	const auto svgFileBuffer = loadFile(filename);
+	if (svgFileBuffer.empty()) {
 		printf("(x) Failed to load svg file.\n");
 		return false;
 	}
@@ -56,7 +76,7 @@ bool testParser(const char* filename, const ssvg::ShapeAttributes* baseAttrs)
 	ssvg::Image* img = nullptr;
 	{
 		constexpr uint32_t svg_parser_flags = 0;
-		img = ssvg::imageLoad((char*)svgFileBuffer, svg_parser_flags, baseAttrs);
+		img = ssvg::imageLoad(svgFileBuffer.data(), svg_parser_flags, baseAttrs);
 	}
 
 	if (!img) {
@@ -67,8 +87,6 @@ bool testParser(const char* filename, const ssvg::ShapeAttributes* baseAttrs)
 	printf("- Root element contains %d shapes\n", img->m_ShapeList.m_NumShapes);
 
 	ssvg::imageDestroy(img);
-
-	std::free(svgFileBuffer);
 
 	return true;
 }
@@ -169,14 +187,14 @@ bool testRoundTrip(const char* input, const char* output, const ssvg::ShapeAttri
 {
 	printf("Converting \"%s\" to \"%s\"...\n", input, output);
 
-	uint8_t* svgFileBuffer = loadFile(bx::FilePath(input));
-	if (!svgFileBuffer) {
+	const auto svgFileBuffer = loadFile(input);
+	if (svgFileBuffer.empty()) {
 		printf("(x) Failed to load svg file.\n");
 		return false;
 	}
 
 	constexpr uint32_t svg_parser_flags = 0;
-	ssvg::Image* img = ssvg::imageLoad((char*)svgFileBuffer, svg_parser_flags, baseAttrs);
+	ssvg::Image* img = ssvg::imageLoad(svgFileBuffer.data(), svg_parser_flags, baseAttrs);
 	if (!img) {
 		printf("(x) Failed to parse svg file.\n");
 		return false;
@@ -194,8 +212,6 @@ bool testRoundTrip(const char* input, const char* output, const ssvg::ShapeAttri
 	fileWriter.close();
 
 	ssvg::imageDestroy(img);
-
-	std::free(svgFileBuffer);
 
 	return true;
 }
