@@ -11,6 +11,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
+#include <cstdint>
 #include <string_view>
 
 namespace ssvg
@@ -583,7 +584,7 @@ std::string_view shapeAttrsGetID(const ShapeAttributes* attrs)
 void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& value)
 {
 	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_ID_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
-	SSVG_WARN((int32_t)maxLen >= strlenint(value), "id \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
+	SSVG_WARN((std::int32_t)maxLen >= strlenint(value), "id \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
 	stdutils::memcpy<char>(&attrs->m_ID[0], SSVG_CONFIG_ID_MAX_LEN, value.data(), maxLen);
 	attrs->m_ID[maxLen] = '\0';
 }
@@ -591,7 +592,7 @@ void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& value)
 void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& value)
 {
 	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
-	SSVG_WARN((int32_t)maxLen >= strlenint(value), "font-family \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
+	SSVG_WARN((std::int32_t)maxLen >= strlenint(value), "font-family \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
 	stdutils::memcpy<char>(&attrs->m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN, value.data(), maxLen);
 	attrs->m_FontFamily[maxLen] = '\0';
 }
@@ -600,7 +601,7 @@ void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value)
 {
 #if SSVG_CONFIG_CLASS_MAX_LEN
 	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_CLASS_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
-	SSVG_WARN((int32_t)maxLen >= strlenint(value), "class \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
+	SSVG_WARN((std::int32_t)maxLen >= strlenint(value), "class \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
 	stdutils::memcpy<char>(&attrs->m_Class[0], SSVG_CONFIG_CLASS_MAX_LEN, value.data(), maxLen);
 	attrs->m_Class[maxLen] = '\0';
 #else

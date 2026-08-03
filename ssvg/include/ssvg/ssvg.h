@@ -1,8 +1,7 @@
 #ifndef SSVG_SSVG_H
 #define SSVG_SSVG_H
 
-#include <stdint.h>
-
+#include <cstdint>
 #include <ostream>
 #include <string_view>
 
@@ -163,10 +162,12 @@ struct PointList
 	uint32_t m_Capacity;
 };
 
+inline constexpr uint32_t PATH_DATA_ARRAY_SZ = 7;
+
 struct PathCmd
 {
 	PathCmdType::Enum m_Type;
-	float m_Data[7]; // NOTE: The amount and meaning of each value depends on m_Type (see PathCmdType::Enum)
+	float m_Data[PATH_DATA_ARRAY_SZ]; // NOTE: The amount and meaning of each value depends on m_Type (see PathCmdType::Enum)
 };
 
 struct Path
@@ -217,9 +218,7 @@ struct AttribFlags
 	};
 };
 
-constexpr uint32_t TRANSFORM_ARRAY_SZ = 6;
-constexpr uint32_t BOUNDING_RECT_ARRAY_SZ = 4;
-constexpr uint32_t VIEW_BOX_ARRAY_SZ = 4;
+inline constexpr uint32_t TRANSFORM_ARRAY_SZ = 6;
 
 struct ShapeAttributes
 {
@@ -243,6 +242,9 @@ struct ShapeAttributes
 	char m_Class[SSVG_CONFIG_CLASS_MAX_LEN];
 #endif
 };
+
+inline constexpr uint32_t BOUNDING_RECT_ARRAY_SZ = 4;
+inline constexpr uint32_t VIEW_BOX_ARRAY_SZ = 4;
 
 struct Shape
 {
