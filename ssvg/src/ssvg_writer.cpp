@@ -11,21 +11,23 @@ struct SaveAttr
 {
 	enum Enum : uint32_t
 	{
-		ID = 0x00000001,
-		Transform = 0x00000002,
-		Stroke = 0x00000004,
-		Fill = 0x00000008,
-		Font = 0x00000010,
-		Class = 0x00000020,
-		Opacity = 0x00000040,
+		None        = 0,
+		ID          = 1 << 0,
+		Transform   = 1 << 1,
+		Stroke      = 1 << 2,
+		Fill        = 1 << 3,
+		Font        = 1 << 4,
+		Class       = 1 << 5,
+		Opacity     = 1 << 6,
+		All         =(1 << 7) - 1,
 
+		// Special flag
 		ConditionalPaints = 0x80000000, // If set, and PaintType == None || Transparent don't save stroke-width, stroke-opacity, etc.
 
 		// Common combinations
 		Unique = Transform | ID,
 		Shape = Unique | Stroke | Fill,
-		All = Shape | Font | Class | Opacity,
-		Text = Unique | Fill | Font | ConditionalPaints
+		Text = Unique | Fill | Font | ConditionalPaints,
 	};
 };
 

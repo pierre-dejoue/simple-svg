@@ -50,8 +50,7 @@ struct ShapeType
 		Polygon,
 		Path,
 		Text,
-
-		NumTypes
+		NbOfShapeTypes
 	};
 };
 
@@ -202,6 +201,7 @@ struct AttribFlags
 {
 	enum Enum : uint32_t
 	{
+		None                    = 0,
 		StrokePaintInherit      = 1 << 0,
 		StrokeMiterLimitInherit = 1 << 1,
 		StrokeOpacityInherit    = 1 << 2,
@@ -213,9 +213,7 @@ struct AttribFlags
 		FillRuleInherit         = 1 << 8,
 		FontSizeInherit         = 1 << 9,
 		FontFamilyInherit       = 1 << 10,
-
-		InheritAll = StrokePaintInherit | StrokeMiterLimitInherit | StrokeOpacityInherit | StrokeWidthInherit | StrokeLineJoinInherit | StrokeLineCapInherit
-		           | FillPaintInherit | FillOpacityInherit | FillRuleInherit | FontSizeInherit | FontFamilyInherit
+		InheritAll              =(1 << 11) - 1
 	};
 };
 
@@ -284,12 +282,13 @@ struct ImageLoadFlags
 {
 	enum Enum : uint32_t
 	{
-		ConvertPolygonsToPaths = 1 << 0,
-		ConvertPolylinesToPaths = 1 << 1,
-		ConvertQuadToCubicBezier = 1 << 2,
-		ConvertArcToCubicBezier = 1 << 3,
-		CalcShapeBounds = 1 << 4,
-		CalcPathConvexity = 1 << 5,
+		None                   	    = 0,
+		ConvertPolygonsToPaths      = 1 << 0,
+		ConvertPolylinesToPaths     = 1 << 1,
+		ConvertQuadToCubicBezier    = 1 << 2,
+		ConvertArcToCubicBezier     = 1 << 3,
+		CalcShapeBounds             = 1 << 4,
+		CalcPathConvexity           = 1 << 5,
 	};
 };
 
