@@ -5,11 +5,23 @@
 #include <stdutils/memory.h>
 
 #include <cstdlib>
+#include <filesystem>
 #include <stdio.h>
+#include <string>
 
-constexpr const char* DEFAULT_INPUT_SVG_FILE = "./Ghostscript_Tiger.svg";
-constexpr const char* TEST_OUTPUT_FILE       = "./test_output.svg";
-constexpr const char* ROUND_TRIP_OUTPUT_FILE = "./round_trip_tiger.svg";
+namespace fs = std::filesystem;
+
+constexpr const char* DEFAULT_INPUT_SVG_FILE         = "./Ghostscript_Tiger.svg";
+constexpr const char* DEFAULT_OUTPUT_ROUND_TRIP_FILE = "./round_trip_tiger.svg";
+constexpr const char* OUTPUT_TEST_FILE               = "./test_output.svg";
+
+std::string build_output_round_trip_filename(const std::string& input_svg_file)
+{
+	const fs::path input_path(input_svg_file);
+	std::string output_filename = "round_trip_";
+	output_filename.append(input_path.filename().string());
+	return input_path.parent_path().append(output_filename).string();
+}
 
 uint8_t* loadFile(const bx::FilePath& filePath)
 {
@@ -188,8 +200,29 @@ bool testRoundTrip(const char* input, const char* output, const ssvg::ShapeAttri
 	return true;
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+	// Either call with:
+	// - No argument, this will open the default test file
+	// - One argument, which should be the path to an input SVG file
+	if (argc > 2)
+	{
+		printf("(x) Wrong number of arguments.\n");
+		return 1;
+	}
+
+	std::string input_svg_file = DEFAULT_INPUT_SVG_FILE;
+	std::string output_round_trip_file = DEFAULT_OUTPUT_ROUND_TRIP_FILE;
+	std::string output_test_file = OUTPUT_TEST_FILE;
+
+	// Call with one argument, the path to an input SVG file
+	if (argc == 2)
+	{
+		input_svg_file = argv[1];
+		output_round_trip_file = build_output_round_trip_filename(input_svg_file);
+		output_test_file.clear();
+	}
+
 	ssvg::ShapeAttributes defaultAttrs;
 	stdutils::memset<ssvg::ShapeAttributes>(&defaultAttrs, 0);
 	defaultAttrs.m_StrokeWidth = 1.0f;
@@ -207,10 +240,12 @@ int main()
 
 	ssvg::initLib();
 
-	testParser(DEFAULT_INPUT_SVG_FILE, &defaultAttrs);
-	testBuilder(TEST_OUTPUT_FILE);
-	testRoundTrip(DEFAULT_INPUT_SVG_FILE, ROUND_TRIP_OUTPUT_FILE, &defaultAttrs);
-	testParser(ROUND_TRIP_OUTPUT_FILE, &defaultAttrs);
+	if (!output_test_file.empty()) { testBuilder(output_test_file.c_str()); }
+	testParser(input_svg_file.c_str(), &defaultAttrs);
+	testRoundTrip(input_svg_file.c_str(), output_round_trip_file.c_str(), &defaultAttrs);
+	testParser(output_round_trip_file.c_str(), &defaultAttrs);
+
+	ssvg::shutdownLib();
 
 	return 0;
 }
