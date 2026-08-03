@@ -7,6 +7,7 @@
 
 #include <stdutils/macros.h>
 #include <stdutils/memory.h>
+#include <stdutils/minmax.h>
 #include <stdutils/string.h>
 
 #include <cassert>
@@ -327,7 +328,7 @@ static bool parseVersion(const std::string_view& verStr, uint16_t* maj, uint16_t
 
 static bool parseNumber(const std::string_view& str, float* val, float min = -math::kFloatMax, float max = math::kFloatMax)
 {
-	*val = bx::clamp<float>((float)atof(str.data()), min, max);
+	*val = stdutils::clamp<float>((float)atof(str.data()), min, max);
 
 	return true;
 }

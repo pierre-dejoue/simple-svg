@@ -6,6 +6,7 @@
 #include <bx/bx.h>
 
 #include <stdutils/macros.h>
+#include <stdutils/minmax.h>
 #include <stdutils/memory.h>
 
 #include <cmath>
@@ -425,7 +426,7 @@ static float nsvg__vecang(float ux, float uy, float vx, float vy)
 	const float umag = std::sqrt(ux * ux + uy * uy);
 	const float vmag = std::sqrt(vx * vx + vy * vy);
 	const float u_dot_v = ux * vx + uy * vy;
-	const float r = bx::clamp<float>(u_dot_v / (umag * vmag), -1.0f, 1.0f);
+	const float r = stdutils::clamp<float>(u_dot_v / (umag * vmag), -1.0f, 1.0f);
 	return math::sign(ux * vy - uy * vx) * std::acos(r);
 }
 
