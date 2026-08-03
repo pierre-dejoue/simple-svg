@@ -1,15 +1,13 @@
-#include <bx/file.h>
-#include <bx/timer.h>
 #include <ssvg/ssvg.h>
-
 #include <stdutils/memory.h>
 
+#include <cassert>
 #include <cstdlib>
+#include <cstdio>
 #include <exception>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
-#include <stdio.h>
 #include <string>
 #include <vector>
 
@@ -31,36 +29,50 @@ std::vector<char> loadFile(const fs::path& filepath)
 {
 	std::error_code err_code;
 	const auto sz = fs::file_size(filepath, err_code);
-	if (err_code)
-	{
+	if (err_code) {
 		std::stringstream oss;
 		oss << "std::filesystem::file_size(" << filepath.filename() << "): error_code=" << err_code;
 		printf("%s\n", oss.str().c_str());
 		return std::vector<char>();
 	}
-	try
-	{
+	try {
 		std::basic_ifstream<char> istream(filepath, std::ios_base::in);
-		if (istream.is_open())
-		{
+		if (istream.is_open()) {
 			std::vector<char> buf(sz + 1, 0u);
 			istream.read(buf.data(), static_cast<std::streamsize>(sz));
 			return buf;
-		}
-		else
-		{
+		} else {
 			std::stringstream oss;
 			oss << "Cannot open file: " << filepath;
 			printf("%s\n", oss.str().c_str());
 		}
-	}
-	catch(const std::exception& e)
-	{
+	} catch(const std::exception& e) {
 		std::stringstream oss;
 		oss << "Exception in open_and_parse_file(" << filepath << "): " << e.what();
 		printf("%s\n", oss.str().c_str());
 	}
 	return std::vector<char>();
+}
+
+bool saveImage(const fs::path& filepath, ssvg::Image* img)
+{
+	assert(img);
+	bool success = false;
+	try {
+		std::basic_ofstream<char> ostream(filepath, std::ios_base::out);
+		if (ostream.is_open()) {
+			success = ssvg::imageSave(img, ostream);
+		} else {
+			std::stringstream oss;
+			oss << "Cannot open file: " << filepath;
+			printf("%s\n", oss.str().c_str());
+		}
+	} catch(const std::exception& e) {
+		std::stringstream oss;
+		oss << "Exception in save_file(" << filepath << "): " << e.what();
+		printf("%s\n", oss.str().c_str());
+	}
+	return success;
 }
 
 bool testParser(const char* filename, const ssvg::ShapeAttributes* baseAttrs)
@@ -91,7 +103,7 @@ bool testParser(const char* filename, const ssvg::ShapeAttributes* baseAttrs)
 	return true;
 }
 
-bool testBuilder(const char* filename)
+bool testBuilder(const char* filepath)
 {
 	ssvg::ShapeAttributes defaultAttrs;
 	stdutils::memset<ssvg::ShapeAttributes>(&defaultAttrs, 0);
@@ -167,27 +179,18 @@ bool testBuilder(const char* filename)
 		stdutils::memcpy<float>(&imgShapeList->m_Shapes[groupID].m_Attrs->m_Transform[0], ssvg::TRANSFORM_ARRAY_SZ, &groupTransform[0], sizeof(float) * 6);
 	}
 
-	bx::Error err;
-	bx::FileWriter fileWriter;
-	if (!fileWriter.open(bx::FilePath(filename), false, &err)) {
-		printf("Failed to open file for writing.\n");
-		return false;
-	}
-
-	ssvg::imageSave(img, &fileWriter);
-
-	fileWriter.close();
+	const bool save_success = saveImage(filepath, img);
 
 	ssvg::imageDestroy(img);
 
-	return true;
+	return save_success;
 }
 
-bool testRoundTrip(const char* input, const char* output, const ssvg::ShapeAttributes* baseAttrs)
+bool testRoundTrip(const char* input_filepath, const char* output_filepath, const ssvg::ShapeAttributes* baseAttrs)
 {
-	printf("Converting \"%s\" to \"%s\"...\n", input, output);
+	printf("Converting \"%s\" to \"%s\"...\n", input_filepath, output_filepath);
 
-	const auto svgFileBuffer = loadFile(input);
+	const auto svgFileBuffer = loadFile(input_filepath);
 	if (svgFileBuffer.empty()) {
 		printf("(x) Failed to load svg file.\n");
 		return false;
@@ -200,20 +203,11 @@ bool testRoundTrip(const char* input, const char* output, const ssvg::ShapeAttri
 		return false;
 	}
 
-	bx::Error err;
-	bx::FileWriter fileWriter;
-	if (!fileWriter.open(bx::FilePath(output), false, &err)) {
-		printf("Failed to open file for writing.\n");
-		return false;
-	}
-
-	ssvg::imageSave(img, &fileWriter);
-
-	fileWriter.close();
+	const bool save_success = saveImage(output_filepath, img);
 
 	ssvg::imageDestroy(img);
 
-	return true;
+	return save_success;
 }
 
 int main(int argc, char* argv[])

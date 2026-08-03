@@ -3,8 +3,6 @@
 #include "ssvg_debug.h"
 #include "ssvg_math.h"
 
-#include <bx/bx.h>
-
 #include <stdutils/macros.h>
 #include <stdutils/minmax.h>
 #include <stdutils/memory.h>

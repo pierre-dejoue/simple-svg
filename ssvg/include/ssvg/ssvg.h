@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include <ostream>
 #include <string_view>
 
 #ifndef SSVG_CONFIG_ID_MAX_LEN
@@ -16,11 +17,6 @@
 #ifndef SSVG_CONFIG_CLASS_MAX_LEN
 #	define SSVG_CONFIG_CLASS_MAX_LEN 0
 #endif
-
-namespace bx
-{
-struct WriterI;
-}
 
 namespace ssvg {
 
@@ -244,8 +240,6 @@ struct ShapeAttributes
 #endif
 };
 
-
-
 struct Shape
 {
 	ShapeType::Enum m_Type;
@@ -296,7 +290,7 @@ void initLib();
 void shutdownLib();
 
 Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* baseAttrs);
-bool imageSave(const Image* img, bx::WriterI* writer);
+bool imageSave(const Image* img, std::ostream& out);
 Image* imageCreate(const ShapeAttributes* baseAttrs);
 void imageDestroy(Image* img);
 
@@ -325,7 +319,6 @@ PathCmd* pathInsertCommands(Path* path, uint32_t at, uint32_t n);
 void pathShrinkToFit(Path* path);
 void pathFree(Path* path);
 bool pathFromString(Path* path, const std::string_view& str, uint32_t flags);
-bool pathToString(const Path* path, bx::WriterI* writer);
 uint32_t pathMoveTo(Path* path, float x, float y);
 uint32_t pathLineTo(Path* path, float x, float y);
 uint32_t pathCubicTo(Path* path, float x1, float y1, float x2, float y2, float x, float y);
@@ -339,7 +332,6 @@ float* pointListAllocPoints(PointList* ptList, uint32_t n);
 void pointListShrinkToFit(PointList* ptList);
 void pointListFree(PointList* ptList);
 bool pointListFromString(PointList* ptList, const std::string_view& str);
-bool pointListToString(const PointList* ptList, bx::WriterI* writer);
 void pointListCalcBounds(const PointList* ptList, float* bounds);
 
 std::string_view shapeAttrsGetID(const ShapeAttributes* attrs);
