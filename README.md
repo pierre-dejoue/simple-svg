@@ -7,9 +7,9 @@ A simple SVG parser and writer in C++17.
 
 This fork of [jdryg/simple-svg](https://github.com/jdryg/simple-svg) removes the dependency on [bx](https://github.com/bkaradzic/bx). It also provides a few bug fixes and patches.
 
-There is no intent to provide any level of maintainance or support of this repository. It is open source and closed to contributions.
+This repo is open source and closed to contributions.
 
-### Code
+## Code
 
 * Library:
 	- `ssvg.h`: Structs, enums and function declarations
@@ -20,7 +20,28 @@ There is no intent to provide any level of maintainance or support of this repos
 * Demo/Test:
 	- `examples/main.cpp`
 
-### Dependencies
+## Dependencies
 
 * C++17
 * Standard Template Library (STL)
+
+## Examples
+
+Read the examples to see the library in action.
+
+### Example_01_round_trip
+
+Round trip of parsing and writing a SVG file. Pass an input SVG file as input:
+
+```
+$ ./build/examples/Debug/example_01_round_trip.exe ./examples/svg/Ghostscript_Tiger.svg
+```
+
+### Example_02_build_svg
+
+Build a SVG image programmatically and save it to file `test_output.svg`
+
+```
+$ ./build/examples/Debug/example_02_build_svg.exe
+Building "./test_output.svg"
+```

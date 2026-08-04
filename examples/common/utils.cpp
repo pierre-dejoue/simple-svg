@@ -1,0 +1,62 @@
+#include <ssvg/ssvg.h>
+
+#include <cassert>
+#include <cstdlib>
+#include <cstdio>
+#include <exception>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <vector>
+
+namespace fs = std::filesystem;
+
+std::vector<char> loadFile(const char* filepath)
+{
+	std::error_code err_code;
+	const auto sz = fs::file_size(fs::path(filepath), err_code);
+	if (err_code) {
+		std::stringstream oss;
+		oss << "std::filesystem::file_size(" << fs::path(filepath).filename() << "): error_code=" << err_code;
+		printf("%s\n", oss.str().c_str());
+		return std::vector<char>();
+	}
+	try {
+		std::basic_ifstream<char> istream(fs::path(filepath), std::ios_base::in);
+		if (istream.is_open()) {
+			std::vector<char> buf(sz + 1, 0u);
+			istream.read(buf.data(), static_cast<std::streamsize>(sz));
+			return buf;
+		} else {
+			std::stringstream oss;
+			oss << "Cannot open file: " << filepath;
+			printf("%s\n", oss.str().c_str());
+		}
+	} catch(const std::exception& e) {
+		std::stringstream oss;
+		oss << "Exception in open_and_parse_file(" << filepath << "): " << e.what();
+		printf("%s\n", oss.str().c_str());
+	}
+	return std::vector<char>();
+}
+
+bool saveImage(const char* filepath, ssvg::Image* img)
+{
+	assert(img);
+	bool success = false;
+	try {
+		std::basic_ofstream<char> ostream(fs::path(filepath), std::ios_base::out);
+		if (ostream.is_open()) {
+			success = ssvg::imageSave(img, ostream);
+		} else {
+			std::stringstream oss;
+			oss << "Cannot open file: " << filepath;
+			printf("%s\n", oss.str().c_str());
+		}
+	} catch(const std::exception& e) {
+		std::stringstream oss;
+		oss << "Exception in save_file(" << filepath << "): " << e.what();
+		printf("%s\n", oss.str().c_str());
+	}
+	return success;
+}
