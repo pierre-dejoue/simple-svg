@@ -127,15 +127,6 @@ bool transformIsIdentity(const float* transform)
 		&& transform[5] == 0.0f;
 }
 
-void colorToHexString(char* str, uint32_t len, uint32_t abgr)
-{
-	const uint32_t r = abgr & 0x000000FF;
-	const uint32_t g = (abgr >> 8) & 0x000000FF;
-	const uint32_t b = (abgr >> 16) & 0x000000FF;
-
-	std::snprintf(str, len, "#%02X%02X%02X", r, g, b);
-}
-
 class StreamWriter
 {
 public:
@@ -185,6 +176,15 @@ void StreamWriter::indent(uint32_t n)
 	}
 }
 
+bool colorToHex(StreamWriter& writer, uint32_t abgr)
+{
+	const uint32_t r = (abgr      ) & 0x000000FF;
+	const uint32_t g = (abgr >>  8) & 0x000000FF;
+	const uint32_t b = (abgr >> 16) & 0x000000FF;
+
+	return writer.write("#%02X%02X%02X", r, g, b);
+}
+
 bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, const ShapeAttributes* parentAttrs, uint32_t flags)
 {
 	const bool conditionalPaints = (flags & SaveAttr::ConditionalPaints) != 0;
@@ -220,9 +220,9 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, co
 		} else if (strokeType == PaintType::Color) {
 			const uint32_t abgr = attrs->m_StrokePaint.m_ColorABGR;
 			if (parentStrokeType != PaintType::Color || parentAttrs->m_StrokePaint.m_ColorABGR != abgr) {
-				char hexColor[32];
-				colorToHexString(hexColor, 32, abgr);
-				writer.out() << " stroke=\"" << hexColor << "\"";
+				writer.out() << " stroke=\"";
+				colorToHex(writer, abgr);
+				writer.out() << "\"";
 			}
 		}
 
@@ -266,9 +266,9 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, co
 		} else if (fillType == PaintType::Color) {
 			const uint32_t abgr = attrs->m_FillPaint.m_ColorABGR;
 			if (parentFillType != PaintType::Color || parentAttrs->m_FillPaint.m_ColorABGR != abgr) {
-				char hexColor[32];
-				colorToHexString(hexColor, 32, abgr);
-				writer.out() << " fill=\"" << hexColor << "\"";
+				writer.out() << " fill=\"";
+				colorToHex(writer, abgr);
+				writer.out() << "\"";
 			}
 		}
 
