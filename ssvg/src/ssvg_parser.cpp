@@ -42,7 +42,7 @@ struct ParserState
 {
 	const char* m_XMLString;
 	const char* m_Ptr;
-	uint32_t m_Flags;
+	ImageLoadFlags::Type m_Flags;
 };
 
 struct CSSColor
@@ -594,7 +594,7 @@ bool parseTransform(const std::string_view& str, float* transform)
 
 } // namespace
 
-bool pathFromString(Path* path, const std::string_view& str, uint32_t flags)
+bool pathFromString(Path* path, const std::string_view& str, ImageLoadFlags::Type flags)
 {
 	const char* ptr = str.data();
 	const char* end = strend(str);

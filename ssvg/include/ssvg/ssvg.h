@@ -200,7 +200,8 @@ struct Paint
 
 struct AttribFlags
 {
-	enum Enum : uint32_t
+	using Type = uint32_t;
+	enum Enum : Type
 	{
 		None                    = 0,
 		StrokePaintInherit      = 1 << 0,
@@ -232,7 +233,7 @@ struct ShapeAttributes
 	float m_FillOpacity;
 	float m_FontSize;
 	float m_Opacity;
-	uint32_t m_Flags;
+	AttribFlags::Type m_Flags;
 	LineJoin::Enum m_StrokeLineJoin;
 	LineCap::Enum m_StrokeLineCap;
 	FillRule::Enum m_FillRule;
@@ -280,7 +281,8 @@ struct Image
 
 struct ImageLoadFlags
 {
-	enum Enum : uint32_t
+	using Type = uint32_t;
+	enum Enum : Type
 	{
 		None                   	    = 0,
 		ConvertPolygonsToPaths      = 1 << 0,
@@ -295,7 +297,7 @@ struct ImageLoadFlags
 void initLib();
 void shutdownLib();
 
-Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* baseAttrs);
+Image* imageLoad(const char* xmlStr, ImageLoadFlags::Type flags, const ShapeAttributes* baseAttrs);
 bool imageSave(const Image* img, std::ostream& out);
 Image* imageCreate(const ShapeAttributes* baseAttrs);
 void imageDestroy(Image* img);
@@ -324,7 +326,7 @@ PathCmd* pathAllocCommands(Path* path, uint32_t n);
 PathCmd* pathInsertCommands(Path* path, uint32_t at, uint32_t n);
 void pathShrinkToFit(Path* path);
 void pathFree(Path* path);
-bool pathFromString(Path* path, const std::string_view& str, uint32_t flags);
+bool pathFromString(Path* path, const std::string_view& str, ImageLoadFlags::Type flags);
 uint32_t pathMoveTo(Path* path, float x, float y);
 uint32_t pathLineTo(Path* path, float x, float y);
 uint32_t pathCubicTo(Path* path, float x1, float y1, float x2, float y2, float x, float y);

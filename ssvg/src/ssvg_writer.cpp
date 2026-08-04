@@ -15,7 +15,8 @@ namespace {
 
 struct SaveAttr
 {
-	enum Enum : uint32_t
+	using Type = uint32_t;
+	enum Enum : Type
 	{
 		None        = 0,
 		ID          = 1 << 0,
@@ -185,7 +186,7 @@ bool colorToHex(StreamWriter& writer, uint32_t abgr)
 	return writer.write("#%02X%02X%02X", r, g, b);
 }
 
-bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, const ShapeAttributes* parentAttrs, uint32_t flags)
+bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, const ShapeAttributes* parentAttrs, SaveAttr::Type flags)
 {
 	const bool conditionalPaints = (flags & SaveAttr::ConditionalPaints) != 0;
 
