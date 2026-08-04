@@ -354,12 +354,17 @@ void shapeFree(Shape* shape);
 bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs = true);
 void shapeUpdateBounds(Shape* shape);
 
+// A transformation is an array float[TRANSFORM_ARRAY_SZ]
 void transformIdentity(float* transform);
 void transformTranslation(float* transform, float x, float y);
-void transformMultiply(float* a, const float* b);
+void transformMultiply(float* trasnform_a, const float* transform_b);
 void transformTranslate(float* transform, float x, float y);
 void transformPoint(const float* transform, const float* localPos, float* globalPos);
 void transformBoundingRect(const float* transform, const float* localRect, float* globalRect);
+
+void shapeSetTransform(Shape* shape, const float* transform);
+void shapeSetIdentityTransform(Shape* shape);
+void shapeApplyTransform(Shape* shape, const float* transform);
 
 } // namespace ssvg
 

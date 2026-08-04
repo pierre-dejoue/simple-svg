@@ -45,13 +45,18 @@ void shapeAttrsFree(ShapeAttributes* attrs);
 
 void transformIdentity(float* transform)
 {
-	stdutils::memset<float>(transform, TRANSFORM_ARRAY_SZ, 0, sizeof(float) * TRANSFORM_ARRAY_SZ);
+	assert(transform);
 	transform[0] = 1.0f;
+	transform[1] = 0.0f;
+	transform[2] = 0.0f;
 	transform[3] = 1.0f;
+	transform[4] = 0.0f;
+	transform[5] = 0.0f;
 }
 
 void transformTranslation(float* transform, float x, float y)
 {
+	assert(transform);
 	transform[0] = 1.0f;
 	transform[1] = 0.0f;
 	transform[2] = 0.0f;
@@ -61,8 +66,12 @@ void transformTranslation(float* transform, float x, float y)
 }
 
 // a = a * b;
-void transformMultiply(float* a, const float* b)
+void transformMultiply(float* transform_a, const float* transform_b)
 {
+	assert(transform_a);
+	assert(transform_b);
+	float* a = transform_a;
+	const float* b = transform_b;
 	float res[6];
 	res[0] = a[0] * b[0] + a[2] * b[1];
 	res[1] = a[1] * b[0] + a[3] * b[1];
@@ -75,6 +84,7 @@ void transformMultiply(float* a, const float* b)
 
 void transformTranslate(float* transform, float x, float y)
 {
+	assert(transform);
 	float tmp[6];
 	transformTranslation(&tmp[0], x, y);
 	transformMultiply(transform, tmp);
@@ -82,6 +92,7 @@ void transformTranslate(float* transform, float x, float y)
 
 void transformPoint(const float* transform, const float* localPos, float* globalPos)
 {
+	assert(transform);
 	const float x = localPos[0];
 	const float y = localPos[1];
 	globalPos[0] = transform[0] * x + transform[2] * y + transform[4];
@@ -90,6 +101,7 @@ void transformPoint(const float* transform, const float* localPos, float* global
 
 void transformBoundingRect(const float* transform, const float* localRect, float* globalRect)
 {
+	assert(transform);
 	float transformedRect[4];
 	transformPoint(transform, &localRect[0], &transformedRect[0]);
 	transformPoint(transform, &localRect[2], &transformedRect[2]);
@@ -98,6 +110,28 @@ void transformBoundingRect(const float* transform, const float* localRect, float
 	globalRect[1] = stdutils::min<float>(transformedRect[1], transformedRect[3]);
 	globalRect[2] = stdutils::max<float>(transformedRect[0], transformedRect[2]);
 	globalRect[3] = stdutils::max<float>(transformedRect[1], transformedRect[3]);
+}
+
+void shapeSetTransform(Shape* shape, const float* transform)
+{
+	assert(shape);
+	assert(shape->m_Attrs);
+	assert(transform);
+	stdutils::memcpy<float>(&shape->m_Attrs->m_Transform[0], TRANSFORM_ARRAY_SZ, transform, sizeof(float) * TRANSFORM_ARRAY_SZ);
+}
+
+void shapeSetIdentityTransform(Shape* shape)
+{
+	assert(shape);
+	assert(shape->m_Attrs);
+	transformIdentity(&shape->m_Attrs->m_Transform[0]);
+}
+
+void shapeApplyTransform(Shape* shape, const float* transform)
+{
+	assert(shape);
+	assert(shape->m_Attrs);
+	transformMultiply(&shape->m_Attrs->m_Transform[0], transform);
 }
 
 namespace {

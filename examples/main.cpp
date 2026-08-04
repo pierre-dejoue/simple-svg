@@ -153,7 +153,7 @@ bool testBuilder(const char* filepath)
 		uint32_t groupID = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs, nullptr, 0);
 
 		float groupTransform[6] = { 1.0f, 0.0f, 0.0f, 1.0f, 400.0f, 0.0f };
-		stdutils::memcpy<float>(&imgShapeList->m_Shapes[groupID].m_Attrs->m_Transform[0], ssvg::TRANSFORM_ARRAY_SZ, &groupTransform[0], sizeof(float) * 6);
+		ssvg::shapeSetTransform(&imgShapeList->m_Shapes[groupID], &groupTransform[0]);
 
 		ssvg::ShapeList* groupShapeList = &imgShapeList->m_Shapes[groupID].m_ShapeList;
 		uint32_t rectID = ssvg::shapeListAddRect(groupShapeList, &defaultAttrs, 100.0f, 100.0f, 200.0f, 200.0f, 0.0f, 0.0f);
@@ -176,7 +176,7 @@ bool testBuilder(const char* filepath)
 
 		// Transform the group
 		float groupTransform[6] = { 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 400.0f };
-		stdutils::memcpy<float>(&imgShapeList->m_Shapes[groupID].m_Attrs->m_Transform[0], ssvg::TRANSFORM_ARRAY_SZ, &groupTransform[0], sizeof(float) * 6);
+		ssvg::shapeSetTransform(&imgShapeList->m_Shapes[groupID], &groupTransform[0]);
 	}
 
 	const bool save_success = saveImage(filepath, img);
