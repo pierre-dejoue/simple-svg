@@ -302,9 +302,9 @@ ShapeAttributes defaultShapeAttributes();
 
 // Image allocated by imageLoad and imageCreate *must* be freed with imageFree
 Image* imageLoad(const char* xmlStr, ImageLoadFlags::Type flags, const ShapeAttributes* baseAttrs);
-bool imageSave(const Image* img, std::ostream& out);
 Image* imageCreate(const ShapeAttributes* baseAttrs);
 void imageFree(Image* img);
+bool imageSave(const Image* img, std::ostream& out);
 
 // ShapeList allocated by shapeListCreate *must* be freed with shapeListFree
 ShapeList* shapeListCreate();
@@ -315,14 +315,16 @@ void shapeListReserve(ShapeList* shapeList, uint32_t capacity);
 void shapeListShrinkToFit(ShapeList* shapeList);
 void shapeListClear(ShapeList* shapeList);
 uint32_t shapeListAddShape(ShapeList* shapeList, const Shape* shape);
-uint32_t shapeListAddGroup(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const Shape* children, uint32_t numChildren);
+uint32_t shapeListAddGroup(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const ShapeList* sourceShapeList = nullptr);
+uint32_t shapeListAddGroupWithShapes(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const Shape* children, uint32_t numChildren);
 uint32_t shapeListAddRect(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, float w, float h, float rx, float ry);
 uint32_t shapeListAddCircle(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, float r);
 uint32_t shapeListAddEllipse(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, float rx, float ry);
 uint32_t shapeListAddLine(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x1, float y1, float x2, float y2);
 uint32_t shapeListAddPolyline(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const float* coords, uint32_t numPoints);
 uint32_t shapeListAddPolygon(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const float* coords, uint32_t numPoints);
-uint32_t shapeListAddPath(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const PathCmd* pathCommands, uint32_t commands);
+uint32_t shapeListAddPath(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const Path* sourcePath = nullptr);
+uint32_t shapeListAddPathCommands(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const PathCmd* pathCommands, uint32_t commands);
 uint32_t shapeListAddText(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, TextAnchor::Enum anchor, const char* text);
 uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeID);
 uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeID);
@@ -351,11 +353,15 @@ void pointListClear(PointList* ptList);
 bool pointListFromString(PointList* ptList, const std::string_view& str);
 void pointListCalcBounds(const PointList* ptList, float* bounds);
 
-std::string_view shapeAttrsGetID(const ShapeAttributes* attrs);
+void textClear(Text* text);
 
-void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& id);
-void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& fontFamily);
-void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& c);
+std::string_view shapeAttrsGetID(const ShapeAttributes* attrs);
+std::string_view shapeAttrsGetFontFamily(const ShapeAttributes* attrs);
+std::string_view shapeAttrsGetClass(const ShapeAttributes* attrs);
+
+void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& value);
+void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& value);
+void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value);
 
 void shapeClear(Shape* shape);
 bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs = true);

@@ -135,7 +135,7 @@ bool testBuilder(const char* filepath)
 		uint32_t circleID = ssvg::shapeListAddCircle(imgShapeList, &defaultAttrs, 200.0f, 200.0f, 80.0f);
 
 		// Path
-		uint32_t pathID = ssvg::shapeListAddPath(imgShapeList, &defaultAttrs, nullptr, 0);
+		uint32_t pathID = ssvg::shapeListAddPath(imgShapeList, &defaultAttrs);
 		ssvg::Path* path = &imgShapeList->m_Shapes[pathID].m_Path;
 		ssvg::pathMoveTo(path, 0.0f, 0.0f);
 		ssvg::pathLineTo(path, 10.0f, 10.0f);
@@ -148,7 +148,7 @@ bool testBuilder(const char* filepath)
 
 	// Add shapes to a group
 	{
-		uint32_t groupID = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs, nullptr, 0);
+		uint32_t groupID = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs);
 
 		float groupTransform[6] = { 1.0f, 0.0f, 0.0f, 1.0f, 400.0f, 0.0f };
 		ssvg::shapeSetTransform(&imgShapeList->m_Shapes[groupID], &groupTransform[0]);
@@ -165,8 +165,8 @@ bool testBuilder(const char* filepath)
 		uint32_t rectID = ssvg::shapeListAddRect(tempShapeList, &defaultAttrs, 100.0f, 100.0f, 200.0f, 200.0f, 0.0f, 0.0f);
 		uint32_t circleID = ssvg::shapeListAddCircle(tempShapeList, &defaultAttrs, 200.0f, 200.0f, 80.0f);
 
-		// Add a new group using the shapes from the temp shape list
-		uint32_t groupID = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs, tempShapeList->m_Shapes, tempShapeList->m_NumShapes);
+		// Add a new group using the shapes from the temp shape list (the shapes are copied)
+		uint32_t groupID = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs, tempShapeList);
 
 		// Free the temp shape list
 		ssvg::shapeListFree(tempShapeList);

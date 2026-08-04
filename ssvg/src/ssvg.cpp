@@ -137,6 +137,7 @@ namespace {
 void resetShapeAttributes(ShapeAttributes* attrs)
 {
 	SSVG_CHECK(attrs, "Nullptr to ShapeAttributes");
+	if (!attrs) { return; }
 
 	stdutils::memset<ssvg::ShapeAttributes>(attrs, 0);
 	ssvg::transformIdentity(&attrs->m_Transform[0]);
@@ -160,7 +161,8 @@ bool shapeListIsReadOnly(ShapeList* shapeList)
 
 Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const ShapeAttributes* parentAttrs)
 {
-	assert(shapeList);
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return nullptr; }
 	SSVG_CHECK(!shapeListIsReadOnly(shapeList), "Trying to expand a read-only shape list?");
 	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Invalid capacity of a shape list (expand)");
 	if (shapeListIsReadOnly(shapeList)) {
@@ -192,7 +194,8 @@ Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const Sha
 
 void shapeListShrinkToFit(ShapeList* shapeList)
 {
-	assert(shapeList);
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return; }
 	SSVG_CHECK(!shapeListIsReadOnly(shapeList), "Trying to shrink a read-only shape list?");
 	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Invalid capacity of a shape list (shrink)");
 	if (shapeListIsReadOnly(shapeList)) {
@@ -212,12 +215,12 @@ void shapeListShrinkToFit(ShapeList* shapeList)
 
 void shapeListClear(ShapeList* shapeList)
 {
-	if (shapeList == nullptr) {
-		return;
-	}
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return; }
 	SSVG_CHECK(!shapeListIsReadOnly(shapeList), "Trying to free a read-only shape list?");
 	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Invalid capacity of a shape list (free)");
 	if (shapeListIsReadOnly(shapeList)) {
+		shapeList->m_Shapes = nullptr;
 		return;
 	}
 
@@ -235,12 +238,11 @@ void shapeListClear(ShapeList* shapeList)
 
 void shapeListReserve(ShapeList* shapeList, uint32_t capacity)
 {
-	assert(shapeList);
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return; }
 	SSVG_CHECK(!shapeListIsReadOnly(shapeList), "Trying to reserve memory for a read-only shape list?");
 	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Invalid capacity of a shape list (reserve)");
-	if (shapeListIsReadOnly(shapeList)) {
-		return;
-	}
+	if (shapeListIsReadOnly(shapeList)) { return; }
 
 	if (capacity > shapeList->m_Capacity) {
 		shapeList->m_Capacity = capacity;
@@ -250,7 +252,8 @@ void shapeListReserve(ShapeList* shapeList, uint32_t capacity)
 
 uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeID)
 {
-	assert(shapeList);
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return shapeID; }
 	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Out of bounds shape index");
 	if (shapeID == 0 || shapeList->m_NumShapes <= 1) {
 		return shapeID;
@@ -266,7 +269,8 @@ uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeID)
 
 uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeID)
 {
-	assert(shapeList);
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return shapeID; }
 	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Out of bounds shape index");
 	if (shapeID == shapeList->m_NumShapes - 1) {
 		return shapeID;
@@ -282,7 +286,8 @@ uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeID)
 
 void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeID)
 {
-	assert(shapeList);
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return; }
 	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Out of bounds shape index");
 
 	shapeClear(&shapeList->m_Shapes[shapeID]);
@@ -297,7 +302,11 @@ void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeID)
 
 void shapeListCalcBounds(ShapeList* shapeList, float* bounds)
 {
-	assert(shapeList);
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return; }
+	SSVG_CHECK(bounds, "Nullptr to bounds array");
+	if (!bounds) { return; ;}
+
 	const uint32_t numShapes = shapeList->m_NumShapes;
 	if (numShapes == 0) {
 		bounds[0] = bounds[1] = bounds[2] = bounds[3] = 0.0f;
@@ -410,6 +419,9 @@ void pathShrinkToFit(Path* path)
 
 void pathClear(Path* path)
 {
+	SSVG_CHECK(path, "Nullptr to Path");
+	if (!path) { return; }
+
 	std::free(path->m_Commands);
 	path->m_Commands = nullptr;
 	path->m_NumCommands = 0;
@@ -631,6 +643,9 @@ void pointListShrinkToFit(PointList* ptList)
 
 void pointListClear(PointList* ptList)
 {
+	SSVG_CHECK(ptList, "Nullptr to PointList");
+	if (!ptList) { return; }
+
 	std::free(ptList->m_Coords);
 	ptList->m_Coords = nullptr;
 	ptList->m_NumPoints = 0;
@@ -661,11 +676,36 @@ void pointListCalcBounds(const PointList* ptList, float* bounds)
 	}
 }
 
+void textClear(Text* text)
+{
+	SSVG_CHECK(text, "Nullptr to Text");
+	if (!text) { return; }
+
+	std::free(text->m_String);
+	stdutils::memset<Text>(text, 0);
+}
+
 std::string_view shapeAttrsGetID(const ShapeAttributes* attrs)
 {
-	uint32_t len = 0;
-	while (len < SSVG_CONFIG_ID_MAX_LEN && attrs->m_ID[len] != '\0') { len++; }
+	const uint32_t len = stdutils::strnlen(&attrs->m_ID[0], SSVG_CONFIG_ID_MAX_LEN);
 	return std::string_view(&attrs->m_ID[0], len);
+}
+
+std::string_view shapeAttrsGetFontFamily(const ShapeAttributes* attrs)
+{
+	const uint32_t len = stdutils::strnlen(&attrs->m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN);
+	return std::string_view(&attrs->m_FontFamily[0], len);
+}
+
+std::string_view shapeAttrsGetClass(const ShapeAttributes* attrs)
+{
+#if SSVG_CONFIG_CLASS_MAX_LEN
+	const uint32_t len = stdutils::strnlen(&attrs->m_Class[0], SSVG_CONFIG_CLASS_MAX_LEN);
+	return std::string_view(&attrs->m_Class[0], len);
+#else
+	UNUSED(attrs);
+	return std::string_view();
+#endif
 }
 
 void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& value)
@@ -840,6 +880,9 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 
 void shapeClear(Shape* shape)
 {
+	SSVG_CHECK(shape, "Nullptr to Shape");
+	if (!shape) { return; }
+
 	switch (shape->m_Type) {
 	case ShapeType::Group:
 		shapeListClear(&shape->m_ShapeList);
@@ -852,8 +895,7 @@ void shapeClear(Shape* shape)
 		pointListClear(&shape->m_PointList);
 		break;
 	case ShapeType::Text:
-		std::free(shape->m_Text.m_String);
-		shape->m_Text.m_String = nullptr;
+		textClear(&shape->m_Text);
 		break;
 	default:
 		break;

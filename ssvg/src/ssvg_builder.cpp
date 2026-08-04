@@ -30,7 +30,16 @@ uint32_t shapeListAddShape(ShapeList* shapeList, const Shape* shape)
 	return shapeList->m_NumShapes - 1;
 }
 
-uint32_t shapeListAddGroup(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const Shape* children, uint32_t numChildren)
+uint32_t shapeListAddGroup(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const ShapeList* sourceShapeList)
+{
+	return shapeListAddGroupWithShapes(
+		shapeList,
+		parentAttrs,
+		sourceShapeList ? sourceShapeList->m_Shapes    : nullptr,
+		sourceShapeList ? sourceShapeList->m_NumShapes : 0);
+}
+
+uint32_t shapeListAddGroupWithShapes(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const Shape* children, uint32_t numChildren)
 {
 	Shape* group = shapeListAllocShape(shapeList, ShapeType::Group, parentAttrs);
 	if (!group) {
@@ -157,7 +166,16 @@ uint32_t shapeListAddPolygon(ShapeList* shapeList, const ShapeAttributes* parent
 	return shapeList->m_NumShapes - 1;
 }
 
-uint32_t shapeListAddPath(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const PathCmd* commands, uint32_t numCommands)
+uint32_t shapeListAddPath(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const Path* sourcePath)
+{
+	return shapeListAddPathCommands(
+		shapeList,
+		parentAttrs,
+		sourcePath ? sourcePath->m_Commands    : nullptr,
+		sourcePath ? sourcePath->m_NumCommands : 0);
+}
+
+uint32_t shapeListAddPathCommands(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const PathCmd* commands, uint32_t numCommands)
 {
 	Shape* path = shapeListAllocShape(shapeList, ShapeType::Path, parentAttrs);
 	if (!path) {
