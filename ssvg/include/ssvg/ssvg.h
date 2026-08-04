@@ -303,8 +303,8 @@ bool imageSave(const Image* img, std::ostream& out);
 Image* imageCreate(const ShapeAttributes* baseAttrs);
 void imageDestroy(Image* img);
 
-bool shapeListIsReadOnly(ShapeList* shapeList);
 Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const ShapeAttributes* parentAttrs);
+void shapeListReserve(ShapeList* shapeList, uint32_t capacity);
 void shapeListShrinkToFit(ShapeList* shapeList);
 void shapeListFree(ShapeList* shapeList);
 uint32_t shapeListAddShape(ShapeList* shapeList, const Shape* shape);
@@ -325,6 +325,7 @@ void shapeListCalcBounds(ShapeList* shapeList, float* bounds);
 PathCmd* pathAllocCommand(Path* path, PathCmdType::Enum type);
 PathCmd* pathAllocCommands(Path* path, uint32_t n);
 PathCmd* pathInsertCommands(Path* path, uint32_t at, uint32_t n);
+void pathReserveCommands(Path* path, uint32_t capacity);
 void pathShrinkToFit(Path* path);
 void pathFree(Path* path);
 bool pathFromString(Path* path, const std::string_view& str, ImageLoadFlags::Type flags);

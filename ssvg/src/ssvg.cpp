@@ -100,16 +100,23 @@ void transformBoundingRect(const float* transform, const float* localRect, float
 	globalRect[3] = stdutils::max<float>(transformedRect[1], transformedRect[3]);
 }
 
-bool shapeListIsReadOnly(ShapeList* shapeList)
-{
-	// We may use a ShapeList as a temporary reference to another, in which case the ShapeList does not own the memory buffer
-	return shapeList->m_Shapes != nullptr && shapeList->m_Capacity == 0;
-}
+namespace {
+	bool shapeListIsReadOnly(ShapeList* shapeList)
+	{
+		assert(shapeList);
+		// We may use a ShapeList as a temporary reference to another, in which case the ShapeList does not own the memory buffer
+		return shapeList->m_Shapes != nullptr && shapeList->m_Capacity == 0;
+	}
+} // namespace
 
 Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const ShapeAttributes* parentAttrs)
 {
+	assert(shapeList);
 	SSVG_CHECK(!shapeListIsReadOnly(shapeList), "Trying to expand a read-only shape list?");
 	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Invalid capacity of a shape list (expand)");
+	if (shapeListIsReadOnly(shapeList)) {
+		return nullptr;
+	}
 
 	if (shapeList->m_NumShapes + 1 > shapeList->m_Capacity) {
 		const uint32_t oldCapacity = shapeList->m_Capacity;
@@ -119,13 +126,12 @@ Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const Sha
 		if (newCapacity > oldCapacity) {
 			shapeList->m_Capacity = newCapacity;
 			shapeList->m_Shapes = (Shape*)std::realloc(shapeList->m_Shapes, sizeof(Shape) * newCapacity);
-			const uint32_t capacityIncr = newCapacity - oldCapacity;
-			stdutils::memset<Shape>(&shapeList->m_Shapes[oldCapacity], capacityIncr, 0, sizeof(Shape) * capacityIncr);
 		}
 	}
 	assert(shapeList->m_NumShapes + 1 <= shapeList->m_Capacity);
 
 	Shape* shape = &shapeList->m_Shapes[shapeList->m_NumShapes++];
+	stdutils::memset<Shape>(shape, 0);
 	shape->m_Type = type;
 	shape->m_Attrs = shapeAttrsAlloc();
 	stdutils::memset<ShapeAttributes>(shape->m_Attrs, 0);
@@ -143,8 +149,12 @@ Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const Sha
 
 void shapeListShrinkToFit(ShapeList* shapeList)
 {
+	assert(shapeList);
 	SSVG_CHECK(!shapeListIsReadOnly(shapeList), "Trying to shrink a read-only shape list?");
 	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Invalid capacity of a shape list (shrink)");
+	if (shapeListIsReadOnly(shapeList)) {
+		return;
+	}
 
 	if (shapeList->m_NumShapes == 0 && shapeList->m_Capacity > 0) {
 		std::free(shapeList->m_Shapes);
@@ -159,8 +169,14 @@ void shapeListShrinkToFit(ShapeList* shapeList)
 
 void shapeListFree(ShapeList* shapeList)
 {
+	if (shapeList == nullptr) {
+		return;
+	}
 	SSVG_CHECK(!shapeListIsReadOnly(shapeList), "Trying to free a read-only shape list?");
 	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Invalid capacity of a shape list (free)");
+	if (shapeListIsReadOnly(shapeList)) {
+		return;
+	}
 
 	const uint32_t n = shapeList->m_NumShapes;
 	for (uint32_t i = 0; i < n; ++i) {
@@ -176,23 +192,22 @@ void shapeListFree(ShapeList* shapeList)
 
 void shapeListReserve(ShapeList* shapeList, uint32_t capacity)
 {
+	assert(shapeList);
 	SSVG_CHECK(!shapeListIsReadOnly(shapeList), "Trying to reserve memory for a read-only shape list?");
 	SSVG_CHECK(shapeList->m_NumShapes <= shapeList->m_Capacity, "Invalid capacity of a shape list (reserve)");
-
-	const uint32_t oldCapacity = shapeList->m_Capacity;
-	if (capacity <= oldCapacity) {
+	if (shapeListIsReadOnly(shapeList)) {
 		return;
 	}
 
-	shapeList->m_Shapes = (Shape*)std::realloc(shapeList->m_Shapes, sizeof(Shape) * capacity);
-	shapeList->m_Capacity = capacity;
-	assert(oldCapacity <= capacity);
-	stdutils::memset<Shape>(&shapeList->m_Shapes[oldCapacity], capacity - oldCapacity, 0, sizeof(Shape) * (capacity - oldCapacity));
-	assert(shapeList->m_NumShapes <= shapeList->m_Capacity);
+	if (capacity > shapeList->m_Capacity) {
+		shapeList->m_Capacity = capacity;
+		shapeList->m_Shapes = (Shape*)std::realloc(shapeList->m_Shapes, sizeof(Shape) * capacity);
+	}
 }
 
 uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeID)
 {
+	assert(shapeList);
 	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Out of bounds shape index");
 	if (shapeID == 0 || shapeList->m_NumShapes <= 1) {
 		return shapeID;
@@ -208,6 +223,7 @@ uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeID)
 
 uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeID)
 {
+	assert(shapeList);
 	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Out of bounds shape index");
 	if (shapeID == shapeList->m_NumShapes - 1) {
 		return shapeID;
@@ -223,6 +239,7 @@ uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeID)
 
 void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeID)
 {
+	assert(shapeList);
 	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Out of bounds shape index");
 
 	shapeFree(&shapeList->m_Shapes[shapeID]);
@@ -237,6 +254,7 @@ void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeID)
 
 void shapeListCalcBounds(ShapeList* shapeList, float* bounds)
 {
+	assert(shapeList);
 	const uint32_t numShapes = shapeList->m_NumShapes;
 	if (numShapes == 0) {
 		bounds[0] = bounds[1] = bounds[2] = bounds[3] = 0.0f;
@@ -323,6 +341,14 @@ PathCmd* pathInsertCommands(Path* path, uint32_t at, uint32_t n)
 
 	assert(firstCmd->m_Type == PathCmdType::Nop);
 	return firstCmd;
+}
+
+void pathReserveCommands(Path* path, uint32_t capacity)
+{
+	if (capacity > path->m_Capacity) {
+		path->m_Capacity = capacity;
+		path->m_Commands = (PathCmd*)std::realloc(path->m_Commands, sizeof(PathCmd) * capacity);
+	}
 }
 
 void pathShrinkToFit(Path* path)
