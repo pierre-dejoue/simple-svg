@@ -1376,7 +1376,7 @@ bool parseShape_PointList(ParserState* parser, Shape* shape)
 							pathAllocCommand(path, PathCmdType::ClosePath);
 						}
 
-						pointListFree(&ptList);
+						pointListClear(&ptList);
 						shape->m_Type = ShapeType::Path;
 					} else {
 						stdutils::memcpy<PointList>(&shape->m_PointList, &ptList);
@@ -1568,7 +1568,7 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 	}
 
 	if (err) {
-		imageDestroy(img);
+		imageFree(img);
 		img = nullptr;
 	}
 

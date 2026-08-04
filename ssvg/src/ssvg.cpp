@@ -210,7 +210,7 @@ void shapeListShrinkToFit(ShapeList* shapeList)
 	assert(shapeList->m_NumShapes == shapeList->m_Capacity);
 }
 
-void shapeListFree(ShapeList* shapeList)
+void shapeListClear(ShapeList* shapeList)
 {
 	if (shapeList == nullptr) {
 		return;
@@ -224,7 +224,7 @@ void shapeListFree(ShapeList* shapeList)
 	const uint32_t n = shapeList->m_NumShapes;
 	for (uint32_t i = 0; i < n; ++i) {
 		Shape* shape = &shapeList->m_Shapes[i];
-		shapeFree(shape);
+		shapeClear(shape);
 	}
 
 	std::free(shapeList->m_Shapes);
@@ -285,7 +285,7 @@ void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeID)
 	assert(shapeList);
 	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Out of bounds shape index");
 
-	shapeFree(&shapeList->m_Shapes[shapeID]);
+	shapeClear(&shapeList->m_Shapes[shapeID]);
 
 	const uint32_t numShapesToMove = shapeList->m_NumShapes > (1 + shapeID) ? (shapeList->m_NumShapes - 1 - shapeID) : 0;
 	if (numShapesToMove > 0) {
@@ -408,7 +408,7 @@ void pathShrinkToFit(Path* path)
 	assert(path->m_NumCommands == path->m_Capacity);
 }
 
-void pathFree(Path* path)
+void pathClear(Path* path)
 {
 	std::free(path->m_Commands);
 	path->m_Commands = nullptr;
@@ -629,7 +629,7 @@ void pointListShrinkToFit(PointList* ptList)
 	assert(ptList->m_NumPoints == ptList->m_Capacity);
 }
 
-void pointListFree(PointList* ptList)
+void pointListClear(PointList* ptList)
 {
 	std::free(ptList->m_Coords);
 	ptList->m_Coords = nullptr;
@@ -707,10 +707,30 @@ Image* imageCreate(const ShapeAttributes* baseAttrs)
 	return img;
 }
 
-void imageDestroy(Image* img)
+void imageFree(Image* img)
 {
-	shapeListFree(&img->m_ShapeList);
+	if (!img) {
+		return;
+	}
+	shapeListClear(&img->m_ShapeList);
 	std::free(img);
+}
+
+ShapeList* shapeListCreate()
+{
+	ShapeList* newList = (ShapeList*)std::malloc(sizeof(ShapeList));
+	stdutils::memset<ShapeList>(newList, 0);
+
+	return newList;
+}
+
+void shapeListFree(ShapeList* shapeList)
+{
+	if (!shapeList) {
+		return;
+	}
+	shapeListClear(shapeList);
+	std::free(shapeList);
 }
 
 void initLib()
@@ -818,18 +838,18 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 	return true;
 }
 
-void shapeFree(Shape* shape)
+void shapeClear(Shape* shape)
 {
 	switch (shape->m_Type) {
 	case ShapeType::Group:
-		shapeListFree(&shape->m_ShapeList);
+		shapeListClear(&shape->m_ShapeList);
 		break;
 	case ShapeType::Path:
-		pathFree(&shape->m_Path);
+		pathClear(&shape->m_Path);
 		break;
 	case ShapeType::Polygon:
 	case ShapeType::Polyline:
-		pointListFree(&shape->m_PointList);
+		pointListClear(&shape->m_PointList);
 		break;
 	case ShapeType::Text:
 		std::free(shape->m_Text.m_String);

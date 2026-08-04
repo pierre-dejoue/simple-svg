@@ -300,15 +300,20 @@ void shutdownLib();
 
 ShapeAttributes defaultShapeAttributes();
 
+// Image allocated by imageLoad and imageCreate *must* be freed with imageFree
 Image* imageLoad(const char* xmlStr, ImageLoadFlags::Type flags, const ShapeAttributes* baseAttrs);
 bool imageSave(const Image* img, std::ostream& out);
 Image* imageCreate(const ShapeAttributes* baseAttrs);
-void imageDestroy(Image* img);
+void imageFree(Image* img);
+
+// ShapeList allocated by shapeListCreate *must* be freed with shapeListFree
+ShapeList* shapeListCreate();
+void shapeListFree(ShapeList* shapeList);
 
 Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const ShapeAttributes* parentAttrs);
 void shapeListReserve(ShapeList* shapeList, uint32_t capacity);
 void shapeListShrinkToFit(ShapeList* shapeList);
-void shapeListFree(ShapeList* shapeList);
+void shapeListClear(ShapeList* shapeList);
 uint32_t shapeListAddShape(ShapeList* shapeList, const Shape* shape);
 uint32_t shapeListAddGroup(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const Shape* children, uint32_t numChildren);
 uint32_t shapeListAddRect(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, float w, float h, float rx, float ry);
@@ -329,7 +334,7 @@ PathCmd* pathAllocCommands(Path* path, uint32_t n);
 PathCmd* pathInsertCommands(Path* path, uint32_t at, uint32_t n);
 void pathReserveCommands(Path* path, uint32_t capacity);
 void pathShrinkToFit(Path* path);
-void pathFree(Path* path);
+void pathClear(Path* path);
 bool pathFromString(Path* path, const std::string_view& str, ImageLoadFlags::Type flags);
 uint32_t pathMoveTo(Path* path, float x, float y);
 uint32_t pathLineTo(Path* path, float x, float y);
@@ -342,7 +347,7 @@ void pathConvertCommand(Path* path, uint32_t cmdID, PathCmdType::Enum newType);
 
 float* pointListAllocPoints(PointList* ptList, uint32_t n);
 void pointListShrinkToFit(PointList* ptList);
-void pointListFree(PointList* ptList);
+void pointListClear(PointList* ptList);
 bool pointListFromString(PointList* ptList, const std::string_view& str);
 void pointListCalcBounds(const PointList* ptList, float* bounds);
 
@@ -352,7 +357,7 @@ void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& id);
 void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& fontFamily);
 void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& c);
 
-void shapeFree(Shape* shape);
+void shapeClear(Shape* shape);
 bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs = true);
 void shapeUpdateBounds(Shape* shape);
 

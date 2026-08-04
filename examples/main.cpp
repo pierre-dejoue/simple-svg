@@ -98,7 +98,7 @@ bool testParser(const char* filename, const ssvg::ShapeAttributes* baseAttrs)
 
 	printf("- Root element contains %d shapes\n", img->m_ShapeList.m_NumShapes);
 
-	ssvg::imageDestroy(img);
+	ssvg::imageFree(img);
 
 	return true;
 }
@@ -161,16 +161,15 @@ bool testBuilder(const char* filepath)
 	// Add shapes to a group (alt version)
 	{
 		// Create a temporary shape list
-		ssvg::ShapeList tempShapeList;
-		stdutils::memset<ssvg::ShapeList>(&tempShapeList, 0);
-		uint32_t rectID = ssvg::shapeListAddRect(&tempShapeList, &defaultAttrs, 100.0f, 100.0f, 200.0f, 200.0f, 0.0f, 0.0f);
-		uint32_t circleID = ssvg::shapeListAddCircle(&tempShapeList, &defaultAttrs, 200.0f, 200.0f, 80.0f);
+		ssvg::ShapeList* tempShapeList = ssvg::shapeListCreate();
+		uint32_t rectID = ssvg::shapeListAddRect(tempShapeList, &defaultAttrs, 100.0f, 100.0f, 200.0f, 200.0f, 0.0f, 0.0f);
+		uint32_t circleID = ssvg::shapeListAddCircle(tempShapeList, &defaultAttrs, 200.0f, 200.0f, 80.0f);
 
 		// Add a new group using the shapes from the temp shape list
-		uint32_t groupID = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs, tempShapeList.m_Shapes, tempShapeList.m_NumShapes);
+		uint32_t groupID = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs, tempShapeList->m_Shapes, tempShapeList->m_NumShapes);
 
 		// Free the temp shape list
-		ssvg::shapeListFree(&tempShapeList);
+		ssvg::shapeListFree(tempShapeList);
 
 		// Transform the group
 		float groupTransform[6] = { 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 400.0f };
@@ -179,7 +178,7 @@ bool testBuilder(const char* filepath)
 
 	const bool save_success = saveImage(filepath, img);
 
-	ssvg::imageDestroy(img);
+	ssvg::imageFree(img);
 
 	return save_success;
 }
@@ -203,7 +202,7 @@ bool testRoundTrip(const char* input_filepath, const char* output_filepath, cons
 
 	const bool save_success = saveImage(output_filepath, img);
 
-	ssvg::imageDestroy(img);
+	ssvg::imageFree(img);
 
 	return save_success;
 }
