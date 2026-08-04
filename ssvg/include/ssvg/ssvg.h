@@ -298,6 +298,8 @@ struct ImageLoadFlags
 void initLib();
 void shutdownLib();
 
+ShapeAttributes defaultShapeAttributes();
+
 Image* imageLoad(const char* xmlStr, ImageLoadFlags::Type flags, const ShapeAttributes* baseAttrs);
 bool imageSave(const Image* img, std::ostream& out);
 Image* imageCreate(const ShapeAttributes* baseAttrs);

@@ -105,8 +105,7 @@ bool testParser(const char* filename, const ssvg::ShapeAttributes* baseAttrs)
 
 bool testBuilder(const char* filepath)
 {
-	ssvg::ShapeAttributes defaultAttrs;
-	stdutils::memset<ssvg::ShapeAttributes>(&defaultAttrs, 0);
+	ssvg::ShapeAttributes defaultAttrs = ssvg::defaultShapeAttributes();
 	defaultAttrs.m_StrokeWidth = 1.0f;
 	defaultAttrs.m_StrokeMiterLimit = 4.0f;
 	defaultAttrs.m_StrokeOpacity = 1.0f;
@@ -117,14 +116,13 @@ bool testBuilder(const char* filepath)
 	defaultAttrs.m_FillOpacity = 1.0f;
 	defaultAttrs.m_FillPaint.m_Type = ssvg::PaintType::None;
 	defaultAttrs.m_FillPaint.m_ColorABGR = 0x00000000;
-	ssvg::transformIdentity(&defaultAttrs.m_Transform[0]);
 
-	ssvg::ShapeAttributes textAttrs;
-	stdutils::memcpy<ssvg::ShapeAttributes>(&textAttrs, &defaultAttrs);
+	ssvg::ShapeAttributes textAttrs = defaultAttrs;
 	ssvg::shapeAttrsSetFontFamily(&textAttrs, "sans-serif");
 	textAttrs.m_FontSize = 20.0f;
 	textAttrs.m_FillPaint.m_Type = ssvg::PaintType::Color;
 	textAttrs.m_FillPaint.m_ColorABGR = 0xFF000000;
+	textAttrs.m_FillRule = ssvg::FillRule::EvenOdd;
 	textAttrs.m_StrokePaint.m_Type = ssvg::PaintType::None;
 
 	ssvg::Image* img = ssvg::imageCreate(&textAttrs);
@@ -233,19 +231,15 @@ int main(int argc, char* argv[])
 		output_test_file.clear();
 	}
 
-	ssvg::ShapeAttributes defaultAttrs;
-	stdutils::memset<ssvg::ShapeAttributes>(&defaultAttrs, 0);
+	ssvg::ShapeAttributes defaultAttrs = ssvg::defaultShapeAttributes();
 	defaultAttrs.m_StrokeWidth = 1.0f;
 	defaultAttrs.m_StrokeMiterLimit = 4.0f;
 	defaultAttrs.m_StrokeOpacity = 1.0f;
 	defaultAttrs.m_StrokePaint.m_Type = ssvg::PaintType::None;
 	defaultAttrs.m_StrokePaint.m_ColorABGR = 0x00000000;
-	defaultAttrs.m_StrokeLineCap = ssvg::LineCap::Butt;
-	defaultAttrs.m_StrokeLineJoin = ssvg::LineJoin::Miter;
 	defaultAttrs.m_FillOpacity = 1.0f;
 	defaultAttrs.m_FillPaint.m_Type = ssvg::PaintType::None;
 	defaultAttrs.m_FillPaint.m_ColorABGR = 0x00000000;
-	ssvg::transformIdentity(&defaultAttrs.m_Transform[0]);
 	shapeAttrsSetFontFamily(&defaultAttrs, "sans-serif");
 
 	ssvg::initLib();

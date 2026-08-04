@@ -24,8 +24,6 @@ int strlenint(std::string_view str)
 	return static_cast<int>(str.length());
 }
 
-} // namespace
-
 struct ShapeAttributeFreeListNode
 {
 	ShapeAttributeFreeListNode* m_Next;
@@ -36,11 +34,11 @@ struct ShapeAttributeFreeListNode
 	uint32_t m_NumFree;
 };
 
-namespace {
 ShapeAttributeFreeListNode* s_ShapeAttrFreeListHead = nullptr;
 
 ShapeAttributes* shapeAttrsAlloc();
 void shapeAttrsFree(ShapeAttributes* attrs);
+
 } // namespace
 
 void transformIdentity(float* transform)
@@ -135,12 +133,29 @@ void shapeApplyTransform(Shape* shape, const float* transform)
 }
 
 namespace {
-	bool shapeListIsReadOnly(ShapeList* shapeList)
-	{
-		assert(shapeList);
-		// We may use a ShapeList as a temporary reference to another, in which case the ShapeList does not own the memory buffer
-		return shapeList->m_Shapes != nullptr && shapeList->m_Capacity == 0;
-	}
+
+void resetShapeAttributes(ShapeAttributes* attrs)
+{
+	SSVG_CHECK(attrs, "Nullptr to ShapeAttributes");
+
+	stdutils::memset<ssvg::ShapeAttributes>(attrs, 0);
+	ssvg::transformIdentity(&attrs->m_Transform[0]);
+
+	assert(attrs->m_Parent == nullptr);
+	assert(stdutils::strnlen(&attrs->m_ID[0]) == 0);
+    assert(stdutils::strnlen(&attrs->m_FontFamily[0]) == 0);
+	#if SSVG_CONFIG_CLASS_MAX_LEN
+		assert(stdutils::strnlen(&attrs->m_Class[0]) == 0);
+	#endif
+}
+
+bool shapeListIsReadOnly(ShapeList* shapeList)
+{
+	assert(shapeList);
+	// We may use a ShapeList as a temporary reference to another, in which case the ShapeList does not own the memory buffer
+	return shapeList->m_Shapes != nullptr && shapeList->m_Capacity == 0;
+}
+
 } // namespace
 
 Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const ShapeAttributes* parentAttrs)
@@ -168,15 +183,9 @@ Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const Sha
 	stdutils::memset<Shape>(shape, 0);
 	shape->m_Type = type;
 	shape->m_Attrs = shapeAttrsAlloc();
-	stdutils::memset<ShapeAttributes>(shape->m_Attrs, 0);
 	shape->m_Attrs->m_Parent = parentAttrs;
-	shape->m_Attrs->m_Flags = AttribFlags::InheritAll;
+	shape->m_Attrs->m_Flags = parentAttrs ? AttribFlags::InheritAll : AttribFlags::None;
 	shape->m_Attrs->m_Opacity = 1.0f;
-	shape->m_Attrs->m_ID[0] = '\0';
-#if SSVG_CONFIG_CLASS_MAX_LEN
-	shape->m_Attrs->m_Class[0] = '\0';
-#endif
-	transformIdentity(&shape->m_Attrs->m_Transform[0]);
 
 	return shape;
 }
@@ -723,6 +732,13 @@ void shutdownLib()
 	s_ShapeAttrFreeListHead = nullptr;
 }
 
+ShapeAttributes defaultShapeAttributes()
+{
+	ssvg::ShapeAttributes defaultAttrs;
+	resetShapeAttributes(&defaultAttrs);
+	return defaultAttrs;
+}
+
 bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 {
 	const ShapeType::Enum type = src->m_Type;
@@ -885,9 +901,9 @@ ShapeAttributes* shapeAttrsAllocFromNode(ShapeAttributeFreeListNode* node)
 
 	ShapeAttributes* attrs = &node->m_Attrs[node->m_FirstFreeID];
 	const uint32_t nextFreeID = *(uint32_t*)attrs;
-
 	node->m_FirstFreeID = nextFreeID;
 	node->m_NumFree--;
+	resetShapeAttributes(attrs);
 
 	return attrs;
 }
@@ -930,6 +946,10 @@ ShapeAttributes* shapeAttrsAlloc()
 
 void shapeAttrsFree(ShapeAttributes* attrs)
 {
+	if (!attrs) {
+		return;
+	}
+
 	// Find the free list node attrs belongs to
 	ShapeAttributeFreeListNode* node = s_ShapeAttrFreeListHead;
 	while (node) {
