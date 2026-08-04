@@ -23,8 +23,6 @@
 
 namespace ssvg {
 
-struct Shape;
-
 struct BaseProfile
 {
 	enum Enum : uint32_t
@@ -114,13 +112,6 @@ struct FillRule
 		NonZero = 0,
 		EvenOdd = 1
 	};
-};
-
-struct ShapeList
-{
-	Shape* m_Shapes;
-	uint32_t m_NumShapes;
-	uint32_t m_Capacity;
 };
 
 struct Rect
@@ -248,6 +239,15 @@ struct ShapeAttributes
 inline constexpr uint32_t BOUNDING_RECT_ARRAY_SZ = 4;
 inline constexpr uint32_t VIEW_BOX_ARRAY_SZ = 4;
 
+struct Shape;
+
+struct ShapeList
+{
+	Shape* m_Shapes;
+	uint32_t m_NumShapes;
+	uint32_t m_Capacity;
+};
+
 struct Shape
 {
 	ShapeType::Enum m_Type;
@@ -358,7 +358,6 @@ void textClear(Text* text);
 std::string_view shapeAttrsGetID(const ShapeAttributes* attrs);
 std::string_view shapeAttrsGetFontFamily(const ShapeAttributes* attrs);
 std::string_view shapeAttrsGetClass(const ShapeAttributes* attrs);
-
 void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& value);
 void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& value);
 void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value);
