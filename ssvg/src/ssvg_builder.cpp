@@ -275,6 +275,10 @@ uint32_t pathClose(Path* path)
 inline void pathCmdGetEndPoint(const PathCmd* cmd, float* p)
 {
 	switch (cmd->m_Type) {
+	case PathCmdType::Nop:
+		SSVG_CHECK(false, "The Nop path command does not have a endpoint");
+		p[0] = p[1] = 0.0f;
+		break;
 	case PathCmdType::MoveTo:
 	case PathCmdType::LineTo:
 		p[0] = cmd->m_Data[0];
@@ -320,6 +324,9 @@ void pathConvertCommand(Path* path, uint32_t cmdID, PathCmdType::Enum newType)
 	PathCmd* prevCmd = &path->m_Commands[cmdID - 1];
 
 	switch (oldType) {
+	case PathCmdType::Nop:
+		// Nothing to do
+		break;
 	case PathCmdType::MoveTo:
 		if (newType == PathCmdType::LineTo) {
 			cmd->m_Type = PathCmdType::LineTo;

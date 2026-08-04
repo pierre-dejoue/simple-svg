@@ -164,7 +164,7 @@ template <typename... Args>
 bool StreamWriter::write(const char* format, Args&&... args)
 {
 	assert(m_str);
-    const int written = std::snprintf(m_str, m_str_len, format, std::forward<Args>(args)...);
+	const int written = std::snprintf(m_str, m_str_len, format, std::forward<Args>(args)...);
 	const bool success = 0 <= written && written < m_str_len;
 	if (success) { m_out << m_str; }
 	return success;
@@ -330,6 +330,9 @@ bool writePath(StreamWriter& writer, const Path* path)
 		const PathCmdType::Enum type = cmd->m_Type;
 		const float* data = &cmd->m_Data[0];
 		switch (type) {
+		case PathCmdType::Nop:
+			// Nothing to write
+			break;
 		case PathCmdType::MoveTo:
 			writer.write("M%g %g", data[0], data[1]);
 			break;

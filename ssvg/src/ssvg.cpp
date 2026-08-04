@@ -263,22 +263,36 @@ void shapeListCalcBounds(ShapeList* shapeList, float* bounds)
 	}
 }
 
-PathCmd* pathAllocCommands(Path* path, uint32_t n)
+namespace {
+
+// Allocate uninitialized commands. The caller is responsible for proper initialization
+// Return the index of the first new command in path->m_Commands[]
+uint32_t pathAllocRawUninitializedCommands(Path* path, uint32_t n)
 {
 	if (path->m_NumCommands + n > path->m_Capacity) {
 		const uint32_t oldCapacity = path->m_Capacity;
 		const uint32_t newCapacity = stdutils::max<uint32_t>(oldCapacity ? (oldCapacity * 3) / 2 : 4, oldCapacity + n);
 		assert(newCapacity >= oldCapacity);
-		const uint32_t capacityIncr = newCapacity - oldCapacity;
 		path->m_Capacity = newCapacity;
 		path->m_Commands = (PathCmd*)std::realloc(path->m_Commands, sizeof(PathCmd) * newCapacity);
-		stdutils::memset<PathCmd>(&path->m_Commands[oldCapacity], capacityIncr, 0, sizeof(PathCmd) * capacityIncr);
 	}
-	assert(path->m_NumCommands + n <= path->m_Capacity);
-
-	PathCmd* firstCmd = &path->m_Commands[path->m_NumCommands];
+	uint32_t firstCmdAt = path->m_NumCommands;
 	path->m_NumCommands += n;
+	assert(path->m_NumCommands <= path->m_Capacity);
 
+	return firstCmdAt;
+}
+
+} // namespace
+
+PathCmd* pathAllocCommands(Path* path, uint32_t n)
+{
+	const uint32_t firstCmdAt = pathAllocRawUninitializedCommands(path, n);
+	PathCmd* firstCmd = &path->m_Commands[firstCmdAt];
+	const uint32_t remainingCapacity = firstCmdAt < path->m_Capacity ? path->m_Capacity - firstCmdAt : 0;
+	stdutils::memset<PathCmd>(firstCmd, remainingCapacity, 0, sizeof(PathCmd) * n);
+
+	assert(firstCmd->m_Type == PathCmdType::Nop);
 	return firstCmd;
 }
 
@@ -300,12 +314,15 @@ PathCmd* pathInsertCommands(Path* path, uint32_t at, uint32_t n)
 		return pathAllocCommands(path, n);
 	}
 
-	const uint32_t numOldCommands = path->m_NumCommands;
-	assert(at <= numOldCommands);
-	const uint32_t commandsIncr = numOldCommands - at;
-	pathAllocCommands(path, n);
-	stdutils::memmove<PathCmd>(&path->m_Commands[at + n], commandsIncr, &path->m_Commands[at], sizeof(PathCmd) * commandsIncr);
-	return &path->m_Commands[at];
+	assert(at <= path->m_NumCommands);
+	const uint32_t nbOfMovedCommands = path->m_NumCommands - at;
+	IGNORE_RETURN pathAllocRawUninitializedCommands(path, n);
+	stdutils::memmove<PathCmd>(&path->m_Commands[at + n], nbOfMovedCommands, &path->m_Commands[at], sizeof(PathCmd) * nbOfMovedCommands);
+	stdutils::memset<PathCmd>(&path->m_Commands[at], n, 0, sizeof(PathCmd) * n);
+	PathCmd* firstCmd = &path->m_Commands[at];
+
+	assert(firstCmd->m_Type == PathCmdType::Nop);
+	return firstCmd;
 }
 
 void pathShrinkToFit(Path* path)
@@ -499,6 +516,7 @@ void pathCalcBounds(const Path* path, float* bounds)
 			last[0] = cmd->m_Data[5];
 			last[1] = cmd->m_Data[6];
 			break;
+		case PathCmdType::Nop:
 		case PathCmdType::ClosePath:
 			// Noop
 			break;

@@ -57,6 +57,7 @@ struct PathCmdType
 {
 	enum Enum : uint32_t
 	{
+		Nop = 0,     // No operation
 		MoveTo,      // Data: [0] = x, [1] = y
 		LineTo,      // Data: [0] = x, [1] = y
 		CubicTo,     // Data: [0] = x1, [1] = y1, [2] = x2, [3] = y2, [4] = x, [5] = y
