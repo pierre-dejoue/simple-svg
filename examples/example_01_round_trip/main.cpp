@@ -19,7 +19,7 @@ std::string build_output_round_trip_filename(const std::string& input_svg_file)
 	return input_path.parent_path().append(output_filename).string();
 }
 
-bool testParser(const char* filepath, const ssvg::ShapeAttributes& baseAttrs)
+bool testParser(const char* filepath)
 {
 	printf("Loading \"%s\"...\n", filepath);
 
@@ -32,7 +32,7 @@ bool testParser(const char* filepath, const ssvg::ShapeAttributes& baseAttrs)
 	ssvg::Image* img = nullptr;
 	{
 		constexpr uint32_t svg_parser_flags = 0;
-		img = ssvg::imageLoad(svgFileBuffer.data(), svg_parser_flags, &baseAttrs);
+		img = ssvg::imageLoad(svgFileBuffer.data(), svg_parser_flags);
 	}
 
 	if (!img) {
@@ -47,7 +47,7 @@ bool testParser(const char* filepath, const ssvg::ShapeAttributes& baseAttrs)
 	return true;
 }
 
-bool testRoundTrip(const char* input_filepath, const char* output_filepath, const ssvg::ShapeAttributes& baseAttrs)
+bool testRoundTrip(const char* input_filepath, const char* output_filepath)
 {
 	printf("Converting \"%s\" to \"%s\"...\n", input_filepath, output_filepath);
 
@@ -58,7 +58,7 @@ bool testRoundTrip(const char* input_filepath, const char* output_filepath, cons
 	}
 
 	constexpr uint32_t svg_parser_flags = 0;
-	ssvg::Image* img = ssvg::imageLoad(svgFileBuffer.data(), svg_parser_flags, &baseAttrs);
+	ssvg::Image* img = ssvg::imageLoad(svgFileBuffer.data(), svg_parser_flags);
 	if (!img) {
 		printf("(x) Failed to parse svg file.\n");
 		return false;
@@ -84,25 +84,11 @@ int main(int argc, char* argv[])
 	const std::string input_svg_file = argv[1];
 	const std::string output_round_trip_file = build_output_round_trip_filename(input_svg_file);
 
-	const ssvg::ShapeAttributes defaultAttrs = []() {
-	    auto attrs = ssvg::defaultShapeAttributes();
-		attrs.m_StrokeWidth = 1.0f;
-		attrs.m_StrokeMiterLimit = 4.0f;
-		attrs.m_StrokeOpacity = 1.0f;
-		attrs.m_StrokePaint.m_Type = ssvg::PaintType::None;
-		attrs.m_StrokePaint.m_ColorABGR = 0x00000000;
-		attrs.m_FillOpacity = 1.0f;
-		attrs.m_FillPaint.m_Type = ssvg::PaintType::None;
-		attrs.m_FillPaint.m_ColorABGR = 0x00000000;
-		shapeAttrsSetFontFamily(&attrs, "sans-serif");
-		return attrs;
-	}();
-
 	ssvg::initLib();
 
-	testParser(input_svg_file.c_str(), defaultAttrs);
-	testRoundTrip(input_svg_file.c_str(), output_round_trip_file.c_str(), defaultAttrs);
-	testParser(output_round_trip_file.c_str(), defaultAttrs);
+	testParser(input_svg_file.c_str());
+	testRoundTrip(input_svg_file.c_str(), output_round_trip_file.c_str());
+	testParser(output_round_trip_file.c_str());
 
 	ssvg::shutdownLib();
 

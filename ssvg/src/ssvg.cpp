@@ -142,9 +142,23 @@ void resetShapeAttributes(ShapeAttributes* attrs)
 	stdutils::memset<ssvg::ShapeAttributes>(attrs, 0);
 	ssvg::transformIdentity(&attrs->m_Transform[0]);
 
+	// Default according to the SVG standards
+	attrs->m_Opacity = 1.0f;
+	attrs->m_StrokeWidth = 1.0f;
+	attrs->m_StrokeMiterLimit = 4.0f;
+	attrs->m_StrokeOpacity = 1.0f;
+	attrs->m_StrokePaint.m_Type = ssvg::PaintType::None;
+	attrs->m_StrokePaint.m_ColorABGR = 0xFF000000;          // Black
+	attrs->m_StrokeLineCap = ssvg::LineCap::Butt;
+	attrs->m_StrokeLineJoin = ssvg::LineJoin::Miter;
+	attrs->m_FillOpacity = 1.0f;
+	attrs->m_FillPaint.m_Type = ssvg::PaintType::Color;
+	attrs->m_FillPaint.m_ColorABGR = 0xFF000000;            // Black
+	attrs->m_FillRule = FillRule::NonZero;
+
 	assert(attrs->m_Parent == nullptr);
 	assert(stdutils::strnlen(&attrs->m_ID[0]) == 0);
-    assert(stdutils::strnlen(&attrs->m_FontFamily[0]) == 0);
+	assert(stdutils::strnlen(&attrs->m_FontFamily[0]) == 0);
 	#if SSVG_CONFIG_CLASS_MAX_LEN
 		assert(stdutils::strnlen(&attrs->m_Class[0]) == 0);
 	#endif
@@ -187,7 +201,6 @@ Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const Sha
 	shape->m_Attrs = shapeAttrsAlloc();
 	shape->m_Attrs->m_Parent = parentAttrs;
 	shape->m_Attrs->m_Flags = parentAttrs ? AttribFlags::InheritAll : AttribFlags::None;
-	shape->m_Attrs->m_Opacity = 1.0f;
 
 	return shape;
 }
@@ -739,10 +752,15 @@ void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value)
 
 Image* imageCreate(const ShapeAttributes* baseAttrs)
 {
-	assert(baseAttrs);
 	Image* img = (Image*)std::malloc(sizeof(Image));
 	stdutils::memset<Image>(img, 0);
-	stdutils::memcpy<ShapeAttributes>(&img->m_BaseAttrs, baseAttrs);
+	if (baseAttrs) {
+		img->m_BaseAttrs = *baseAttrs;
+		img->m_BaseAttrs.m_Parent = nullptr;
+	} else {
+		img->m_BaseAttrs = defaultShapeAttributes();
+		assert(img->m_BaseAttrs.m_Parent == nullptr);
+	}
 
 	return img;
 }

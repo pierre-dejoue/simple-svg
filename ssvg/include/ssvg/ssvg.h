@@ -301,8 +301,8 @@ void shutdownLib();
 ShapeAttributes defaultShapeAttributes();
 
 // Image allocated by imageLoad and imageCreate *must* be freed with imageFree
-Image* imageLoad(const char* xmlStr, ImageLoadFlags::Type flags, const ShapeAttributes* baseAttrs);
-Image* imageCreate(const ShapeAttributes* baseAttrs);
+Image* imageLoad(const char* xmlStr, ImageLoadFlags::Type flags, const ShapeAttributes* baseAttrs = nullptr);
+Image* imageCreate(const ShapeAttributes* baseAttrs = nullptr);
 void imageFree(Image* img);
 bool imageSave(const Image* img, std::ostream& out);
 

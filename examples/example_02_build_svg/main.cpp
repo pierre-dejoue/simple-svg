@@ -10,19 +10,19 @@
 
 constexpr const char* OUTPUT_TEST_FILE = "./test_output.svg";
 
-bool testBuilder(const char* filepath, const ssvg::ShapeAttributes& defaultAttrs)
+bool testBuilder(const char* filepath)
 {
 	printf("Building \"%s\"\n", filepath);
 
-	ssvg::ShapeAttributes textAttrs = defaultAttrs;
-	ssvg::shapeAttrsSetFontFamily(&textAttrs, "sans-serif");
-	textAttrs.m_FontSize = 20.0f;
-	textAttrs.m_FillPaint.m_Type = ssvg::PaintType::Color;
-	textAttrs.m_FillPaint.m_ColorABGR = 0xFF000000;
-	textAttrs.m_FillRule = ssvg::FillRule::EvenOdd;
-	textAttrs.m_StrokePaint.m_Type = ssvg::PaintType::None;
+	ssvg::ShapeAttributes defaultAttrs = ssvg::defaultShapeAttributes();
+	ssvg::ShapeAttributes textAttrs = []() {
+		auto attrs = ssvg::defaultShapeAttributes();
+		ssvg::shapeAttrsSetFontFamily(&attrs, "sans-serif");
+		attrs.m_FontSize = 20.0f;
+		return attrs;
+	}();
 
-	ssvg::Image* img = ssvg::imageCreate(&textAttrs);
+	ssvg::Image* img = ssvg::imageCreate();
 
 	ssvg::ShapeList* imgShapeList = &img->m_ShapeList;
 
@@ -83,26 +83,11 @@ bool testBuilder(const char* filepath, const ssvg::ShapeAttributes& defaultAttrs
 
 int main()
 {
-	std::string output_test_file = OUTPUT_TEST_FILE;
-
-	ssvg::ShapeAttributes defaultAttrs = []() {
-		auto attrs = ssvg::defaultShapeAttributes();
-		attrs.m_StrokeWidth = 1.0f;
-		attrs.m_StrokeMiterLimit = 4.0f;
-		attrs.m_StrokeOpacity = 1.0f;
-		attrs.m_StrokePaint.m_Type = ssvg::PaintType::Color;
-		attrs.m_StrokePaint.m_ColorABGR = 0xFF000000; // Black
-		attrs.m_StrokeLineCap = ssvg::LineCap::Butt;
-		attrs.m_StrokeLineJoin = ssvg::LineJoin::Miter;
-		attrs.m_FillOpacity = 1.0f;
-		attrs.m_FillPaint.m_Type = ssvg::PaintType::None;
-		attrs.m_FillPaint.m_ColorABGR = 0x00000000;
-		return attrs;
-	}();
+	const char* output_test_file = OUTPUT_TEST_FILE;
 
 	ssvg::initLib();
 
-	testBuilder(output_test_file.c_str(), defaultAttrs);
+	testBuilder(output_test_file);
 
 	ssvg::shutdownLib();
 

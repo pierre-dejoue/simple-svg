@@ -11,18 +11,18 @@
 
 namespace fs = std::filesystem;
 
-std::vector<char> loadFile(const char* filepath)
+std::vector<char> loadFile(const std::filesystem::path& filepath)
 {
 	std::error_code err_code;
-	const auto sz = fs::file_size(fs::path(filepath), err_code);
+	const auto sz = fs::file_size(filepath, err_code);
 	if (err_code) {
 		std::stringstream oss;
-		oss << "std::filesystem::file_size(" << fs::path(filepath).filename() << "): error_code=" << err_code;
+		oss << "std::filesystem::file_size(" << filepath.filename() << "): error_code=" << err_code;
 		printf("%s\n", oss.str().c_str());
 		return std::vector<char>();
 	}
 	try {
-		std::basic_ifstream<char> istream(fs::path(filepath), std::ios_base::in);
+		std::basic_ifstream<char> istream(filepath, std::ios_base::in);
 		if (istream.is_open()) {
 			std::vector<char> buf(sz + 1, 0u);
 			istream.read(buf.data(), static_cast<std::streamsize>(sz));
@@ -40,12 +40,12 @@ std::vector<char> loadFile(const char* filepath)
 	return std::vector<char>();
 }
 
-bool saveImage(const char* filepath, ssvg::Image* img)
+bool saveImage(const std::filesystem::path& filepath, ssvg::Image* img)
 {
 	assert(img);
 	bool success = false;
 	try {
-		std::basic_ofstream<char> ostream(fs::path(filepath), std::ios_base::out);
+		std::basic_ofstream<char> ostream(filepath, std::ios_base::out);
 		if (ostream.is_open()) {
 			success = ssvg::imageSave(img, ostream);
 		} else {

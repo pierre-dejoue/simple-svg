@@ -2,8 +2,9 @@
 
 #include <ssvg/ssvg.h>
 
+#include <filesystem>
 #include <vector>
 
-std::vector<char> loadFile(const char* filepath);
+std::vector<char> loadFile(const std::filesystem::path& filepath);
 
-bool saveImage(const char* filepath, ssvg::Image* img);
+bool saveImage(const std::filesystem::path& filepath, ssvg::Image* img);
