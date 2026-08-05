@@ -13,24 +13,16 @@ namespace fs = std::filesystem;
 
 bool testParser(const char* filepath)
 {
-	printf("Loading \"%s\"...\n", filepath);
-
-	const auto svgFileBuffer = loadFile(filepath);
-	if (svgFileBuffer.empty()) {
-		printf("(x) Failed to load svg file.\n");
-		return false;
-	}
-
-	ssvg::Image* img = ssvg::imageLoad(svgFileBuffer.data(), ssvg::ImageLoadFlags::None);
+	ssvg::Image* img = loadSVGImage(fs::path(filepath));
 
 	const bool load_success = (img != nullptr);
 	if (!load_success) {
-		printf("(x) Failed to parse svg file.\n");
 		return false;
 	}
+
 	printf("- Root element contains %d shapes\n",  ssvg::imageGetNumShapes(img));
 
-	ssvg::imageFree(img);
+	closeSVGImage(img);
 
 	return load_success;
 }
@@ -39,21 +31,14 @@ bool testRoundTrip(const char* input_filepath, const char* output_filepath)
 {
 	printf("Converting \"%s\" to \"%s\"...\n", input_filepath, output_filepath);
 
-	const auto svgFileBuffer = loadFile(input_filepath);
-	if (svgFileBuffer.empty()) {
-		printf("(x) Failed to load svg file.\n");
-		return false;
-	}
-
-	ssvg::Image* img = ssvg::imageLoad(svgFileBuffer.data(), ssvg::ImageLoadFlags::None);
+	ssvg::Image* img = loadSVGImage(fs::path(input_filepath));
 	if (!img) {
-		printf("(x) Failed to parse svg file.\n");
 		return false;
 	}
 
 	const bool save_success = saveImage(output_filepath, img);
 
-	ssvg::imageFree(img);
+	closeSVGImage(img);
 
 	return save_success;
 }

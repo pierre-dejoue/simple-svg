@@ -11,7 +11,7 @@
 
 namespace fs = std::filesystem;
 
-std::vector<char> loadFile(const std::filesystem::path& filepath)
+std::vector<char> loadFile(const fs::path& filepath)
 {
 	std::error_code err_code;
 	const auto sz = fs::file_size(filepath, err_code);
@@ -40,7 +40,32 @@ std::vector<char> loadFile(const std::filesystem::path& filepath)
 	return std::vector<char>();
 }
 
-bool saveImage(const std::filesystem::path& filepath, const ssvg::Image* img)
+// Image loaded with loadSVGImage *must* be freed with closeSVGImage
+ssvg::Image* loadSVGImage(const fs::path& filepath)
+{
+	printf("Loading \"%s\"...\n", filepath.string().c_str());
+
+	const auto svgFileBuffer = loadFile(filepath);
+	if (svgFileBuffer.empty()) {
+		printf("(x) Failed to load svg file.\n");
+		return nullptr;
+	}
+
+	ssvg::Image* img = ssvg::imageLoad(svgFileBuffer.data(), ssvg::ImageLoadFlags::None);
+	if (!img) {
+		printf("(x) Failed to parse the svg file.\n");
+		return nullptr;
+	}
+
+	return img;
+}
+
+void closeSVGImage(ssvg::Image* img)
+{
+	ssvg::imageFree(img);
+}
+
+bool saveImage(const fs::path& filepath, const ssvg::Image* img)
 {
 	assert(img);
 	bool success = false;

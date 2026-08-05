@@ -45,10 +45,25 @@ target_link_libraries(example_02_build_svg
     stdutils
 )
 
+#
+# example_03_enumerate_shapes
+#
+add_executable(example_03_enumerate_shapes
+    example_03_enumerate_shapes/main.cpp
+)
+
+target_link_libraries(example_03_enumerate_shapes
+    PRIVATE
+    examples_common
+    ssvg
+    stdutils
+)
+
 if(MSVC)
     # Correct definition of macro __cplusplus on Visual Studio
     # https://devblogs.microsoft.com/cppblog/msvc-now-correctly-reports-__cplusplus/
-    target_compile_options(examples_common       PRIVATE "/Zc:__cplusplus")
-    target_compile_options(example_01_round_trip PRIVATE "/Zc:__cplusplus")
-    target_compile_options(example_02_build_svg  PRIVATE "/Zc:__cplusplus")
+    target_compile_options(examples_common             PRIVATE "/Zc:__cplusplus")
+    target_compile_options(example_01_round_trip       PRIVATE "/Zc:__cplusplus")
+    target_compile_options(example_02_build_svg        PRIVATE "/Zc:__cplusplus")
+    target_compile_options(example_03_enumerate_shapes PRIVATE "/Zc:__cplusplus")
 endif()

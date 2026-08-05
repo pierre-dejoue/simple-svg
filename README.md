@@ -51,3 +51,19 @@ Build a SVG image programmatically and save it to file `test_output.svg`
 $ ./example_02_build_svg.exe
 Building "./test_output.svg"
 ```
+
+### [Example_03_enumerate_shapes](examples/example_03_enumerate_shapes/main.cpp)
+
+Parse a SVG file, count the shapes and total number of points/nodes in the image.
+
+```
+$ ./example_03_enumerate_shapes.exe ./examples/svg_files/Ghostscript_Tiger.svg
+Loading "./examples/svg_files/Ghostscript_Tiger.svg"...
+Nb of groups: 241
+Basic shapes:
+    rect: 0; circle: 0; ellipse: 0
+    line: 0; polyline: 0 (0 points); polygon: 0 (0 points);
+Paths:
+    closed: 227 (2246 nodes)
+    open:   13 (37 nodes)
+```
