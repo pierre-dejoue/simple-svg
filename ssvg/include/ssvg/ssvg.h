@@ -38,7 +38,7 @@ struct ShapeType
 {
 	enum Enum : uint32_t
 	{
-		Group = 0,
+		Group = 0,   // The default Shape is an empty group
 		Rect,
 		Circle,
 		Ellipse,
@@ -362,6 +362,7 @@ void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& value);
 void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& value);
 void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value);
 
+bool shapeIsEmptyGroup(Shape* shape);
 void shapeClear(Shape* shape);
 bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs = true);
 void shapeUpdateBounds(Shape* shape);

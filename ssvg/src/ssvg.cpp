@@ -173,6 +173,16 @@ bool shapeListIsReadOnly(ShapeList* shapeList)
 
 } // namespace
 
+// This is the state of a newly created shape. An empty group with no resources allocated.
+bool shapeIsEmptyGroup(Shape* shape)
+{
+	SSVG_CHECK(shape, "Nullptr to Shape");
+	return shape
+	    && shape->m_Type == ShapeType::Group
+	    && shape->m_ShapeList.m_Shapes == nullptr
+	    && shape->m_ShapeList.m_NumShapes == 0;
+}
+
 Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const ShapeAttributes* parentAttrs)
 {
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
@@ -183,6 +193,7 @@ Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const Sha
 		return nullptr;
 	}
 
+	// Ensure capacity to allocate at least one new Shape
 	if (shapeList->m_NumShapes + 1 > shapeList->m_Capacity) {
 		const uint32_t oldCapacity = shapeList->m_Capacity;
 
@@ -193,16 +204,22 @@ Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const Sha
 			shapeList->m_Shapes = (Shape*)std::realloc(shapeList->m_Shapes, sizeof(Shape) * newCapacity);
 		}
 	}
-	assert(shapeList->m_NumShapes + 1 <= shapeList->m_Capacity);
 
-	Shape* shape = &shapeList->m_Shapes[shapeList->m_NumShapes++];
-	stdutils::memset<Shape>(shape, 0);
-	shape->m_Type = type;
-	shape->m_Attrs = shapeAttrsAlloc();
-	shape->m_Attrs->m_Parent = parentAttrs;
-	shape->m_Attrs->m_Flags = parentAttrs ? AttribFlags::InheritAll : AttribFlags::None;
+	// Allocate the new shape
+	Shape* newShape = [shapeList]() {
+		assert(shapeList->m_NumShapes + 1 <= shapeList->m_Capacity);
+		Shape* shape = &shapeList->m_Shapes[shapeList->m_NumShapes++];
+		stdutils::memset<Shape>(shape, 0);
+		assert(shapeIsEmptyGroup(shape));
+		return shape;
+	}();
 
-	return shape;
+	newShape->m_Type = type;
+	newShape->m_Attrs = shapeAttrsAlloc();
+	newShape->m_Attrs->m_Parent = parentAttrs;
+	newShape->m_Attrs->m_Flags = parentAttrs ? AttribFlags::InheritAll : AttribFlags::None;
+
+	return newShape;
 }
 
 void shapeListShrinkToFit(ShapeList* shapeList)
@@ -916,8 +933,12 @@ void shapeClear(Shape* shape)
 	default:
 		break;
 	}
+	stdutils::memset<Shape>(shape, 0);
 
 	shapeAttrsFree(shape->m_Attrs);
+	shape->m_Attrs = nullptr;
+
+	assert(shapeIsEmptyGroup(shape));
 }
 
 void shapeUpdateBounds(Shape* shape)
@@ -1024,9 +1045,7 @@ ShapeAttributes* shapeAttrsAlloc()
 
 void shapeAttrsFree(ShapeAttributes* attrs)
 {
-	if (!attrs) {
-		return;
-	}
+	if (!attrs) { return; }
 
 	// Find the free list node attrs belongs to
 	ShapeAttributeFreeListNode* node = s_ShapeAttrFreeListHead;

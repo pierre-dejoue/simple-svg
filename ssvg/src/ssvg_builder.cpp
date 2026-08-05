@@ -12,8 +12,18 @@
 namespace ssvg {
 
 namespace {
+
 void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArgs, const float* lastPt);
+
+Shape temporaryShape()
+{
+	Shape tmpShape;
+	stdutils::memset<Shape>(&tmpShape, 0);
+	assert(shapeIsEmptyGroup(&tmpShape));
+	return tmpShape;
 }
+
+} // namespace
 
 uint32_t shapeListAddShape(ShapeList* shapeList, const Shape* shape)
 {
@@ -48,8 +58,7 @@ uint32_t shapeListAddGroupWithShapes(ShapeList* shapeList, const ShapeAttributes
 
 	if (children && numChildren) {
 		// Create a temp group on the stack and use shapeCopy()
-		Shape tmpGroup;
-		stdutils::memset<Shape>(&tmpGroup, 0);
+		Shape tmpGroup = temporaryShape();
 		tmpGroup.m_Type = ShapeType::Group;
 		tmpGroup.m_ShapeList.m_Shapes = const_cast<Shape*>(children); // NOTE: Casting a const to not-const should be ok in this case since the tmpGroup is passed as const to shapeCopy().
 		tmpGroup.m_ShapeList.m_NumShapes = numChildren;
@@ -183,8 +192,7 @@ uint32_t shapeListAddPathCommands(ShapeList* shapeList, const ShapeAttributes* p
 	}
 
 	if (commands && numCommands) {
-		Shape tmpPath;
-		stdutils::memset<Shape>(&tmpPath, 0);
+		Shape tmpPath = temporaryShape();
 		tmpPath.m_Type = ShapeType::Path;
 		tmpPath.m_Path.m_Commands = (PathCmd*)commands;
 		tmpPath.m_Path.m_NumCommands = numCommands;
@@ -206,8 +214,7 @@ uint32_t shapeListAddText(ShapeList* shapeList, const ShapeAttributes* parentAtt
 	}
 
 	if (str) {
-		Shape tmpText;
-		stdutils::memset<Shape>(&tmpText, 0);
+		Shape tmpText = temporaryShape();
 		tmpText.m_Type = ShapeType::Text;
 		tmpText.m_Text.x = x;
 		tmpText.m_Text.y = y;
