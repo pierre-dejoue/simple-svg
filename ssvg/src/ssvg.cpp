@@ -836,28 +836,34 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 {
 	const ShapeType::Enum type = src->m_Type;
 
-	dst->m_Type = type;
+	if (type != dst->m_Type) {
+		SSVG_CHECK(shapeIsEmptyGroup(dst), "Cannot copy onto a Shape of a different type that is not cleared");
+		if (!shapeIsEmptyGroup(dst)) { return false; }
+		dst->m_Type = type;
+	}
+
 	stdutils::memcpy<float>(&dst->m_BoundingRect[0], BOUNDING_RECT_ARRAY_SZ, &src->m_BoundingRect[0], sizeof(float) * BOUNDING_RECT_ARRAY_SZ);
+
 	if (copyAttrs) {
 		stdutils::memcpy<ShapeAttributes>(dst->m_Attrs, src->m_Attrs);
 	}
 
 	switch (type) {
 	case ShapeType::Group:
-	{
-		const ShapeList* srcShapeList = &src->m_ShapeList;
-		const uint32_t numShapes = srcShapeList->m_NumShapes;
+		{
+			const ShapeList* srcShapeList = &src->m_ShapeList;
+			const uint32_t numShapes = srcShapeList->m_NumShapes;
 
-		ShapeList* dstShapeList = &dst->m_ShapeList;
-		shapeListReserve(dstShapeList, numShapes);
+			ShapeList* dstShapeList = &dst->m_ShapeList;
+			shapeListReserve(dstShapeList, dstShapeList->m_NumShapes + numShapes);
 
-		for (uint32_t i = 0; i < numShapes; ++i) {
-			const Shape* srcShape = &srcShapeList->m_Shapes[i];
-			Shape* dstShape = shapeListAllocShape(dstShapeList, srcShape->m_Type, nullptr);
-			shapeCopy(dstShape, srcShape);
+			for (uint32_t i = 0; i < numShapes; ++i) {
+				const Shape* srcShape = &srcShapeList->m_Shapes[i];
+				Shape* dstShape = shapeListAllocShape(dstShapeList, srcShape->m_Type, nullptr);
+				shapeCopy(dstShape, srcShape);
+			}
 		}
-	}
-	break;
+		break;
 	case ShapeType::Rect:
 		stdutils::memcpy<Rect>(&dst->m_Rect, &src->m_Rect);
 		break;
@@ -872,37 +878,36 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 		break;
 	case ShapeType::Polyline:
 	case ShapeType::Polygon:
-		stdutils::memcpy<float>(
-			pointListAllocPoints(&dst->m_PointList, src->m_PointList.m_NumPoints),
-			2 * dst->m_PointList.m_Capacity,
-			src->m_PointList.m_Coords,
-			sizeof(float) * 2 * src->m_PointList.m_NumPoints);
-		break;
+		{
+			const uint32_t nbOfNewCoords = src->m_PointList.m_NumPoints;
+			float* newPoints = pointListAllocPoints(&dst->m_PointList, nbOfNewCoords);
+			stdutils::memcpy<float>(newPoints, 2 * nbOfNewCoords, src->m_PointList.m_Coords, sizeof(float) * 2 * nbOfNewCoords);
+		}
+	    break;
 	case ShapeType::Path:
-	{
-		const Path* srcPath = &src->m_Path;
-		const uint32_t numCommands = srcPath->m_NumCommands;
-
-		Path* dstPath = &dst->m_Path;
-		PathCmd* dstCommands = pathAllocCommands(dstPath, numCommands);
-		stdutils::memcpy<PathCmd>(dstCommands, dstPath->m_Capacity, srcPath->m_Commands, sizeof(PathCmd) * numCommands);
-	}
-	break;
+		{
+			const Path* srcPath = &src->m_Path;
+			const uint32_t nbOfNewCommands = srcPath->m_NumCommands;
+			PathCmd* newCommands = pathAllocCommands(&dst->m_Path, nbOfNewCommands);
+			stdutils::memcpy<PathCmd>(newCommands, nbOfNewCommands, srcPath->m_Commands, sizeof(PathCmd) * nbOfNewCommands);
+		}
+		break;
 	case ShapeType::Text:
-	{
-		const Text* srcText = &src->m_Text;
-		Text* dstText = &dst->m_Text;
+		{
+			const Text* srcText = &src->m_Text;
+			Text* dstText = &dst->m_Text;
+			textClear(dstText);
 
-		dstText->x = srcText->x;
-		dstText->y = srcText->y;
-		dstText->m_Anchor = srcText->m_Anchor;
+			dstText->x = srcText->x;
+			dstText->y = srcText->y;
+			dstText->m_Anchor = srcText->m_Anchor;
 
-		const uint32_t len = stdutils::strnlen(srcText->m_String);
-		dstText->m_String = (char*)std::malloc(sizeof(char) * (len + 1));
-		stdutils::memcpy<char>(dstText->m_String, len, srcText->m_String, len);
-		dstText->m_String[len] = '\0';
-	}
-	break;
+			const uint32_t len = stdutils::strnlen(srcText->m_String);
+			dstText->m_String = (char*)std::malloc(sizeof(char) * (len + 1));
+			stdutils::memcpy<char>(dstText->m_String, len, srcText->m_String, len);
+			dstText->m_String[len] = '\0';
+		}
+		break;
 	default:
 		SSVG_CHECK(false, "Unknown shape type");
 		return false;
