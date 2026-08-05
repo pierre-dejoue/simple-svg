@@ -326,9 +326,9 @@ uint32_t shapeListAddPolygon(ShapeList* shapeList, const ShapeAttributes* parent
 uint32_t shapeListAddPath(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const Path* sourcePath = nullptr);
 uint32_t shapeListAddPathCommands(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const PathCmd* pathCommands, uint32_t commands);
 uint32_t shapeListAddText(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, TextAnchor::Enum anchor, const char* text);
-uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeID);
-uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeID);
-void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeID);
+uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeIndex);
+uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeIndex);
+void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeIndex);
 void shapeListCalcBounds(ShapeList* shapeList, float* bounds);
 
 PathCmd* pathAllocCommand(Path* path, PathCmdType::Enum type);
@@ -345,7 +345,8 @@ uint32_t pathQuadraticTo(Path* path, float x1, float y1, float x, float y);
 uint32_t pathArcTo(Path* path, float rx, float ry, float xAxisRotation, int largeArcFlag, int sweepFlag, float x, float y);
 uint32_t pathClose(Path* path);
 void pathCalcBounds(const Path* path, float* bounds);
-void pathConvertCommand(Path* path, uint32_t cmdID, PathCmdType::Enum newType);
+void pathConvertCommand(Path* path, uint32_t cmdIndex, PathCmdType::Enum newType);
+void pathClearCommand(Path* path, uint32_t cmdIndex);
 
 float* pointListAllocPoints(PointList* ptList, uint32_t n);
 void pointListShrinkToFit(PointList* ptList);

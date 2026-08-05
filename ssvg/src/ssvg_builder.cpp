@@ -13,7 +13,7 @@ namespace ssvg {
 
 namespace {
 
-void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArgs, const float* lastPt);
+void convertArcToBezier(Path* path, uint32_t cmdIndex, const float* arcToArgs, const float* lastPt);
 
 Shape temporaryShape()
 {
@@ -330,27 +330,28 @@ inline void pathCmdGetEndPoint(const PathCmd* cmd, float* p)
 	}
 }
 
-void pathConvertCommand(Path* path, uint32_t cmdID, PathCmdType::Enum newType)
+void pathConvertCommand(Path* path, uint32_t cmdIndex, PathCmdType::Enum newType)
 {
-	SSVG_CHECK(cmdID < path->m_NumCommands, "Out of bounds command index");
+	SSVG_CHECK(cmdIndex < path->m_NumCommands, "Out of bounds command index");
+	if (cmdIndex >= path->m_NumCommands) { return; }
 
-	if (cmdID == 0) {
-		SSVG_CHECK(newType == PathCmdType::MoveTo, "Cannot convert the first command to other than MoveTo");
+	if (cmdIndex == 0) {
+		SSVG_CHECK(newType == PathCmdType::MoveTo, "Cannot convert the first command to anything other than MoveTo");
 		return;
 	}
 
-	PathCmd* cmd = &path->m_Commands[cmdID];
+	PathCmd* cmd = &path->m_Commands[cmdIndex];
 	const PathCmdType::Enum oldType = cmd->m_Type;
 	if (oldType == newType) {
 		// No conversion required.
 		return;
 	}
 
-	PathCmd* prevCmd = &path->m_Commands[cmdID - 1];
+	PathCmd* prevCmd = &path->m_Commands[cmdIndex - 1];
 
 	switch (oldType) {
 	case PathCmdType::Nop:
-		// Nothing to do
+		SSVG_WARN(false, "Path command conversion not implemented yet.");
 		break;
 	case PathCmdType::MoveTo:
 		if (newType == PathCmdType::LineTo) {
@@ -438,7 +439,7 @@ void pathConvertCommand(Path* path, uint32_t cmdID, PathCmdType::Enum newType)
 			float last[2];
 			pathCmdGetEndPoint(prevCmd, &last[0]);
 
-			convertArcToBezier(path, cmdID, &cmd->m_Data[0], last);
+			convertArcToBezier(path, cmdIndex, &cmd->m_Data[0], last);
 		} else {
 			SSVG_WARN(false, "Path command conversion not implemented yet.");
 		}
@@ -449,6 +450,20 @@ void pathConvertCommand(Path* path, uint32_t cmdID, PathCmdType::Enum newType)
 	default:
 		SSVG_CHECK(false, "Unknown command type");
 	}
+}
+
+void pathClearCommand(Path* path, uint32_t cmdIndex)
+{
+	SSVG_CHECK(cmdIndex < path->m_NumCommands, "Out of bounds command index");
+	if (cmdIndex >= path->m_NumCommands) { return; }
+
+	if (cmdIndex == 0) {
+		SSVG_WARN(false, "Cannot clear the first command of a Path. It must be a MoveTo.");
+		return;
+	}
+
+	PathCmd* cmd = &path->m_Commands[cmdIndex];
+	cmd->m_Type = PathCmdType::Nop;
 }
 
 namespace {
@@ -463,7 +478,7 @@ float nsvg__vecang(float ux, float uy, float vx, float vy)
 }
 
 // nsvg__pathArcTo(NSVGparser* p, float* cpx, float* cpy, float* args, int rel)
-void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArgs, const float* lastPt)
+void convertArcToBezier(Path* path, uint32_t cmdIndex, const float* arcToArgs, const float* lastPt)
 {
 	// Ported from canvg (https://code.google.com/p/canvg/)
 	float rx = std::abs(arcToArgs[0]);                    // x radius
@@ -481,7 +496,7 @@ void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArgs, cons
 	float d = std::sqrt(dx * dx + dy * dy);
 	if (d < 1e-6f || rx < 1e-6f || ry < 1e-6f) {
 		// The arc degenerates to a line
-		PathCmd* cmd = &path->m_Commands[cmdID];
+		PathCmd* cmd = &path->m_Commands[cmdIndex];
 		cmd->m_Type = PathCmdType::LineTo;
 		cmd->m_Data[0] = x2;
 		cmd->m_Data[1] = y2;
@@ -562,10 +577,10 @@ void convertArcToBezier(Path* path, uint32_t cmdID, const float* arcToArgs, cons
 
 	PathCmd* nextCmd = nullptr;
 	if (ndivs > 1) {
-		PathCmd* newCommands = pathInsertCommands(path, cmdID + 1, ndivs - 1);
+		PathCmd* newCommands = pathInsertCommands(path, cmdIndex + 1, ndivs - 1);
 		nextCmd = newCommands - 1; // Replace existing command.
 	} else {
-		nextCmd = &path->m_Commands[cmdID];
+		nextCmd = &path->m_Commands[cmdIndex];
 	}
 
 	for (int i = 0; i <= ndivs; i++) {

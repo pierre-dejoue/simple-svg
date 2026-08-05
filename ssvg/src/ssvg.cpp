@@ -280,51 +280,51 @@ void shapeListReserve(ShapeList* shapeList, uint32_t capacity)
 	}
 }
 
-uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeID)
+uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeIndex)
 {
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
-	if (!shapeList) { return shapeID; }
-	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Out of bounds shape index");
-	if (shapeID == 0 || shapeList->m_NumShapes <= 1) {
-		return shapeID;
+	if (!shapeList) { return shapeIndex; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex == 0 || shapeList->m_NumShapes <= 1) {
+		return shapeIndex;
 	}
 
 	Shape tmp;
-	stdutils::memcpy<Shape>(&tmp, &shapeList->m_Shapes[shapeID - 1]);
-	stdutils::memcpy<Shape>(&shapeList->m_Shapes[shapeID - 1], &shapeList->m_Shapes[shapeID]);
-	stdutils::memcpy<Shape>(&shapeList->m_Shapes[shapeID], &tmp);
+	stdutils::memcpy<Shape>(&tmp, &shapeList->m_Shapes[shapeIndex - 1]);
+	stdutils::memcpy<Shape>(&shapeList->m_Shapes[shapeIndex - 1], &shapeList->m_Shapes[shapeIndex]);
+	stdutils::memcpy<Shape>(&shapeList->m_Shapes[shapeIndex], &tmp);
 
-	return shapeID - 1;
+	return shapeIndex - 1;
 }
 
-uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeID)
+uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeIndex)
 {
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
-	if (!shapeList) { return shapeID; }
-	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Out of bounds shape index");
-	if (shapeID == shapeList->m_NumShapes - 1) {
-		return shapeID;
+	if (!shapeList) { return shapeIndex; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex == shapeList->m_NumShapes - 1) {
+		return shapeIndex;
 	}
 
 	Shape tmp;
-	stdutils::memcpy<Shape>(&tmp, &shapeList->m_Shapes[shapeID + 1]);
-	stdutils::memcpy<Shape>(&shapeList->m_Shapes[shapeID + 1], &shapeList->m_Shapes[shapeID]);
-	stdutils::memcpy<Shape>(&shapeList->m_Shapes[shapeID], &tmp);
+	stdutils::memcpy<Shape>(&tmp, &shapeList->m_Shapes[shapeIndex + 1]);
+	stdutils::memcpy<Shape>(&shapeList->m_Shapes[shapeIndex + 1], &shapeList->m_Shapes[shapeIndex]);
+	stdutils::memcpy<Shape>(&shapeList->m_Shapes[shapeIndex], &tmp);
 
-	return shapeID + 1;
+	return shapeIndex + 1;
 }
 
-void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeID)
+void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeIndex)
 {
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 	if (!shapeList) { return; }
-	SSVG_CHECK(shapeID < shapeList->m_NumShapes, "Out of bounds shape index");
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
 
-	shapeClear(&shapeList->m_Shapes[shapeID]);
+	shapeClear(&shapeList->m_Shapes[shapeIndex]);
 
-	const uint32_t numShapesToMove = shapeList->m_NumShapes > (1 + shapeID) ? (shapeList->m_NumShapes - 1 - shapeID) : 0;
+	const uint32_t numShapesToMove = shapeList->m_NumShapes > (1 + shapeIndex) ? (shapeList->m_NumShapes - 1 - shapeIndex) : 0;
 	if (numShapesToMove > 0) {
-		stdutils::memmove<Shape>(&shapeList->m_Shapes[shapeID], numShapesToMove, &shapeList->m_Shapes[shapeID + 1], sizeof(Shape) * numShapesToMove);
+		stdutils::memmove<Shape>(&shapeList->m_Shapes[shapeIndex], numShapesToMove, &shapeList->m_Shapes[shapeIndex + 1], sizeof(Shape) * numShapesToMove);
 	}
 
 	shapeList->m_NumShapes--;
