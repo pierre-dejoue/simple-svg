@@ -35,11 +35,11 @@ Read the examples to see the library in action!
 Do a round trip of parsing and writing a SVG file. Provide the initial SVG file as input:
 
 ```
-$ ./build/examples/Debug/example_01_round_trip.exe ./examples/svg/Ghostscript_Tiger.svg
-Loading "./examples/svg/Ghostscript_Tiger.svg"...
+$ ./example_01_round_trip.exe ./examples/svg_files/Ghostscript_Tiger.svg
+Loading "./examples/svg_files/Ghostscript_Tiger.svg"...
 - Root element contains 1 shapes
-Converting "./examples/svg/Ghostscript_Tiger.svg" to "./examples/svg/round_trip_Ghostscript_Tiger.svg"...
-Loading "./examples/svg\round_trip_Ghostscript_Tiger.svg"...
+Converting "./examples/svg_files/Ghostscript_Tiger.svg" to "./examples/svg_files/round_trip_Ghostscript_Tiger.svg"...
+Loading "./examples/svg_files/round_trip_Ghostscript_Tiger.svg"...
 - Root element contains 1 shapes
 ```
 
@@ -48,6 +48,6 @@ Loading "./examples/svg\round_trip_Ghostscript_Tiger.svg"...
 Build a SVG image programmatically and save it to file `test_output.svg`
 
 ```
-$ ./build/examples/Debug/example_02_build_svg.exe
+$ ./example_02_build_svg.exe
 Building "./test_output.svg"
 ```
