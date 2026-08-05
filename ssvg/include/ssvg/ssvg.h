@@ -323,9 +323,11 @@ void shapeListFree(ShapeList* shapeList);
 
 // Manipulate Images
 bool imageSave(const Image* img, std::ostream& out);
-ShapeAttributes* imageGetShapeAttributes(Image* img);
-ShapeList* imageGetShapeList(Image* img);
-uint32_t imageGetNumShapes(Image* img);
+ShapeAttributes*       imageGetShapeAttributes(      Image* img);
+const ShapeAttributes* imageGetShapeAttributes(const Image* img);
+ShapeList*             imageGetShapeList(      Image* img);
+const ShapeList*       imageGetShapeList(const Image* img);
+uint32_t imageGetNumShapes(const Image* img);
 
 // Manipulate ShapeLists
 Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const ShapeAttributes* parentAttrs);
@@ -346,13 +348,22 @@ uint32_t shapeListAddPathCommands(ShapeList* shapeList, const ShapeAttributes* p
 uint32_t shapeListAddText(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, TextAnchor::Enum anchor, const char* text);
 uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeIndex);
 uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeIndex);
-Shape* shapeListGetShape(ShapeList* shapeList, uint32_t shapeIndex);
-ShapeType::Enum shapeListGetType(const ShapeList* shapeList, uint32_t shapeIndex);
-ShapeList* shapeListGetGroupShapeList(ShapeList* shapeList, uint32_t shapeIndex);   // Only for ShapeType::Group
-PointList* shapeListGetPointList(ShapeList* shapeList, uint32_t shapeIndex);        // Only for ShapeType::Polyline and ShapeType::Polygon
-Path* shapeListGetPath(ShapeList* shapeList, uint32_t shapeIndex);                  // Only for ShapeType::Path
-Text* shapeListGetText(ShapeList* shapeList, uint32_t shapeIndex);                  // Only for ShapeType::Text
-ShapeAttributes* shapeListGetShapeAttributes(ShapeList* shapeList, uint32_t shapeIndex);
+ShapeAttributes*       shapeListGetShapeAttributes(      ShapeList* shapeList, uint32_t shapeIndex);
+const ShapeAttributes* shapeListGetShapeAttributes(const ShapeList* shapeList, uint32_t shapeIndex);
+ShapeType::Enum shapeListGetShapeType(const ShapeList* shapeList, uint32_t shapeIndex);
+Shape*     shapeListGetShape(ShapeList* shapeList, uint32_t shapeIndex);
+ShapeList* shapeListGetGroupShapeList(ShapeList* shapeList, uint32_t shapeIndex);               // Only for ShapeType::Group
+PointList* shapeListGetPointList(ShapeList* shapeList, uint32_t shapeIndex);                    // Only for ShapeType::Polyline and ShapeType::Polygon
+Path*      shapeListGetPath(ShapeList* shapeList, uint32_t shapeIndex);                         // Only for ShapeType::Path
+const Shape*     shapeListGetShape(const ShapeList* shapeList, uint32_t shapeIndex);
+const ShapeList* shapeListGetGroupShapeList(const ShapeList* shapeList, uint32_t shapeIndex);   // Only for ShapeType::Group
+const PointList* shapeListGetPointList(const ShapeList* shapeList, uint32_t shapeIndex);        // Only for ShapeType::Polyline and ShapeType::Polygon
+const Path*      shapeListGetPath(const ShapeList* shapeList, uint32_t shapeIndex);             // Only for ShapeType::Path
+const Rect*      shapeListGetRect(const ShapeList* shapeList, uint32_t shapeIndex);             // Only for ShapeType::Rect
+const Circle*    shapeListGetCircle(const ShapeList* shapeList, uint32_t shapeIndex);           // Only for ShapeType::Circle
+const Ellipse*   shapeListGetEllipse(const ShapeList* shapeList, uint32_t shapeIndex);          // Only for ShapeType::Ellipse
+const Line*      shapeListGetLine(const ShapeList* shapeList, uint32_t shapeIndex);             // Only for ShapeType::Line
+const Text*      shapeListGetText(const ShapeList* shapeList, uint32_t shapeIndex);             // Only for ShapeType::Text
 void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeIndex);
 void shapeListDeleteLastShape(ShapeList* shapeList);
 void shapeListCalcBounds(ShapeList* shapeList, float* bounds);
@@ -407,10 +418,14 @@ void transformBoundingRect(const float* transform, const float* localRect, float
 // Manipulate Shapes
 void shapeClear(Shape* shape);
 bool shapeIsEmptyGroup(Shape* shape);       // A cleared shape is an empty ShapeType::Group
+
+void shapeGetTransform(const Shape* shape, float* out_transform);
 void shapeSetTransform(Shape* shape, const float* transform);
 void shapeSetIdentityTransform(Shape* shape);
 void shapeApplyTransform(Shape* shape, const float* transform);
-ShapeAttributes* shapeGetAttributes(Shape* shape);
+ShapeType::Enum shapeGetType(const Shape* shape);
+ShapeAttributes*       shapeGetAttributes(Shape* shape);
+const ShapeAttributes* shapeGetAttributes(const Shape* shape);
 bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs = true);
 void shapeUpdateBounds(Shape* shape);
 

@@ -110,26 +110,43 @@ void transformBoundingRect(const float* transform, const float* localRect, float
 	globalRect[3] = stdutils::max<float>(transformedRect[1], transformedRect[3]);
 }
 
+void shapeGetTransform(const Shape* shape, float* out_transform)
+{
+	assert(shape);
+	assert(out_transform);
+	if (shape->m_Attrs) {
+		stdutils::memcpy<float>(out_transform, TRANSFORM_ARRAY_SZ, &shape->m_Attrs->m_Transform[0], sizeof(float) * TRANSFORM_ARRAY_SZ);
+	} else {
+		transformIdentity(out_transform);
+	}
+}
+
 void shapeSetTransform(Shape* shape, const float* transform)
 {
 	assert(shape);
-	assert(shape->m_Attrs);
 	assert(transform);
-	stdutils::memcpy<float>(&shape->m_Attrs->m_Transform[0], TRANSFORM_ARRAY_SZ, transform, sizeof(float) * TRANSFORM_ARRAY_SZ);
+	SSVG_CHECK(shape->m_Attrs, "Cannot set the transformation of a shape without private attributes");
+	if (shape->m_Attrs) {
+		stdutils::memcpy<float>(&shape->m_Attrs->m_Transform[0], TRANSFORM_ARRAY_SZ, transform, sizeof(float) * TRANSFORM_ARRAY_SZ);
+	}
 }
 
 void shapeSetIdentityTransform(Shape* shape)
 {
 	assert(shape);
-	assert(shape->m_Attrs);
-	transformIdentity(&shape->m_Attrs->m_Transform[0]);
+	if (shape->m_Attrs) {
+	    transformIdentity(&shape->m_Attrs->m_Transform[0]);
+	}
+	// Else, do nothing: The transformation of a shape without private attributes is implicitly the Identity.
 }
 
 void shapeApplyTransform(Shape* shape, const float* transform)
 {
 	assert(shape);
-	assert(shape->m_Attrs);
-	transformMultiply(&shape->m_Attrs->m_Transform[0], transform);
+	SSVG_CHECK(shape->m_Attrs, "Cannot apply a transformation to a shape without private attributes");
+	if (shape->m_Attrs) {
+		transformMultiply(&shape->m_Attrs->m_Transform[0], transform);
+	}
 }
 
 namespace {
@@ -322,6 +339,11 @@ uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeIndex)
 
 Shape* shapeListGetShape(ShapeList* shapeList, uint32_t shapeIndex)
 {
+	return const_cast<Shape*>(shapeListGetShape(const_cast<const ShapeList*>(shapeList), shapeIndex));
+}
+
+const Shape* shapeListGetShape(const ShapeList* shapeList, uint32_t shapeIndex)
+{
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 	if (!shapeList) { return nullptr; }
 	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
@@ -330,7 +352,7 @@ Shape* shapeListGetShape(ShapeList* shapeList, uint32_t shapeIndex)
 	return &shapeList->m_Shapes[shapeIndex];
 }
 
-ShapeType::Enum shapeListGetType(const ShapeList* shapeList, uint32_t shapeIndex)
+ShapeType::Enum shapeListGetShapeType(const ShapeList* shapeList, uint32_t shapeIndex)
 {
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 	if (!shapeList) { return (ShapeType::Enum)0; }
@@ -341,6 +363,11 @@ ShapeType::Enum shapeListGetType(const ShapeList* shapeList, uint32_t shapeIndex
 }
 
 ShapeList* shapeListGetGroupShapeList(ShapeList* shapeList, uint32_t shapeIndex)
+{
+	return const_cast<ShapeList*>(shapeListGetGroupShapeList(const_cast<const ShapeList*>(shapeList), shapeIndex));
+}
+
+const ShapeList* shapeListGetGroupShapeList(const ShapeList* shapeList, uint32_t shapeIndex)
 {
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 	if (!shapeList) { return nullptr; }
@@ -355,6 +382,11 @@ ShapeList* shapeListGetGroupShapeList(ShapeList* shapeList, uint32_t shapeIndex)
 
 PointList* shapeListGetPointList(ShapeList* shapeList, uint32_t shapeIndex)
 {
+	return const_cast<PointList*>(shapeListGetPointList(const_cast<const ShapeList*>(shapeList), shapeIndex));
+}
+
+const PointList* shapeListGetPointList(const ShapeList* shapeList, uint32_t shapeIndex)
+{
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 	if (!shapeList) { return nullptr; }
 	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
@@ -368,6 +400,11 @@ PointList* shapeListGetPointList(ShapeList* shapeList, uint32_t shapeIndex)
 
 Path* shapeListGetPath(ShapeList* shapeList, uint32_t shapeIndex)
 {
+	return const_cast<Path*>(shapeListGetPath(const_cast<const ShapeList*>(shapeList), shapeIndex));
+}
+
+const Path* shapeListGetPath(const ShapeList* shapeList, uint32_t shapeIndex)
+{
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 	if (!shapeList) { return nullptr; }
 	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
@@ -379,7 +416,59 @@ Path* shapeListGetPath(ShapeList* shapeList, uint32_t shapeIndex)
 	return shape.m_Type == ShapeType::Path ? &shape.m_Path : nullptr;
 }
 
-Text* shapeListGetText(ShapeList* shapeList, uint32_t shapeIndex)
+const Rect* shapeListGetRect(const ShapeList* shapeList, uint32_t shapeIndex)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return nullptr; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return nullptr; }
+
+	Shape& shape = shapeList->m_Shapes[shapeIndex];
+	SSVG_WARN(shape.m_Type == ShapeType::Rect, "The shape is not a Rect");
+
+	return shape.m_Type == ShapeType::Rect ? &shape.m_Rect : nullptr;
+}
+
+const Circle* shapeListGetCircle(const ShapeList* shapeList, uint32_t shapeIndex)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return nullptr; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return nullptr; }
+
+	Shape& shape = shapeList->m_Shapes[shapeIndex];
+	SSVG_WARN(shape.m_Type == ShapeType::Circle, "The shape is not a Circle");
+
+	return shape.m_Type == ShapeType::Circle ? &shape.m_Circle : nullptr;
+}
+
+const Ellipse* shapeListGetEllipse(const ShapeList* shapeList, uint32_t shapeIndex)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return nullptr; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return nullptr; }
+
+	Shape& shape = shapeList->m_Shapes[shapeIndex];
+	SSVG_WARN(shape.m_Type == ShapeType::Ellipse, "The shape is not a Ellipse");
+
+	return shape.m_Type == ShapeType::Ellipse ? &shape.m_Ellipse : nullptr;
+}
+
+const Line* shapeListGetLine(const ShapeList* shapeList, uint32_t shapeIndex)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return nullptr; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return nullptr; }
+
+	Shape& shape = shapeList->m_Shapes[shapeIndex];
+	SSVG_WARN(shape.m_Type == ShapeType::Line, "The shape is not a Line");
+
+	return shape.m_Type == ShapeType::Line ? &shape.m_Line : nullptr;
+}
+
+const Text* shapeListGetText(const ShapeList* shapeList, uint32_t shapeIndex)
 {
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 	if (!shapeList) { return nullptr; }
@@ -996,6 +1085,11 @@ ShapeAttributes defaultShapeAttributes()
 
 ShapeAttributes* imageGetShapeAttributes(Image* img)
 {
+	return const_cast<ShapeAttributes*>(imageGetShapeAttributes(const_cast<const Image*>(img)));
+}
+
+const ShapeAttributes* imageGetShapeAttributes(const Image* img)
+{
 	SSVG_CHECK(img, "Nullptr to Image");
 	if (!img) { return nullptr; }
 
@@ -1004,13 +1098,18 @@ ShapeAttributes* imageGetShapeAttributes(Image* img)
 
 ShapeList* imageGetShapeList(Image* img)
 {
+	return const_cast<ShapeList*>(imageGetShapeList(const_cast<const Image*>(img)));
+}
+
+const ShapeList* imageGetShapeList(const Image* img)
+{
 	SSVG_CHECK(img, "Nullptr to Image");
 	if (!img) { return nullptr; }
 
 	return &img->m_ShapeList;
 }
 
-uint32_t imageGetNumShapes(Image* img)
+uint32_t imageGetNumShapes(const Image* img)
 {
 	SSVG_CHECK(img, "Nullptr to Image");
 	if (!img) { return 0; }
@@ -1018,7 +1117,20 @@ uint32_t imageGetNumShapes(Image* img)
 	return img->m_ShapeList.m_NumShapes;
 }
 
+ShapeType::Enum shapeGetType(const Shape* shape)
+{
+	SSVG_CHECK(shape, "Nullptr to Shape");
+	if (!shape) { return (ShapeType::Enum)0; }
+
+	return shape->m_Type;
+}
+
 ShapeAttributes* shapeGetAttributes(Shape* shape)
+{
+	return const_cast<ShapeAttributes*>(shapeGetAttributes(const_cast<const Shape*>(shape)));
+}
+
+const ShapeAttributes* shapeGetAttributes(const Shape* shape)
 {
 	SSVG_CHECK(shape, "Nullptr to Shape");
 	if (!shape) { return nullptr; }
@@ -1027,6 +1139,11 @@ ShapeAttributes* shapeGetAttributes(Shape* shape)
 }
 
 ShapeAttributes* shapeListGetShapeAttributes(ShapeList* shapeList, uint32_t shapeIndex)
+{
+	return const_cast<ShapeAttributes*>(shapeListGetShapeAttributes(const_cast<const ShapeList*>(shapeList), shapeIndex));
+}
+
+const ShapeAttributes* shapeListGetShapeAttributes(const ShapeList* shapeList, uint32_t shapeIndex)
 {
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 	if (!shapeList) { return nullptr; }
