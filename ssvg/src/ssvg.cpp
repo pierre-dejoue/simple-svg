@@ -753,7 +753,9 @@ void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value)
 Image* imageCreate(const ShapeAttributes* baseAttrs)
 {
 	Image* img = (Image*)std::malloc(sizeof(Image));
+	if (!img) { return nullptr; }
 	stdutils::memset<Image>(img, 0);
+
 	if (baseAttrs) {
 		img->m_BaseAttrs = *baseAttrs;
 		img->m_BaseAttrs.m_Parent = nullptr;
@@ -767,9 +769,7 @@ Image* imageCreate(const ShapeAttributes* baseAttrs)
 
 void imageFree(Image* img)
 {
-	if (!img) {
-		return;
-	}
+	if (!img) { return; }
 	shapeListClear(&img->m_ShapeList);
 	std::free(img);
 }
@@ -784,9 +784,7 @@ ShapeList* shapeListCreate()
 
 void shapeListFree(ShapeList* shapeList)
 {
-	if (!shapeList) {
-		return;
-	}
+	if (!shapeList) { return; }
 	shapeListClear(shapeList);
 	std::free(shapeList);
 }

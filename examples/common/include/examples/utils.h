@@ -7,4 +7,4 @@
 
 std::vector<char> loadFile(const std::filesystem::path& filepath);
 
-bool saveImage(const std::filesystem::path& filepath, ssvg::Image* img);
+bool saveImage(const std::filesystem::path& filepath, const ssvg::Image* img);

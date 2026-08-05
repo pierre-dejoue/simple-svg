@@ -1522,6 +1522,7 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 	}
 
 	Image* img = imageCreate(baseAttrs);
+	if (!img) { return nullptr; }
 
 	ParserState parser;
 	parser.m_XMLString = xmlStr;

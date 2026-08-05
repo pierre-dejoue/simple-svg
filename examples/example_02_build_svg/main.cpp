@@ -12,7 +12,7 @@ constexpr const char* OUTPUT_TEST_FILE = "./test_output.svg";
 
 bool testBuilder(const char* filepath)
 {
-	printf("Building \"%s\"\n", filepath);
+	printf("Building \"%s\"...\n", filepath);
 
 	ssvg::ShapeAttributes defaultAttrs = ssvg::defaultShapeAttributes();
 	ssvg::ShapeAttributes textAttrs = []() {
@@ -22,7 +22,9 @@ bool testBuilder(const char* filepath)
 		return attrs;
 	}();
 
+	// Create an empty SVG image
 	ssvg::Image* img = ssvg::imageCreate();
+	assert(img);
 
 	ssvg::ShapeList* imgShapeList = &img->m_ShapeList;
 
@@ -55,7 +57,7 @@ bool testBuilder(const char* filepath)
 		uint32_t circleID = ssvg::shapeListAddCircle(groupShapeList, &defaultAttrs, 200.0f, 200.0f, 80.0f);
 	}
 
-	// Add shapes to a group (alt version)
+	// Add shapes to a group (alternative way)
 	{
 		// Create a temporary shape list
 		ssvg::ShapeList* tempShapeList = ssvg::shapeListCreate();

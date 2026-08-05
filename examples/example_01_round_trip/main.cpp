@@ -11,14 +11,6 @@
 
 namespace fs = std::filesystem;
 
-std::string build_output_round_trip_filename(const std::string& input_svg_file)
-{
-	const fs::path input_path(input_svg_file);
-	std::string output_filename = "round_trip_";
-	output_filename.append(input_path.filename().string());
-	return input_path.parent_path().append(output_filename).string();
-}
-
 bool testParser(const char* filepath)
 {
 	printf("Loading \"%s\"...\n", filepath);
@@ -29,22 +21,18 @@ bool testParser(const char* filepath)
 		return false;
 	}
 
-	ssvg::Image* img = nullptr;
-	{
-		constexpr uint32_t svg_parser_flags = 0;
-		img = ssvg::imageLoad(svgFileBuffer.data(), svg_parser_flags);
-	}
+	ssvg::Image* img = ssvg::imageLoad(svgFileBuffer.data(), ssvg::ImageLoadFlags::None);
 
-	if (!img) {
+	const bool load_success = (img != nullptr);
+	if (!load_success) {
 		printf("(x) Failed to parse svg file.\n");
 		return false;
 	}
-
 	printf("- Root element contains %d shapes\n", img->m_ShapeList.m_NumShapes);
 
 	ssvg::imageFree(img);
 
-	return true;
+	return load_success;
 }
 
 bool testRoundTrip(const char* input_filepath, const char* output_filepath)
@@ -57,8 +45,7 @@ bool testRoundTrip(const char* input_filepath, const char* output_filepath)
 		return false;
 	}
 
-	constexpr uint32_t svg_parser_flags = 0;
-	ssvg::Image* img = ssvg::imageLoad(svgFileBuffer.data(), svg_parser_flags);
+	ssvg::Image* img = ssvg::imageLoad(svgFileBuffer.data(), ssvg::ImageLoadFlags::None);
 	if (!img) {
 		printf("(x) Failed to parse svg file.\n");
 		return false;
@@ -71,6 +58,14 @@ bool testRoundTrip(const char* input_filepath, const char* output_filepath)
 	return save_success;
 }
 
+std::string build_output_round_trip_filename(const std::string& input_svg_file)
+{
+	const fs::path input_path(input_svg_file);
+	std::string output_filename = "round_trip_";
+	output_filename.append(input_path.filename().string());
+	return input_path.parent_path().append(output_filename).string();
+}
+
 int main(int argc, char* argv[])
 {
 	if (argc != 2)
@@ -80,7 +75,7 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	// Call with one argument, the path to an input SVG file
+	// Call with one argument: the path to an input SVG file
 	const std::string input_svg_file = argv[1];
 	const std::string output_round_trip_file = build_output_round_trip_filename(input_svg_file);
 

@@ -40,7 +40,7 @@ std::vector<char> loadFile(const std::filesystem::path& filepath)
 	return std::vector<char>();
 }
 
-bool saveImage(const std::filesystem::path& filepath, ssvg::Image* img)
+bool saveImage(const std::filesystem::path& filepath, const ssvg::Image* img)
 {
 	assert(img);
 	bool success = false;
