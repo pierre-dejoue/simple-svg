@@ -295,21 +295,29 @@ struct ImageLoadFlags
 	};
 };
 
+// Library setup
 void initLib();
 void shutdownLib();
 
+// Default ShapeAttributes according to the SVG standards
 ShapeAttributes defaultShapeAttributes();
 
-// Image allocated by imageLoad and imageCreate *must* be freed with imageFree
+// Image allocated by imageLoad or imageCreate *must* be freed with imageFree
 Image* imageLoad(const char* xmlStr, ImageLoadFlags::Type flags, const ShapeAttributes* baseAttrs = nullptr);
 Image* imageCreate(const ShapeAttributes* baseAttrs = nullptr);
 void imageFree(Image* img);
-bool imageSave(const Image* img, std::ostream& out);
 
 // ShapeList allocated by shapeListCreate *must* be freed with shapeListFree
 ShapeList* shapeListCreate();
 void shapeListFree(ShapeList* shapeList);
 
+// Manipulate Images
+bool imageSave(const Image* img, std::ostream& out);
+ShapeAttributes* imageGetShapeAttributes(Image* img);
+ShapeList* imageGetShapeList(Image* img);
+uint32_t imageGetNumShapes(Image* img);
+
+// Manipulate ShapeLists
 Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const ShapeAttributes* parentAttrs);
 void shapeListReserve(ShapeList* shapeList, uint32_t capacity);
 void shapeListShrinkToFit(ShapeList* shapeList);
@@ -328,9 +336,19 @@ uint32_t shapeListAddPathCommands(ShapeList* shapeList, const ShapeAttributes* p
 uint32_t shapeListAddText(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, TextAnchor::Enum anchor, const char* text);
 uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeIndex);
 uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeIndex);
+Shape* shapeListGetShape(ShapeList* shapeList, uint32_t shapeIndex);
+ShapeType::Enum shapeListGetType(ShapeList* shapeList, uint32_t shapeIndex);
+ShapeList* shapeListGetGroupShapeList(ShapeList* shapeList, uint32_t shapeIndex);   // Only for ShapeType::Group
+PointList* shapeListGetPointList(ShapeList* shapeList, uint32_t shapeIndex);        // Only for ShapeType::Polyline and ShapeType::Polygon
+Path* shapeListGetPath(ShapeList* shapeList, uint32_t shapeIndex);                  // Only for ShapeType::Path
+Text* shapeListGetText(ShapeList* shapeList, uint32_t shapeIndex);                  // Only for ShapeType::Text
+ShapeAttributes* shapeListGetShapeAttributes(ShapeList* shapeList, uint32_t shapeIndex);
 void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeIndex);
+void shapeListDeleteLastShape(ShapeList* shapeList);
 void shapeListCalcBounds(ShapeList* shapeList, float* bounds);
+uint32_t shapeListGetNumShapes(ShapeList* shapeList);
 
+// Manipulate Paths
 PathCmd* pathAllocCommand(Path* path, PathCmdType::Enum type);
 PathCmd* pathAllocCommands(Path* path, uint32_t n);
 PathCmd* pathInsertCommands(Path* path, uint32_t at, uint32_t n);
@@ -348,25 +366,23 @@ void pathCalcBounds(const Path* path, float* bounds);
 void pathConvertCommand(Path* path, uint32_t cmdIndex, PathCmdType::Enum newType);
 void pathClearCommand(Path* path, uint32_t cmdIndex);
 
+// Manipulate PointLists (used by ShapeType::Polyline and ShapeType::Polygon)
 float* pointListAllocPoints(PointList* ptList, uint32_t n);
 void pointListShrinkToFit(PointList* ptList);
 void pointListClear(PointList* ptList);
 bool pointListFromString(PointList* ptList, const std::string_view& str);
 void pointListCalcBounds(const PointList* ptList, float* bounds);
 
+// Manipulate Text
 void textClear(Text* text);
 
+// Manipulate ShapeAttributes
 std::string_view shapeAttrsGetID(const ShapeAttributes* attrs);
 std::string_view shapeAttrsGetFontFamily(const ShapeAttributes* attrs);
 std::string_view shapeAttrsGetClass(const ShapeAttributes* attrs);
 void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& value);
 void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& value);
 void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value);
-
-bool shapeIsEmptyGroup(Shape* shape);
-void shapeClear(Shape* shape);
-bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs = true);
-void shapeUpdateBounds(Shape* shape);
 
 // A transformation is an array float[TRANSFORM_ARRAY_SZ]
 void transformIdentity(float* transform);
@@ -376,9 +392,15 @@ void transformTranslate(float* transform, float x, float y);
 void transformPoint(const float* transform, const float* localPos, float* globalPos);
 void transformBoundingRect(const float* transform, const float* localRect, float* globalRect);
 
+// Manipulate Shapes
+void shapeClear(Shape* shape);
+bool shapeIsEmptyGroup(Shape* shape);       // A cleared shape is an empty ShapeType::Group
 void shapeSetTransform(Shape* shape, const float* transform);
 void shapeSetIdentityTransform(Shape* shape);
 void shapeApplyTransform(Shape* shape, const float* transform);
+ShapeAttributes* shapeGetAttributes(Shape* shape);
+bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs = true);
+void shapeUpdateBounds(Shape* shape);
 
 } // namespace ssvg
 

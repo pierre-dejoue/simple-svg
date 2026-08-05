@@ -26,7 +26,7 @@ bool testBuilder(const char* filepath)
 	ssvg::Image* img = ssvg::imageCreate();
 	assert(img);
 
-	ssvg::ShapeList* imgShapeList = &img->m_ShapeList;
+	ssvg::ShapeList* imgShapeList = ssvg::imageGetShapeList(img);
 
 	// Add shapes to the image shape list
 	{
@@ -34,8 +34,8 @@ bool testBuilder(const char* filepath)
 		uint32_t circleID = ssvg::shapeListAddCircle(imgShapeList, &defaultAttrs, 200.0f, 200.0f, 80.0f);
 
 		// Path
-		uint32_t pathID = ssvg::shapeListAddPath(imgShapeList, &defaultAttrs);
-		ssvg::Path* path = &imgShapeList->m_Shapes[pathID].m_Path;
+		uint32_t pathIndex = ssvg::shapeListAddPath(imgShapeList, &defaultAttrs);
+		ssvg::Path* path = ssvg::shapeListGetPath(imgShapeList, pathIndex);
 		ssvg::pathMoveTo(path, 0.0f, 0.0f);
 		ssvg::pathLineTo(path, 10.0f, 10.0f);
 		ssvg::pathCubicTo(path, 10.0f, 20.0f, 30.0f, 40.0f, 50.0f, 50.0f);
@@ -47,12 +47,12 @@ bool testBuilder(const char* filepath)
 
 	// Add shapes to a group
 	{
-		uint32_t groupID = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs);
+		uint32_t groupIndex = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs);
 
 		float groupTransform[6] = { 1.0f, 0.0f, 0.0f, 1.0f, 400.0f, 0.0f };
-		ssvg::shapeSetTransform(&imgShapeList->m_Shapes[groupID], &groupTransform[0]);
+		ssvg::shapeSetTransform(ssvg::shapeListGetShape(imgShapeList, groupIndex), &groupTransform[0]);
 
-		ssvg::ShapeList* groupShapeList = &imgShapeList->m_Shapes[groupID].m_ShapeList;
+		ssvg::ShapeList* groupShapeList = ssvg::shapeListGetGroupShapeList(imgShapeList, groupIndex);
 		uint32_t rectID = ssvg::shapeListAddRect(groupShapeList, &defaultAttrs, 100.0f, 100.0f, 200.0f, 200.0f, 0.0f, 0.0f);
 		uint32_t circleID = ssvg::shapeListAddCircle(groupShapeList, &defaultAttrs, 200.0f, 200.0f, 80.0f);
 	}
@@ -65,14 +65,14 @@ bool testBuilder(const char* filepath)
 		uint32_t circleID = ssvg::shapeListAddCircle(tempShapeList, &defaultAttrs, 200.0f, 200.0f, 80.0f);
 
 		// Add a new group using the shapes from the temp shape list (the shapes are copied)
-		uint32_t groupID = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs, tempShapeList);
+		uint32_t groupIndex = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs, tempShapeList);
 
 		// Free the temp shape list
 		ssvg::shapeListFree(tempShapeList);
 
 		// Transform the group
 		float groupTransform[6] = { 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 400.0f };
-		ssvg::shapeSetTransform(&imgShapeList->m_Shapes[groupID], &groupTransform[0]);
+		ssvg::shapeSetTransform(ssvg::shapeListGetShape(imgShapeList, groupIndex), &groupTransform[0]);
 	}
 
 	const bool save_success = saveImage(filepath, img);

@@ -285,6 +285,9 @@ uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeIndex)
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 	if (!shapeList) { return shapeIndex; }
 	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return shapeIndex; }
+
+	// If already in the back, return the same index
 	if (shapeIndex == 0 || shapeList->m_NumShapes <= 1) {
 		return shapeIndex;
 	}
@@ -302,7 +305,10 @@ uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeIndex)
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 	if (!shapeList) { return shapeIndex; }
 	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
-	if (shapeIndex == shapeList->m_NumShapes - 1) {
+	if (shapeIndex >= shapeList->m_NumShapes) { return shapeIndex; }
+
+	// If already in the front, return the same index
+	if (shapeIndex + 1 == shapeList->m_NumShapes) {
 		return shapeIndex;
 	}
 
@@ -314,11 +320,92 @@ uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeIndex)
 	return shapeIndex + 1;
 }
 
+Shape* shapeListGetShape(ShapeList* shapeList, uint32_t shapeIndex)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return nullptr; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return nullptr; }
+
+	return &shapeList->m_Shapes[shapeIndex];
+}
+
+ShapeType::Enum shapeListGetType(ShapeList* shapeList, uint32_t shapeIndex)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return (ShapeType::Enum)0; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return (ShapeType::Enum)0; }
+
+	return shapeList->m_Shapes[shapeIndex].m_Type;
+}
+
+ShapeList* shapeListGetGroupShapeList(ShapeList* shapeList, uint32_t shapeIndex)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return nullptr; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return nullptr; }
+
+	Shape& shape = shapeList->m_Shapes[shapeIndex];
+	SSVG_WARN(shape.m_Type == ShapeType::Group, "The shape is not a Group");
+
+	return shape.m_Type == ShapeType::Group ? &shape.m_ShapeList : nullptr;
+}
+
+PointList* shapeListGetPointList(ShapeList* shapeList, uint32_t shapeIndex)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return nullptr; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return nullptr; }
+
+	Shape& shape = shapeList->m_Shapes[shapeIndex];
+	SSVG_WARN(shape.m_Type == ShapeType::Polygon || shape.m_Type == ShapeType::Polyline, "The shape is not a Polygon or Polyline");
+
+	return (shape.m_Type == ShapeType::Polygon || shape.m_Type == ShapeType::Polyline) ? &shape.m_PointList : nullptr;
+}
+
+Path* shapeListGetPath(ShapeList* shapeList, uint32_t shapeIndex)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return nullptr; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return nullptr; }
+
+	Shape& shape = shapeList->m_Shapes[shapeIndex];
+	SSVG_WARN(shape.m_Type == ShapeType::Path, "The shape is not a Path");
+
+	return shape.m_Type == ShapeType::Path ? &shape.m_Path : nullptr;
+}
+
+Text* shapeListGetText(ShapeList* shapeList, uint32_t shapeIndex)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return nullptr; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return nullptr; }
+
+	Shape& shape = shapeList->m_Shapes[shapeIndex];
+	SSVG_WARN(shape.m_Type == ShapeType::Text, "The shape is not a Text");
+
+	return shape.m_Type == ShapeType::Text ? &shape.m_Text : nullptr;
+}
+
+uint32_t shapeListGetNumShapes(ShapeList* shapeList)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return 0; }
+
+	return shapeList->m_NumShapes;
+}
+
 void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeIndex)
 {
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 	if (!shapeList) { return; }
 	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return; }
 
 	shapeClear(&shapeList->m_Shapes[shapeIndex]);
 
@@ -328,6 +415,16 @@ void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeIndex)
 	}
 
 	shapeList->m_NumShapes--;
+}
+
+void shapeListDeleteLastShape(ShapeList* shapeList)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return; }
+
+	if (shapeList->m_NumShapes > 0) {
+		return shapeListDeleteShape(shapeList, shapeList->m_NumShapes - 1);
+	}
 }
 
 void shapeListCalcBounds(ShapeList* shapeList, float* bounds)
@@ -832,6 +929,48 @@ ShapeAttributes defaultShapeAttributes()
 	return defaultAttrs;
 }
 
+ShapeAttributes* imageGetShapeAttributes(Image* img)
+{
+	SSVG_CHECK(img, "Nullptr to Image");
+	if (!img) { return nullptr; }
+
+	return &img->m_BaseAttrs;
+}
+
+ShapeList* imageGetShapeList(Image* img)
+{
+	SSVG_CHECK(img, "Nullptr to Image");
+	if (!img) { return nullptr; }
+
+	return &img->m_ShapeList;
+}
+
+uint32_t imageGetNumShapes(Image* img)
+{
+	SSVG_CHECK(img, "Nullptr to Image");
+	if (!img) { return 0; }
+
+	return img->m_ShapeList.m_NumShapes;
+}
+
+ShapeAttributes* shapeGetAttributes(Shape* shape)
+{
+	SSVG_CHECK(shape, "Nullptr to Shape");
+	if (!shape) { return nullptr; }
+
+	return shape->m_Attrs;
+}
+
+ShapeAttributes* shapeListGetShapeAttributes(ShapeList* shapeList, uint32_t shapeIndex)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return nullptr; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return nullptr; }
+
+	return shapeList->m_Shapes[shapeIndex].m_Attrs;
+}
+
 bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 {
 	const ShapeType::Enum type = src->m_Type;
@@ -916,6 +1055,8 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 	return true;
 }
 
+// Clear the Shape, release resources
+// The cleared Shape is an empty Group
 void shapeClear(Shape* shape)
 {
 	SSVG_CHECK(shape, "Nullptr to Shape");

@@ -28,7 +28,7 @@ bool testParser(const char* filepath)
 		printf("(x) Failed to parse svg file.\n");
 		return false;
 	}
-	printf("- Root element contains %d shapes\n", img->m_ShapeList.m_NumShapes);
+	printf("- Root element contains %d shapes\n",  ssvg::imageGetNumShapes(img));
 
 	ssvg::imageFree(img);
 
