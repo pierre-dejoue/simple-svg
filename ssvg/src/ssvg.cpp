@@ -330,7 +330,7 @@ Shape* shapeListGetShape(ShapeList* shapeList, uint32_t shapeIndex)
 	return &shapeList->m_Shapes[shapeIndex];
 }
 
-ShapeType::Enum shapeListGetType(ShapeList* shapeList, uint32_t shapeIndex)
+ShapeType::Enum shapeListGetType(const ShapeList* shapeList, uint32_t shapeIndex)
 {
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 	if (!shapeList) { return (ShapeType::Enum)0; }
@@ -392,7 +392,7 @@ Text* shapeListGetText(ShapeList* shapeList, uint32_t shapeIndex)
 	return shape.m_Type == ShapeType::Text ? &shape.m_Text : nullptr;
 }
 
-uint32_t shapeListGetNumShapes(ShapeList* shapeList)
+uint32_t shapeListGetNumShapes(const ShapeList* shapeList)
 {
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 	if (!shapeList) { return 0; }
@@ -735,6 +735,60 @@ void pathCalcBounds(const Path* path, float* bounds)
 	}
 }
 
+PathNum pathGetSubpathCounters(const Path* path)
+{
+	PathNum counters;
+	stdutils::memset<PathNum>(&counters, 0);
+	SSVG_CHECK(path, "Nullptr to Path");
+	if (!path) { return counters; }
+
+	// SVG2 spec:
+	// If a "closepath" is followed immediately by a "moveto", then the "moveto" identifies the
+	// start point of the next subpath. If a "closepath" is followed immediately by any other
+	// command, then the next subpath starts at the same initial point as the current subpath.
+	uint32_t subpathNumNodes = 0;
+	for (uint32_t cmdIndex = 0; cmdIndex < path->m_NumCommands; cmdIndex++) {
+		const PathCmdType::Enum cmdType = path->m_Commands[cmdIndex].m_Type;
+		switch (cmdType) {
+		case PathCmdType::Nop:
+			// Do nothing
+			break;
+		case PathCmdType::MoveTo:
+			if (subpathNumNodes > 0) {
+				counters.open.numSubpaths++;
+				counters.open.numNodes += subpathNumNodes;
+				subpathNumNodes = 0;
+			}
+			subpathNumNodes++;
+			break;
+		case PathCmdType::ClosePath:
+			if (subpathNumNodes > 0) {
+				counters.closed.numSubpaths++;
+				counters.closed.numNodes += subpathNumNodes;
+				subpathNumNodes = 0;
+			}
+			break;
+		case PathCmdType::LineTo:
+		case PathCmdType::CubicTo:
+		case PathCmdType::QuadraticTo:
+		case PathCmdType::ArcTo:
+			subpathNumNodes++;
+			break;
+		default:
+			SSVG_CHECK(false, "Unknown command type");
+			break;
+		}
+	}
+	// Implicit end of an open subpath
+	if (subpathNumNodes > 0) {
+		counters.open.numSubpaths++;
+		counters.open.numNodes += subpathNumNodes;
+	}
+
+	return counters;
+}
+
+
 float* pointListAllocPoints(PointList* ptList, uint32_t n)
 {
 	SSVG_CHECK(n != 0, "Requested invalid number of points");
@@ -781,6 +835,9 @@ void pointListClear(PointList* ptList)
 
 void pointListCalcBounds(const PointList* ptList, float* bounds)
 {
+	SSVG_CHECK(ptList, "Nullptr to PointList");
+	if (!ptList) { return; }
+
 	const uint32_t numPoints = ptList->m_NumPoints;
 	if (!numPoints) {
 		// No points -> invalid bounding rect
@@ -801,6 +858,14 @@ void pointListCalcBounds(const PointList* ptList, float* bounds)
 		bounds[2] = stdutils::max<float>(bounds[2], x);
 		bounds[3] = stdutils::max<float>(bounds[3], y);
 	}
+}
+
+uint32_t pointListGetNumPoints(const PointList* ptList)
+{
+	SSVG_CHECK(ptList, "Nullptr to PointList");
+	if (!ptList) { return 0; }
+
+	return  ptList->m_NumPoints;
 }
 
 void textClear(Text* text)

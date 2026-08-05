@@ -1417,7 +1417,7 @@ bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAttribute
 	};
 	static const uint32_t numParseFuncs = sizeof(parseFuncs) / sizeof(ParseFunc);
 
-	SSVG_WARN(numParseFuncs == ShapeType::NbOfShapeTypes, "Some shapes won't be parsed");
+	SSVG_WARN(numParseFuncs == ShapeType::NumShapeTypes, "Some shapes won't be parsed");
 
 	bool err = false;
 

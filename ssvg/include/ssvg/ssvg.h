@@ -47,7 +47,7 @@ struct ShapeType
 		Polygon,
 		Path,
 		Text,
-		NbOfShapeTypes
+		NumShapeTypes
 	};
 };
 
@@ -167,6 +167,16 @@ struct Path
 	PathCmd* m_Commands;
 	uint32_t m_NumCommands;
 	uint32_t m_Capacity;
+};
+
+struct PathNum
+{
+	struct SubpathNum {
+		uint32_t numSubpaths;
+		uint32_t numNodes;
+	};
+	SubpathNum closed;
+	SubpathNum open;
 };
 
 // TODO: alignment-baseline
@@ -337,7 +347,7 @@ uint32_t shapeListAddText(ShapeList* shapeList, const ShapeAttributes* parentAtt
 uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeIndex);
 uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeIndex);
 Shape* shapeListGetShape(ShapeList* shapeList, uint32_t shapeIndex);
-ShapeType::Enum shapeListGetType(ShapeList* shapeList, uint32_t shapeIndex);
+ShapeType::Enum shapeListGetType(const ShapeList* shapeList, uint32_t shapeIndex);
 ShapeList* shapeListGetGroupShapeList(ShapeList* shapeList, uint32_t shapeIndex);   // Only for ShapeType::Group
 PointList* shapeListGetPointList(ShapeList* shapeList, uint32_t shapeIndex);        // Only for ShapeType::Polyline and ShapeType::Polygon
 Path* shapeListGetPath(ShapeList* shapeList, uint32_t shapeIndex);                  // Only for ShapeType::Path
@@ -346,7 +356,7 @@ ShapeAttributes* shapeListGetShapeAttributes(ShapeList* shapeList, uint32_t shap
 void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeIndex);
 void shapeListDeleteLastShape(ShapeList* shapeList);
 void shapeListCalcBounds(ShapeList* shapeList, float* bounds);
-uint32_t shapeListGetNumShapes(ShapeList* shapeList);
+uint32_t shapeListGetNumShapes(const ShapeList* shapeList);
 
 // Manipulate Paths
 PathCmd* pathAllocCommand(Path* path, PathCmdType::Enum type);
@@ -365,6 +375,7 @@ uint32_t pathClose(Path* path);
 void pathCalcBounds(const Path* path, float* bounds);
 void pathConvertCommand(Path* path, uint32_t cmdIndex, PathCmdType::Enum newType);
 void pathClearCommand(Path* path, uint32_t cmdIndex);
+PathNum pathGetSubpathCounters(const Path* path);
 
 // Manipulate PointLists (used by ShapeType::Polyline and ShapeType::Polygon)
 float* pointListAllocPoints(PointList* ptList, uint32_t n);
@@ -372,6 +383,7 @@ void pointListShrinkToFit(PointList* ptList);
 void pointListClear(PointList* ptList);
 bool pointListFromString(PointList* ptList, const std::string_view& str);
 void pointListCalcBounds(const PointList* ptList, float* bounds);
+uint32_t pointListGetNumPoints(const PointList* ptList);
 
 // Manipulate Text
 void textClear(Text* text);
