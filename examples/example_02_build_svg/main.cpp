@@ -30,11 +30,11 @@ bool testBuilder(const char* filepath)
 
 	// Add shapes to the image shape list
 	{
-		uint32_t rectID = ssvg::shapeListAddRect(imgShapeList, &defaultAttrs, 100.0f, 100.0f, 200.0f, 200.0f, 0.0f, 0.0f);
-		uint32_t circleID = ssvg::shapeListAddCircle(imgShapeList, &defaultAttrs, 200.0f, 200.0f, 80.0f);
+		uint32_t rectID = ssvg::shapeListAddRect(imgShapeList, 100.0f, 100.0f, 200.0f, 200.0f, 0.0f, 0.0f);
+		uint32_t circleID = ssvg::shapeListAddCircle(imgShapeList, 200.0f, 200.0f, 80.0f);
 
 		// Path
-		uint32_t pathIndex = ssvg::shapeListAddPath(imgShapeList, &defaultAttrs);
+		uint32_t pathIndex = ssvg::shapeListAddPath(imgShapeList);
 		ssvg::Path* path = ssvg::shapeListGetPath(imgShapeList, pathIndex);
 		ssvg::pathMoveTo(path, 0.0f, 0.0f);
 		ssvg::pathLineTo(path, 10.0f, 10.0f);
@@ -42,30 +42,33 @@ bool testBuilder(const char* filepath)
 		ssvg::pathClose(path);
 
 		// Text
-		ssvg::shapeListAddText(imgShapeList, &textAttrs, 200.0f, 50.0f, ssvg::TextAnchor::Start, "This is a test string");
+		const auto text_shape_id = ssvg::shapeListAddText(imgShapeList, 200.0f, 50.0f, ssvg::TextAnchor::Start, "This is a test string");
+		ssvg::shapeListAllocShapeAttributes(imgShapeList, text_shape_id, &textAttrs);
+
+
 	}
 
 	// Add shapes to a group
 	{
-		uint32_t groupIndex = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs);
+		uint32_t groupIndex = ssvg::shapeListAddGroup(imgShapeList);
 
 		float groupTransform[6] = { 1.0f, 0.0f, 0.0f, 1.0f, 400.0f, 0.0f };
 		ssvg::shapeSetTransform(ssvg::shapeListGetShape(imgShapeList, groupIndex), &groupTransform[0]);
 
 		ssvg::ShapeList* groupShapeList = ssvg::shapeListGetGroupShapeList(imgShapeList, groupIndex);
-		uint32_t rectID = ssvg::shapeListAddRect(groupShapeList, &defaultAttrs, 100.0f, 100.0f, 200.0f, 200.0f, 0.0f, 0.0f);
-		uint32_t circleID = ssvg::shapeListAddCircle(groupShapeList, &defaultAttrs, 200.0f, 200.0f, 80.0f);
+		uint32_t rectID = ssvg::shapeListAddRect(groupShapeList, 100.0f, 100.0f, 200.0f, 200.0f, 0.0f, 0.0f);
+		uint32_t circleID = ssvg::shapeListAddCircle(groupShapeList, 200.0f, 200.0f, 80.0f);
 	}
 
 	// Add shapes to a group (alternative way)
 	{
 		// Create a temporary shape list
 		ssvg::ShapeList* tempShapeList = ssvg::shapeListCreate();
-		uint32_t rectID = ssvg::shapeListAddRect(tempShapeList, &defaultAttrs, 100.0f, 100.0f, 200.0f, 200.0f, 0.0f, 0.0f);
-		uint32_t circleID = ssvg::shapeListAddCircle(tempShapeList, &defaultAttrs, 200.0f, 200.0f, 80.0f);
+		uint32_t rectID = ssvg::shapeListAddRect(tempShapeList, 100.0f, 100.0f, 200.0f, 200.0f, 0.0f, 0.0f);
+		uint32_t circleID = ssvg::shapeListAddCircle(tempShapeList, 200.0f, 200.0f, 80.0f);
 
 		// Add a new group using the shapes from the temp shape list (the shapes are copied)
-		uint32_t groupIndex = ssvg::shapeListAddGroup(imgShapeList, &defaultAttrs, tempShapeList);
+		uint32_t groupIndex = ssvg::shapeListAddGroup(imgShapeList, tempShapeList);
 
 		// Free the temp shape list
 		ssvg::shapeListFree(tempShapeList);
@@ -81,7 +84,6 @@ bool testBuilder(const char* filepath)
 
 	return save_success;
 }
-
 
 int main()
 {

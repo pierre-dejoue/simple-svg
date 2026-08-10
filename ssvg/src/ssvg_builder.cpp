@@ -29,7 +29,7 @@ uint32_t shapeListAddShape(ShapeList* shapeList, const Shape* shape)
 {
 	SSVG_CHECK(shape != nullptr, "Use shapeListAllocShape() instead");
 
-	Shape* newShape = shapeListAllocShape(shapeList, shape->m_Type, nullptr);
+	Shape* newShape = shapeListAllocShape(shapeList, shape->m_Type);
 	if (!newShape) {
 		return ~0u;
 	}
@@ -40,18 +40,17 @@ uint32_t shapeListAddShape(ShapeList* shapeList, const Shape* shape)
 	return shapeList->m_NumShapes - 1;
 }
 
-uint32_t shapeListAddGroup(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const ShapeList* sourceShapeList)
+uint32_t shapeListAddGroup(ShapeList* shapeList, const ShapeList* sourceShapeList)
 {
 	return shapeListAddGroupWithShapes(
 		shapeList,
-		parentAttrs,
 		sourceShapeList ? sourceShapeList->m_Shapes    : nullptr,
 		sourceShapeList ? sourceShapeList->m_NumShapes : 0);
 }
 
-uint32_t shapeListAddGroupWithShapes(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const Shape* children, uint32_t numChildren)
+uint32_t shapeListAddGroupWithShapes(ShapeList* shapeList, const Shape* children, uint32_t numChildren)
 {
-	Shape* group = shapeListAllocShape(shapeList, ShapeType::Group, parentAttrs);
+	Shape* group = shapeListAllocShape(shapeList, ShapeType::Group);
 	if (!group) {
 		return ~0u;
 	}
@@ -72,9 +71,9 @@ uint32_t shapeListAddGroupWithShapes(ShapeList* shapeList, const ShapeAttributes
 	return shapeList->m_NumShapes - 1;
 }
 
-uint32_t shapeListAddRect(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, float w, float h, float rx, float ry)
+uint32_t shapeListAddRect(ShapeList* shapeList, float x, float y, float w, float h, float rx, float ry)
 {
-	Shape* rect = shapeListAllocShape(shapeList, ShapeType::Rect, parentAttrs);
+	Shape* rect = shapeListAllocShape(shapeList, ShapeType::Rect);
 	if (!rect) {
 		return ~0u;
 	}
@@ -91,9 +90,9 @@ uint32_t shapeListAddRect(ShapeList* shapeList, const ShapeAttributes* parentAtt
 	return shapeList->m_NumShapes - 1;
 }
 
-uint32_t shapeListAddCircle(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, float r)
+uint32_t shapeListAddCircle(ShapeList* shapeList, float x, float y, float r)
 {
-	Shape* circle = shapeListAllocShape(shapeList, ShapeType::Circle, parentAttrs);
+	Shape* circle = shapeListAllocShape(shapeList, ShapeType::Circle);
 	if (!circle) {
 		return ~0u;
 	}
@@ -107,9 +106,9 @@ uint32_t shapeListAddCircle(ShapeList* shapeList, const ShapeAttributes* parentA
 	return shapeList->m_NumShapes - 1;
 }
 
-uint32_t shapeListAddEllipse(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, float rx, float ry)
+uint32_t shapeListAddEllipse(ShapeList* shapeList, float x, float y, float rx, float ry)
 {
-	Shape* ellipse = shapeListAllocShape(shapeList, ShapeType::Ellipse, parentAttrs);
+	Shape* ellipse = shapeListAllocShape(shapeList, ShapeType::Ellipse);
 	if (!ellipse) {
 		return ~0u;
 	}
@@ -124,9 +123,9 @@ uint32_t shapeListAddEllipse(ShapeList* shapeList, const ShapeAttributes* parent
 	return shapeList->m_NumShapes - 1;
 }
 
-uint32_t shapeListAddLine(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x1, float y1, float x2, float y2)
+uint32_t shapeListAddLine(ShapeList* shapeList, float x1, float y1, float x2, float y2)
 {
-	Shape* line = shapeListAllocShape(shapeList, ShapeType::Line, parentAttrs);
+	Shape* line = shapeListAllocShape(shapeList, ShapeType::Line);
 	if (!line) {
 		return ~0u;
 	}
@@ -141,9 +140,9 @@ uint32_t shapeListAddLine(ShapeList* shapeList, const ShapeAttributes* parentAtt
 	return shapeList->m_NumShapes - 1;
 }
 
-uint32_t shapeListAddPolyline(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const float* coords, uint32_t numPoints)
+uint32_t shapeListAddPolyline(ShapeList* shapeList, const float* coords, uint32_t numPoints)
 {
-	Shape* polyline = shapeListAllocShape(shapeList, ShapeType::Polyline, parentAttrs);
+	Shape* polyline = shapeListAllocShape(shapeList, ShapeType::Polyline);
 	if (!polyline) {
 		return ~0u;
 	}
@@ -158,9 +157,9 @@ uint32_t shapeListAddPolyline(ShapeList* shapeList, const ShapeAttributes* paren
 	return shapeList->m_NumShapes - 1;
 }
 
-uint32_t shapeListAddPolygon(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const float* coords, uint32_t numPoints)
+uint32_t shapeListAddPolygon(ShapeList* shapeList, const float* coords, uint32_t numPoints)
 {
-	Shape* polygon = shapeListAllocShape(shapeList, ShapeType::Polygon, parentAttrs);
+	Shape* polygon = shapeListAllocShape(shapeList, ShapeType::Polygon);
 	if (!polygon) {
 		return ~0u;
 	}
@@ -175,18 +174,17 @@ uint32_t shapeListAddPolygon(ShapeList* shapeList, const ShapeAttributes* parent
 	return shapeList->m_NumShapes - 1;
 }
 
-uint32_t shapeListAddPath(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const Path* sourcePath)
+uint32_t shapeListAddPath(ShapeList* shapeList, const Path* sourcePath)
 {
 	return shapeListAddPathCommands(
 		shapeList,
-		parentAttrs,
 		sourcePath ? sourcePath->m_Commands    : nullptr,
 		sourcePath ? sourcePath->m_NumCommands : 0);
 }
 
-uint32_t shapeListAddPathCommands(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const PathCmd* commands, uint32_t numCommands)
+uint32_t shapeListAddPathCommands(ShapeList* shapeList, const PathCmd* commands, uint32_t numCommands)
 {
-	Shape* path = shapeListAllocShape(shapeList, ShapeType::Path, parentAttrs);
+	Shape* path = shapeListAllocShape(shapeList, ShapeType::Path);
 	if (!path) {
 		return ~0u;
 	}
@@ -206,9 +204,9 @@ uint32_t shapeListAddPathCommands(ShapeList* shapeList, const ShapeAttributes* p
 	return shapeList->m_NumShapes - 1;
 }
 
-uint32_t shapeListAddText(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, TextAnchor::Enum anchor, const char* str)
+uint32_t shapeListAddText(ShapeList* shapeList, float x, float y, TextAnchor::Enum anchor, const char* str)
 {
-	Shape* text = shapeListAllocShape(shapeList, ShapeType::Text, parentAttrs);
+	Shape* text = shapeListAllocShape(shapeList, ShapeType::Text);
 	if (!text) {
 		return ~0u;
 	}

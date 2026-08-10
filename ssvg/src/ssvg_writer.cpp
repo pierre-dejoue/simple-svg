@@ -1,9 +1,11 @@
 #include <ssvg/ssvg.h>
 
 #include "ssvg_debug.h"
+#include "ssvg_math.h"
 
 #include <stdutils/macros.h>
 #include <stdutils/memory.h>
+#include <stdutils/minmax.h>
 
 #include <cstdio>
 #include <cstring>
@@ -186,8 +188,12 @@ bool colorToHex(StreamWriter& writer, uint32_t abgr)
 	return writer.write("#%02X%02X%02X", r, g, b);
 }
 
-bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, const ShapeAttributes* parentAttrs, SaveAttr::Type flags)
+bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, SaveAttr::Type flags = SaveAttr::All)
 {
+	if (!attrs) {
+		return true;
+	}
+
 	const bool conditionalPaints = (flags & SaveAttr::ConditionalPaints) != 0;
 
 	if ((flags & SaveAttr::ID) != 0 && attrs->m_ID[0] != '\0') {
@@ -210,17 +216,16 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, co
 			, attrs->m_Transform[5]);
 	}
 
-	if ((flags & SaveAttr::Stroke) != 0) {
+	if (flags & SaveAttr::Stroke) {
 		const PaintType::Enum strokeType = attrs->m_StrokePaint.m_Type;
-		const PaintType::Enum parentStrokeType = parentAttrs->m_StrokePaint.m_Type;
 
-		if (strokeType == PaintType::None && parentStrokeType != PaintType::None) {
-			writer.out() << " stroke=\"none\"";
-		} else if (strokeType == PaintType::Transparent && parentStrokeType != PaintType::Transparent) {
-			writer.out() << " stroke=\"transparent\"";
-		} else if (strokeType == PaintType::Color) {
-			const uint32_t abgr = attrs->m_StrokePaint.m_ColorABGR;
-			if (parentStrokeType != PaintType::Color || parentAttrs->m_StrokePaint.m_ColorABGR != abgr) {
+		if (attrs->m_Flags & AttribFlags::StrokePaintChanged) {
+			if (strokeType == PaintType::None) {
+				writer.out() << " stroke=\"none\"";
+			} else if (strokeType == PaintType::Transparent) {
+				writer.out() << " stroke=\"transparent\"";
+			} else if (strokeType == PaintType::Color) {
+				const uint32_t abgr = attrs->m_StrokePaint.m_ColorABGR;
 				writer.out() << " stroke=\"";
 				colorToHex(writer, abgr);
 				writer.out() << "\"";
@@ -229,44 +234,43 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, co
 
 		const bool saveExtra = !conditionalPaints || (strokeType != PaintType::None && strokeType != PaintType::Transparent);
 		if (saveExtra) {
-			const float miterLimit = attrs->m_StrokeMiterLimit;
-			if (miterLimit >= 1.0f && parentAttrs->m_StrokeMiterLimit != miterLimit) {
+			const float miterLimit = stdutils::clamp(attrs->m_StrokeMiterLimit, 1.0f, math::kFloatMax);
+			if (attrs->m_Flags & AttribFlags::StrokeMiterLimitChanged) {
 				writer.write(" stroke-miterlimit=\"%g\"", miterLimit);
 			}
 
-			const float width = attrs->m_StrokeWidth;
-			if (width >= 0.0f && parentAttrs->m_StrokeWidth != width) {
+			const float width = stdutils::clamp(attrs->m_StrokeWidth, 0.f, math::kFloatMax);
+			if (attrs->m_Flags & AttribFlags::StrokeWidthChanged) {
 				writer.write(" stroke-width=\"%g\"", width);
 			}
 
-			const float opacity = attrs->m_StrokeOpacity;
-			if (opacity >= 0.0f && opacity <= 1.0f && parentAttrs->m_StrokeOpacity != opacity) {
+			const float opacity = stdutils::clamp(attrs->m_StrokeOpacity, 0.f, 1.f);
+			if (attrs->m_Flags & AttribFlags::StrokeOpacityChanged) {
 				writer.write(" stroke-opacity=\"%g\"", opacity);
 			}
 
 			const LineJoin::Enum lineJoin = attrs->m_StrokeLineJoin;
-			if (lineJoin != parentAttrs->m_StrokeLineJoin) {
+			if (attrs->m_Flags & AttribFlags::StrokeLineJoinChanged) {
 				writer.out() << " stroke-linejoin=\"" << lineJoinToString(lineJoin) << "\"";
 			}
 
 			const LineCap::Enum lineCap = attrs->m_StrokeLineCap;
-			if (lineCap != parentAttrs->m_StrokeLineCap) {
+			if (attrs->m_Flags & AttribFlags::StrokeLineCapChanged) {
 				writer.out() << " stroke-linecap=\"" << lineCapToString(lineCap) << "\"";
 			}
 		}
 	}
 
-	if ((flags & SaveAttr::Fill) != 0) {
+	if (flags & SaveAttr::Fill) {
 		const PaintType::Enum fillType = attrs->m_FillPaint.m_Type;
-		const PaintType::Enum parentFillType = parentAttrs->m_FillPaint.m_Type;
 
-		if (fillType == PaintType::None && parentFillType != PaintType::None) {
-			writer.out() << " fill=\"none\"";
-		} else if (fillType == PaintType::Transparent && parentFillType != PaintType::Transparent) {
-			writer.out() << " fill=\"transparent\"";
-		} else if (fillType == PaintType::Color) {
-			const uint32_t abgr = attrs->m_FillPaint.m_ColorABGR;
-			if (parentFillType != PaintType::Color || parentAttrs->m_FillPaint.m_ColorABGR != abgr) {
+		if (attrs->m_Flags & AttribFlags::FillPaintChanged) {
+			if (fillType == PaintType::None) {
+				writer.out() << " fill=\"none\"";
+			} else if (fillType == PaintType::Transparent) {
+				writer.out() << " fill=\"transparent\"";
+			} else if (fillType == PaintType::Color) {
+				const uint32_t abgr = attrs->m_FillPaint.m_ColorABGR;
 				writer.out() << " fill=\"";
 				colorToHex(writer, abgr);
 				writer.out() << "\"";
@@ -275,12 +279,12 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, co
 
 		const bool saveExtra = !conditionalPaints || (fillType != PaintType::None && fillType != PaintType::Transparent);
 		if (saveExtra) {
-			const float opacity = attrs->m_FillOpacity;
-			if (opacity >= 0.0f && opacity <= 1.0f && opacity != parentAttrs->m_FillOpacity) {
+			const float opacity = stdutils::clamp(attrs->m_FillOpacity, 0.f, 1.f);
+			if (attrs->m_Flags & AttribFlags::FillOpacityChanged) {
 				writer.write(" fill-opacity=\"%g\"", opacity);
 			}
 
-			if (attrs->m_FillRule != parentAttrs->m_FillRule) {
+			if (attrs->m_Flags & AttribFlags::FillRuleChanged) {
 				writer.out() << " fill-rule=\"" << fillRuleToString(attrs->m_FillRule) << "\"";
 			}
 		}
@@ -288,18 +292,20 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, co
 
 	if ((flags & SaveAttr::Font) != 0) {
 		const char* fontFamily = attrs->m_FontFamily;
-		if (fontFamily[0] != '\0' && std::strncmp(fontFamily, &parentAttrs->m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN)) {
+		if (fontFamily[0] != '\0') {
 			writer.out() << " font-family=\"" << fontFamily << "\"";
 		}
 
 		const float fontSize = attrs->m_FontSize;
-		if (fontSize > 0.0f && fontSize != parentAttrs->m_FontSize) {
+		if (attrs->m_Flags & AttribFlags::FontSizeChanged) {
 			writer.write(" font-size=\"%g\"", fontSize);
 		}
 	}
 
-	if ((flags & SaveAttr::Opacity) != 0 && attrs->m_Opacity != parentAttrs->m_Opacity) {
-		writer.write(" opacity=\"%g\"", attrs->m_Opacity);
+	if (flags & SaveAttr::Opacity) {
+		if (attrs->m_Flags & AttribFlags::Opacity) {
+			writer.write(" opacity=\"%g\"", attrs->m_Opacity);
+		}
 	}
 
 	return true;
@@ -372,7 +378,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Group:
 			writer.indent(indentation);
 			writer.out() << "<g";
-			if (!writeShapeAttributes(writer, shape->m_Attrs, parentAttrs, SaveAttr::All)) {
+			if (!writeShapeAttributes(writer, shape->m_Attrs)) {
 				return false;
 			}
 			writer.out() << ">\n";
@@ -387,7 +393,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Rect:
 			writer.indent(indentation);
 			writer.out() << "<rect";
-			if (!writeShapeAttributes(writer, shape->m_Attrs, parentAttrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
+			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
 			}
 			writer.write(" x=\"%g\" y=\"%g\" width=\"%g\" height=\"%g\""
@@ -407,7 +413,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Circle:
 			writer.indent(indentation);
 			writer.out() << "<circle";
-			if (!writeShapeAttributes(writer, shape->m_Attrs, parentAttrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
+			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
 			}
 			writer.write(" cx=\"%g\" cy=\"%g\" r=\"%g\" />\n"
@@ -418,7 +424,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Ellipse:
 			writer.indent(indentation);
 			writer.out() << "<ellipse";
-			if (!writeShapeAttributes(writer, shape->m_Attrs, parentAttrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
+			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
 			}
 			writer.write(" cx=\"%g\" cy=\"%g\" rx=\"%g\" ry=\"%g\" />\n"
@@ -430,7 +436,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Line:
 			writer.indent(indentation);
 			writer.out() << "<line";
-			if (!writeShapeAttributes(writer, shape->m_Attrs, parentAttrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
+			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
 			}
 			writer.write(" x1=\"%g\" y1=\"%g\" x2=\"%g\" y2=\"%g\" />\n"
@@ -442,7 +448,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Polyline:
 			writer.indent(indentation);
 			writer.out() << "<polyline";
-			if (!writeShapeAttributes(writer, shape->m_Attrs, parentAttrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
+			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
 			}
 			if (!writePointList(writer, &shape->m_PointList)) {
@@ -453,7 +459,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Polygon:
 			writer.indent(indentation);
 			writer.out() << "<polygon";
-			if (!writeShapeAttributes(writer, shape->m_Attrs, parentAttrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
+			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
 			}
 			if (!writePointList(writer, &shape->m_PointList)) {
@@ -464,7 +470,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Path:
 			writer.indent(indentation);
 			writer.out() << "<path";
-			if (!writeShapeAttributes(writer, shape->m_Attrs, parentAttrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
+			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
 			}
 			if (!writePath(writer, &shape->m_Path)) {
@@ -475,7 +481,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Text:
 			writer.indent(indentation);
 			writer.out() << "<text";
-			if (!writeShapeAttributes(writer, shape->m_Attrs, parentAttrs, SaveAttr::Text)) {
+			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Text)) {
 				return false;
 			}
 			writer.write(" x=\"%g\" y=\"%g\"", shape->m_Text.x, shape->m_Text.y);

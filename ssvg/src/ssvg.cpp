@@ -125,10 +125,11 @@ void shapeSetTransform(Shape* shape, const float* transform)
 {
 	assert(shape);
 	assert(transform);
-	SSVG_CHECK(shape->m_Attrs, "Cannot set the transformation of a shape without private attributes");
-	if (shape->m_Attrs) {
-		stdutils::memcpy<float>(&shape->m_Attrs->m_Transform[0], TRANSFORM_ARRAY_SZ, transform, sizeof(float) * TRANSFORM_ARRAY_SZ);
+	if (!shape->m_Attrs) {
+		shapeAllocAttributes(shape);
 	}
+	stdutils::memcpy<float>(&shape->m_Attrs->m_Transform[0], TRANSFORM_ARRAY_SZ, transform, sizeof(float) * TRANSFORM_ARRAY_SZ);
+	shape->m_Attrs->m_Flags &= AttribFlags::Transformation;
 }
 
 void shapeSetIdentityTransform(Shape* shape)
@@ -143,10 +144,11 @@ void shapeSetIdentityTransform(Shape* shape)
 void shapeApplyTransform(Shape* shape, const float* transform)
 {
 	assert(shape);
-	SSVG_CHECK(shape->m_Attrs, "Cannot apply a transformation to a shape without private attributes");
-	if (shape->m_Attrs) {
-		transformMultiply(&shape->m_Attrs->m_Transform[0], transform);
+	if (!shape->m_Attrs) {
+		shapeAllocAttributes(shape);
 	}
+	transformMultiply(&shape->m_Attrs->m_Transform[0], transform);
+	shape->m_Attrs->m_Flags &= AttribFlags::Transformation;
 }
 
 namespace {
@@ -159,25 +161,11 @@ void resetShapeAttributes(ShapeAttributes* attrs)
 	stdutils::memset<ssvg::ShapeAttributes>(attrs, 0);
 	ssvg::transformIdentity(&attrs->m_Transform[0]);
 
-	// Default according to the SVG standards
-	attrs->m_Opacity = 1.0f;
-	attrs->m_StrokeWidth = 1.0f;
-	attrs->m_StrokeMiterLimit = 4.0f;
-	attrs->m_StrokeOpacity = 1.0f;
-	attrs->m_StrokePaint.m_Type = ssvg::PaintType::None;
-	attrs->m_StrokePaint.m_ColorABGR = 0xFF000000;          // Black
-	attrs->m_StrokeLineCap = ssvg::LineCap::Butt;
-	attrs->m_StrokeLineJoin = ssvg::LineJoin::Miter;
-	attrs->m_FillOpacity = 1.0f;
-	attrs->m_FillPaint.m_Type = ssvg::PaintType::Color;
-	attrs->m_FillPaint.m_ColorABGR = 0xFF000000;            // Black
-	attrs->m_FillRule = FillRule::NonZero;
-
-	assert(attrs->m_Parent == nullptr);
-	assert(stdutils::strnlen(&attrs->m_ID[0]) == 0);
-	assert(stdutils::strnlen(&attrs->m_FontFamily[0]) == 0);
+	assert(attrs->m_Flags == AttribFlags::None);
+	assert(stdutils::strnlen(&attrs->m_FontFamily[0]) == '\0');
+	assert(stdutils::strnlen(&attrs->m_ID[0]) == '\0');
 	#if SSVG_CONFIG_CLASS_MAX_LEN
-		assert(stdutils::strnlen(&attrs->m_Class[0]) == 0);
+		assert(stdutils::strnlen(&attrs->m_Class[0]) == '\0');
 	#endif
 }
 
@@ -200,7 +188,7 @@ bool shapeIsEmptyGroup(Shape* shape)
 	    && shape->m_ShapeList.m_NumShapes == 0;
 }
 
-Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const ShapeAttributes* parentAttrs)
+Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type)
 {
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 	if (!shapeList) { return nullptr; }
@@ -231,10 +219,8 @@ Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const Sha
 		return shape;
 	}();
 
+	// Set its type
 	newShape->m_Type = type;
-	newShape->m_Attrs = shapeAttrsAlloc();
-	newShape->m_Attrs->m_Parent = parentAttrs;
-	newShape->m_Attrs->m_Flags = parentAttrs ? AttribFlags::InheritAll : AttribFlags::None;
 
 	return newShape;
 }
@@ -539,13 +525,19 @@ void shapeListCalcBounds(ShapeList* shapeList, float* bounds)
 
 		// Since this is a group, the child's bounding rect should be transformed using its
 		// transformation matrix before calculating the group's local bounding rect.
-		float childTransformedRect[4];
-		transformBoundingRect(&shape->m_Attrs->m_Transform[0], &shape->m_BoundingRect[0], &childTransformedRect[0]);
-
-		bounds[0] = stdutils::min<float>(bounds[0], childTransformedRect[0]);
-		bounds[1] = stdutils::min<float>(bounds[1], childTransformedRect[1]);
-		bounds[2] = stdutils::max<float>(bounds[2], childTransformedRect[2]);
-		bounds[3] = stdutils::max<float>(bounds[3], childTransformedRect[3]);
+		if (shape->m_Attrs) {
+			float childTransformedRect[BOUNDING_RECT_ARRAY_SZ];
+			transformBoundingRect(&shape->m_Attrs->m_Transform[0], &shape->m_BoundingRect[0], &childTransformedRect[0]);
+			bounds[0] = stdutils::min<float>(bounds[0], childTransformedRect[0]);
+			bounds[1] = stdutils::min<float>(bounds[1], childTransformedRect[1]);
+			bounds[2] = stdutils::max<float>(bounds[2], childTransformedRect[2]);
+			bounds[3] = stdutils::max<float>(bounds[3], childTransformedRect[3]);
+		} else {
+			bounds[0] = stdutils::min<float>(bounds[0], shape->m_BoundingRect[0]);
+			bounds[1] = stdutils::min<float>(bounds[1], shape->m_BoundingRect[1]);
+			bounds[2] = stdutils::max<float>(bounds[2], shape->m_BoundingRect[2]);
+			bounds[3] = stdutils::max<float>(bounds[3], shape->m_BoundingRect[3]);
+		}
 	}
 }
 
@@ -968,29 +960,33 @@ void textClear(Text* text)
 
 std::string_view shapeAttrsGetID(const ShapeAttributes* attrs)
 {
+	if (!attrs) { return ""; }
 	const uint32_t len = stdutils::strnlen(&attrs->m_ID[0], SSVG_CONFIG_ID_MAX_LEN);
 	return std::string_view(&attrs->m_ID[0], len);
 }
 
 std::string_view shapeAttrsGetFontFamily(const ShapeAttributes* attrs)
 {
+	if (!attrs) { return ""; }
 	const uint32_t len = stdutils::strnlen(&attrs->m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN);
 	return std::string_view(&attrs->m_FontFamily[0], len);
 }
 
 std::string_view shapeAttrsGetClass(const ShapeAttributes* attrs)
 {
+	if (!attrs) { return ""; }
 #if SSVG_CONFIG_CLASS_MAX_LEN
 	const uint32_t len = stdutils::strnlen(&attrs->m_Class[0], SSVG_CONFIG_CLASS_MAX_LEN);
 	return std::string_view(&attrs->m_Class[0], len);
 #else
-	UNUSED(attrs);
 	return std::string_view();
 #endif
 }
 
 void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& value)
 {
+	SSVG_CHECK(attrs, "Nullptr to ShapeAttrubutes. Allocate them first with shapeAllocAttributes.");
+	if (!attrs) { return; }
 	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_ID_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
 	SSVG_WARN((std::int32_t)maxLen >= strlenint(value), "id \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
 	stdutils::memcpy<char>(&attrs->m_ID[0], SSVG_CONFIG_ID_MAX_LEN, value.data(), maxLen);
@@ -999,6 +995,8 @@ void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& value)
 
 void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& value)
 {
+	SSVG_CHECK(attrs, "Nullptr to ShapeAttrubutes. Allocate them first with shapeAllocAttributes.");
+	if (!attrs) { return; }
 	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
 	SSVG_WARN((std::int32_t)maxLen >= strlenint(value), "font-family \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
 	stdutils::memcpy<char>(&attrs->m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN, value.data(), maxLen);
@@ -1007,13 +1005,14 @@ void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& val
 
 void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value)
 {
+	SSVG_CHECK(attrs, "Nullptr to ShapeAttrubutes. Allocate them first with shapeAllocAttributes.");
+	if (!attrs) { return; }
 #if SSVG_CONFIG_CLASS_MAX_LEN
 	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_CLASS_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
 	SSVG_WARN((std::int32_t)maxLen >= strlenint(value), "class \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
 	stdutils::memcpy<char>(&attrs->m_Class[0], SSVG_CONFIG_CLASS_MAX_LEN, value.data(), maxLen);
 	attrs->m_Class[maxLen] = '\0';
 #else
-	UNUSED(attrs);
 	UNUSED(value);
 #endif
 }
@@ -1026,10 +1025,8 @@ Image* imageCreate(const ShapeAttributes* baseAttrs)
 
 	if (baseAttrs) {
 		img->m_BaseAttrs = *baseAttrs;
-		img->m_BaseAttrs.m_Parent = nullptr;
 	} else {
 		img->m_BaseAttrs = defaultShapeAttributes();
-		assert(img->m_BaseAttrs.m_Parent == nullptr);
 	}
 
 	return img;
@@ -1076,10 +1073,29 @@ void shutdownLib()
 	s_ShapeAttrFreeListHead = nullptr;
 }
 
-ShapeAttributes defaultShapeAttributes()
+const ShapeAttributes& defaultShapeAttributes()
 {
-	ssvg::ShapeAttributes defaultAttrs;
-	resetShapeAttributes(&defaultAttrs);
+	static ssvg::ShapeAttributes defaultAttrs = []() {
+		ssvg::ShapeAttributes attrs;
+		resetShapeAttributes(&attrs);
+
+		// Default according to the SVG standards
+		attrs.m_Opacity = 1.0f;
+		attrs.m_StrokeWidth = 1.0f;
+		attrs.m_StrokeMiterLimit = 4.0f;
+		attrs.m_StrokeOpacity = 1.0f;
+		attrs.m_StrokePaint.m_Type = ssvg::PaintType::None;
+		attrs.m_StrokePaint.m_ColorABGR = 0xFF000000;          // Black
+		attrs.m_StrokeLineCap = ssvg::LineCap::Butt;
+		attrs.m_StrokeLineJoin = ssvg::LineJoin::Miter;
+		attrs.m_FillOpacity = 1.0f;
+		attrs.m_FillPaint.m_Type = ssvg::PaintType::Color;
+		attrs.m_FillPaint.m_ColorABGR = 0xFF000000;            // Black
+		attrs.m_FillRule = FillRule::NonZero;
+
+		return attrs;
+	}();
+
 	return defaultAttrs;
 }
 
@@ -1125,6 +1141,31 @@ ShapeType::Enum shapeGetType(const Shape* shape)
 	return shape->m_Type;
 }
 
+ShapeAttributes* shapeAllocAttributes(Shape* shape, const ShapeAttributes* parentAttrs)
+{
+	SSVG_CHECK(shape, "Nullptr to Shape");
+	if (!shape) { return nullptr; }
+	SSVG_WARN(!shape->m_Attrs, "The shape already has allocated attributes. Use shapeGetAttributes to access them");
+	if (shape->m_Attrs) { return shape->m_Attrs; }
+
+	ShapeAttributes* attrs = shape->m_Attrs = shapeAttrsAlloc();
+	if (parentAttrs) {
+		// We copy all attributes from the parent, except for:
+		// - The transformation, else we would apply it twice on the shape.
+		// - The ID and Class, specific to an alement.
+		*attrs = *parentAttrs;
+		attrs->m_Flags = AttribFlags::None;
+		transformIdentity(attrs->m_Transform);
+		attrs->m_ID[0] = '\0';
+#if SSVG_CONFIG_CLASS_MAX_LEN
+		attrs->m_Class[0] = '\0';
+#endif
+	}
+
+	assert(shape->m_Attrs);
+	return shape->m_Attrs;
+}
+
 ShapeAttributes* shapeGetAttributes(Shape* shape)
 {
 	return const_cast<ShapeAttributes*>(shapeGetAttributes(const_cast<const Shape*>(shape)));
@@ -1136,6 +1177,16 @@ const ShapeAttributes* shapeGetAttributes(const Shape* shape)
 	if (!shape) { return nullptr; }
 
 	return shape->m_Attrs;
+}
+
+ShapeAttributes* shapeListAllocShapeAttributes(ShapeList* shapeList, uint32_t shapeIndex, const ShapeAttributes* parentAttrs)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return nullptr; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return nullptr; }
+
+	return shapeAllocAttributes(&shapeList->m_Shapes[shapeIndex], parentAttrs);
 }
 
 ShapeAttributes* shapeListGetShapeAttributes(ShapeList* shapeList, uint32_t shapeIndex)
@@ -1165,7 +1216,11 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 
 	stdutils::memcpy<float>(&dst->m_BoundingRect[0], BOUNDING_RECT_ARRAY_SZ, &src->m_BoundingRect[0], sizeof(float) * BOUNDING_RECT_ARRAY_SZ);
 
-	if (copyAttrs) {
+	if (copyAttrs && src->m_Attrs) {
+		if (!dst->m_Attrs) {
+			shapeAllocAttributes(dst);
+		}
+		assert(dst->m_Attrs);
 		stdutils::memcpy<ShapeAttributes>(dst->m_Attrs, src->m_Attrs);
 	}
 
@@ -1180,7 +1235,7 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 
 			for (uint32_t i = 0; i < numShapes; ++i) {
 				const Shape* srcShape = &srcShapeList->m_Shapes[i];
-				Shape* dstShape = shapeListAllocShape(dstShapeList, srcShape->m_Type, nullptr);
+				Shape* dstShape = shapeListAllocShape(dstShapeList, srcShape->m_Type);
 				shapeCopy(dstShape, srcShape);
 			}
 		}

@@ -206,18 +206,22 @@ struct AttribFlags
 	enum Enum : Type
 	{
 		None                    = 0,
-		StrokePaintInherit      = 1 << 0,
-		StrokeMiterLimitInherit = 1 << 1,
-		StrokeOpacityInherit    = 1 << 2,
-		StrokeWidthInherit      = 1 << 3,
-		StrokeLineJoinInherit   = 1 << 4,
-		StrokeLineCapInherit    = 1 << 5,
-		FillPaintInherit        = 1 << 6,
-		FillOpacityInherit      = 1 << 7,
-		FillRuleInherit         = 1 << 8,
-		FontSizeInherit         = 1 << 9,
-		FontFamilyInherit       = 1 << 10,
-		InheritAll              =(1 << 11) - 1
+		StrokePaintChanged      = 1 << 0,
+		StrokeMiterLimitChanged = 1 << 1,
+		StrokeOpacityChanged    = 1 << 2,
+		StrokeWidthChanged      = 1 << 3,
+		StrokeLineJoinChanged   = 1 << 4,
+		StrokeLineCapChanged    = 1 << 5,
+		FillPaintChanged        = 1 << 6,
+		FillOpacityChanged      = 1 << 7,
+		FillRuleChanged         = 1 << 8,
+		FontSizeChanged         = 1 << 9,
+		FontFamilyChanged       = 1 << 10,
+		Opacity                 = 1 << 11,
+		Transformation          = 1 << 12,
+		ElementID               = 1 << 13,
+		ElementClass            = 1 << 14,
+		All                     =(1 << 15) - 1
 	};
 };
 
@@ -225,7 +229,7 @@ inline constexpr uint32_t TRANSFORM_ARRAY_SZ = 6;
 
 struct ShapeAttributes
 {
-	const ShapeAttributes* m_Parent;
+	AttribFlags::Type m_Flags;
 	Paint m_StrokePaint;
 	Paint m_FillPaint;
 	float m_Transform[TRANSFORM_ARRAY_SZ];
@@ -233,14 +237,13 @@ struct ShapeAttributes
 	float m_StrokeOpacity;
 	float m_StrokeWidth;
 	float m_FillOpacity;
-	float m_FontSize;
 	float m_Opacity;
-	AttribFlags::Type m_Flags;
 	LineJoin::Enum m_StrokeLineJoin;
 	LineCap::Enum m_StrokeLineCap;
 	FillRule::Enum m_FillRule;
-	char m_ID[SSVG_CONFIG_ID_MAX_LEN];
+	float m_FontSize;
 	char m_FontFamily[SSVG_CONFIG_FONT_FAMILY_MAX_LEN];
+	char m_ID[SSVG_CONFIG_ID_MAX_LEN];
 #if SSVG_CONFIG_CLASS_MAX_LEN
 	char m_Class[SSVG_CONFIG_CLASS_MAX_LEN];
 #endif
@@ -310,7 +313,7 @@ void initLib();
 void shutdownLib();
 
 // Default ShapeAttributes according to the SVG standards
-ShapeAttributes defaultShapeAttributes();
+const ShapeAttributes& defaultShapeAttributes();
 
 // Image allocated by imageLoad or imageCreate *must* be freed with imageFree
 Image* imageLoad(const char* xmlStr, ImageLoadFlags::Type flags, const ShapeAttributes* baseAttrs = nullptr);
@@ -330,24 +333,25 @@ const ShapeList*       imageGetShapeList(const Image* img);
 uint32_t imageGetNumShapes(const Image* img);
 
 // Manipulate ShapeLists
-Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type, const ShapeAttributes* parentAttrs);
+Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type);
 void shapeListReserve(ShapeList* shapeList, uint32_t capacity);
 void shapeListShrinkToFit(ShapeList* shapeList);
 void shapeListClear(ShapeList* shapeList);
 uint32_t shapeListAddShape(ShapeList* shapeList, const Shape* shape);
-uint32_t shapeListAddGroup(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const ShapeList* sourceShapeList = nullptr);
-uint32_t shapeListAddGroupWithShapes(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const Shape* children, uint32_t numChildren);
-uint32_t shapeListAddRect(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, float w, float h, float rx, float ry);
-uint32_t shapeListAddCircle(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, float r);
-uint32_t shapeListAddEllipse(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, float rx, float ry);
-uint32_t shapeListAddLine(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x1, float y1, float x2, float y2);
-uint32_t shapeListAddPolyline(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const float* coords, uint32_t numPoints);
-uint32_t shapeListAddPolygon(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const float* coords, uint32_t numPoints);
-uint32_t shapeListAddPath(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const Path* sourcePath = nullptr);
-uint32_t shapeListAddPathCommands(ShapeList* shapeList, const ShapeAttributes* parentAttrs, const PathCmd* pathCommands, uint32_t commands);
-uint32_t shapeListAddText(ShapeList* shapeList, const ShapeAttributes* parentAttrs, float x, float y, TextAnchor::Enum anchor, const char* text);
+uint32_t shapeListAddGroup(ShapeList* shapeList, const ShapeList* sourceShapeList = nullptr);
+uint32_t shapeListAddGroupWithShapes(ShapeList* shapeList, const Shape* children, uint32_t numChildren);
+uint32_t shapeListAddRect(ShapeList* shapeList, float x, float y, float w, float h, float rx, float ry);
+uint32_t shapeListAddCircle(ShapeList* shapeList, float x, float y, float r);
+uint32_t shapeListAddEllipse(ShapeList* shapeList, float x, float y, float rx, float ry);
+uint32_t shapeListAddLine(ShapeList* shapeList, float x1, float y1, float x2, float y2);
+uint32_t shapeListAddPolyline(ShapeList* shapeList, const float* coords, uint32_t numPoints);
+uint32_t shapeListAddPolygon(ShapeList* shapeList, const float* coords, uint32_t numPoints);
+uint32_t shapeListAddPath(ShapeList* shapeList, const Path* sourcePath = nullptr);
+uint32_t shapeListAddPathCommands(ShapeList* shapeList, const PathCmd* pathCommands, uint32_t commands);
+uint32_t shapeListAddText(ShapeList* shapeList, float x, float y, TextAnchor::Enum anchor, const char* text);
 uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeIndex);
 uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeIndex);
+ShapeAttributes*       shapeListAllocShapeAttributes(    ShapeList* shapeList, uint32_t shapeIndex, const ShapeAttributes* parentAttrs = nullptr);
 ShapeAttributes*       shapeListGetShapeAttributes(      ShapeList* shapeList, uint32_t shapeIndex);
 const ShapeAttributes* shapeListGetShapeAttributes(const ShapeList* shapeList, uint32_t shapeIndex);
 ShapeType::Enum shapeListGetShapeType(const ShapeList* shapeList, uint32_t shapeIndex);
@@ -424,6 +428,7 @@ void shapeSetTransform(Shape* shape, const float* transform);
 void shapeSetIdentityTransform(Shape* shape);
 void shapeApplyTransform(Shape* shape, const float* transform);
 ShapeType::Enum shapeGetType(const Shape* shape);
+ShapeAttributes*       shapeAllocAttributes(Shape* shape, const ShapeAttributes* parentAttrs = nullptr);
 ShapeAttributes*       shapeGetAttributes(Shape* shape);
 const ShapeAttributes* shapeGetAttributes(const Shape* shape);
 bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs = true);

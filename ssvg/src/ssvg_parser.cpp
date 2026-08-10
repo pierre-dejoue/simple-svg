@@ -43,6 +43,7 @@ struct ParserState
 	const char* m_XMLString;
 	const char* m_Ptr;
 	ImageLoadFlags::Type m_Flags;
+	ShapeAttributes m_parsedShapeAttrs;
 };
 
 struct CSSColor
@@ -856,6 +857,7 @@ namespace {
 
 ParseAttr::Result parseStyle(const std::string_view& str, ShapeAttributes* attrs)
 {
+	assert(attrs);
 	const char* end = strend(str);
 	const char* ptr = skipWhitespace(str.data(), end);
 	while (ptr != end) {
@@ -904,13 +906,13 @@ ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const
 	} else if (name.substr(0, 6) == "stroke") {
 		const std::string_view nameSuffix = name.substr(6);
 		if (nameSuffix.length() == 0) {
-			attrs->m_Flags &= ~AttribFlags::StrokePaintInherit;
+			attrs->m_Flags |= AttribFlags::StrokePaintChanged;
 			return parsePaint(value, &attrs->m_StrokePaint) ? ParseAttr::OK : ParseAttr::Fail;
 		} else if (nameSuffix == "-miterlimit") {
-			attrs->m_Flags &= ~AttribFlags::StrokeMiterLimitInherit;
+			attrs->m_Flags |= AttribFlags::StrokeMiterLimitChanged;
 			return parseNumber(value, &attrs->m_StrokeMiterLimit, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
 		} else if (nameSuffix == "-linejoin") {
-			attrs->m_Flags &= ~AttribFlags::StrokeLineJoinInherit;
+			attrs->m_Flags |= AttribFlags::StrokeLineJoinChanged;
 			if (value == "miter") {
 				attrs->m_StrokeLineJoin = LineJoin::Miter;
 			} else if (value == "round") {
@@ -923,7 +925,7 @@ ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const
 
 			return ParseAttr::OK;
 		} else if (nameSuffix == "-linecap") {
-			attrs->m_Flags &= ~AttribFlags::StrokeLineCapInherit;
+			attrs->m_Flags |= AttribFlags::StrokeLineCapChanged;
 			if (value == "butt") {
 				attrs->m_StrokeLineCap = LineCap::Butt;
 			} else if (value == "round") {
@@ -936,22 +938,22 @@ ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const
 
 			return ParseAttr::OK;
 		} else if (nameSuffix == "-opacity") {
-			attrs->m_Flags &= ~AttribFlags::StrokeOpacityInherit;
+			attrs->m_Flags |= AttribFlags::StrokeOpacityChanged;
 			return parseNumber(value, &attrs->m_StrokeOpacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
 		} else if (nameSuffix == "-width") {
-			attrs->m_Flags &= ~AttribFlags::StrokeWidthInherit;
+			attrs->m_Flags |= AttribFlags::StrokeWidthChanged;
 			return parseLength(value, &attrs->m_StrokeWidth) ? ParseAttr::OK : ParseAttr::Fail;
 		}
 	} else if (name.substr(0, 4) == "fill") {
 		const std::string_view nameSuffix = name.substr(4);
 		if (nameSuffix.length() == 0) {
-			attrs->m_Flags &= ~AttribFlags::FillPaintInherit;
+			attrs->m_Flags |= AttribFlags::FillPaintChanged;
 			return parsePaint(value, &attrs->m_FillPaint) ? ParseAttr::OK : ParseAttr::Fail;
 		} else if (nameSuffix == "-opacity") {
-			attrs->m_Flags &= ~AttribFlags::FillOpacityInherit;
+			attrs->m_Flags |= AttribFlags::FillOpacityChanged;
 			return parseNumber(value, &attrs->m_FillOpacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
 		} else if (nameSuffix == "-rule") {
-			attrs->m_Flags &= ~AttribFlags::FillRuleInherit;
+			attrs->m_Flags |= AttribFlags::FillRuleChanged;
 			if (value == "nonzero") {
 				attrs->m_FillRule = FillRule::NonZero;
 			} else if (value == "evenodd") {
@@ -965,38 +967,102 @@ ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const
 	} else if (name.substr(0, 4) == "font") {
 		const std::string_view nameSuffix = name.substr(4);
 		if (nameSuffix == "-family") {
-			attrs->m_Flags &= ~AttribFlags::FontFamilyInherit;
+			attrs->m_Flags |= AttribFlags::FontFamilyChanged;
 			shapeAttrsSetFontFamily(attrs, value);
 			return ParseAttr::OK;
 		} else if (nameSuffix == "-size") {
-			attrs->m_Flags &= ~AttribFlags::FontSizeInherit;
+			attrs->m_Flags |= AttribFlags::FontSizeChanged;
 			return parseLength(value, &attrs->m_FontSize) ? ParseAttr::OK : ParseAttr::Fail;
 		}
+	} else if (name == "opacity") {
+		attrs->m_Flags |= AttribFlags::Opacity;
+		return parseNumber(value, &attrs->m_Opacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
 	} else if (name == "transform") {
+		attrs->m_Flags |= AttribFlags::Transformation;
 		return parseTransform(value, &attrs->m_Transform[0]) ? ParseAttr::OK : ParseAttr::Fail;
 	} else if (name == "id") {
+		attrs->m_Flags |= AttribFlags::ElementID;
 		shapeAttrsSetID(attrs, value);
 		return ParseAttr::OK;
 	} else if (name == "class") {
 #if SSVG_CONFIG_CLASS_MAX_LEN
+		attrs->m_Flags |= AttribFlags::ElementClass;
 		shapeAttrsSetClass(attrs, value);
 #endif
 		return ParseAttr::OK;
-	} else if (name == "opacity") {
-		return parseNumber(value, &attrs->m_Opacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
 	}
 
 	return ParseAttr::Unknown;
 }
 
+void selectiveCopyShapeAttributes(ShapeAttributes* targetAttrs, const ShapeAttributes* sourceAttrs)
+{
+	assert(targetAttrs);
+	assert(sourceAttrs);
+
+	const auto flags = sourceAttrs->m_Flags;
+	if (flags & AttribFlags::StrokePaintChanged) {
+		targetAttrs->m_StrokePaint = sourceAttrs->m_StrokePaint;
+	}
+	if (flags & AttribFlags::StrokeMiterLimitChanged) {
+		targetAttrs->m_StrokeMiterLimit = sourceAttrs->m_StrokeMiterLimit;
+	}
+	if (flags & AttribFlags::StrokeOpacityChanged) {
+		targetAttrs->m_StrokeOpacity = sourceAttrs->m_StrokeOpacity;
+	}
+	if (flags & AttribFlags::StrokeWidthChanged) {
+		targetAttrs->m_StrokeWidth = sourceAttrs->m_StrokeWidth;
+	}
+	if (flags & AttribFlags::StrokeLineJoinChanged) {
+		targetAttrs->m_StrokeLineJoin = sourceAttrs->m_StrokeLineJoin;
+	}
+	if (flags & AttribFlags::StrokeLineCapChanged) {
+		targetAttrs->m_StrokeLineCap = sourceAttrs->m_StrokeLineCap;
+	}
+	if (flags & AttribFlags::FillPaintChanged) {
+		targetAttrs->m_FillPaint = sourceAttrs->m_FillPaint;
+	}
+	if (flags & AttribFlags::FillOpacityChanged) {
+		targetAttrs->m_FillOpacity = sourceAttrs->m_FillOpacity;
+	}
+	if (flags & AttribFlags::FillRuleChanged) {
+		targetAttrs->m_FillRule = sourceAttrs->m_FillRule;
+	}
+	if (flags & AttribFlags::FontSizeChanged) {
+		targetAttrs->m_FontSize = sourceAttrs->m_FontSize;
+	}
+	if (flags & AttribFlags::FontFamilyChanged) {
+		shapeAttrsSetFontFamily(targetAttrs, shapeAttrsGetFontFamily(sourceAttrs));
+	}
+	if (flags & AttribFlags::Opacity) {
+		targetAttrs->m_Opacity = sourceAttrs->m_Opacity;
+	}
+	if (flags & AttribFlags::Transformation) {
+		stdutils::memcpy<float>(&targetAttrs->m_Transform[0], TRANSFORM_ARRAY_SZ, &sourceAttrs->m_Transform[0], sizeof(float) * TRANSFORM_ARRAY_SZ);
+	}
+	if (flags & AttribFlags::ElementID) {
+		shapeAttrsSetID(targetAttrs, shapeAttrsGetID(sourceAttrs));
+	}
+#if SSVG_CONFIG_CLASS_MAX_LEN
+	if (flags & AttribFlags::ElementClass) {
+		shapeAttrsSetClass(targetAttrs, shapeAttrsGetClass(sourceAttrs));
+	}
+#endif
+
+	targetAttrs->m_Flags |= sourceAttrs->m_Flags;
+}
+
 bool parseShape_Group(ParserState* parser, Shape* group)
 {
+	assert(group->m_Attrs);
+	assert(group->m_Attrs->m_Flags == AttribFlags::None);
 	bool err = false;
 	while (!parserDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 		if (parserExpectingChar(parser, '>')) {
 			break;
 		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
+			// TODO: Test this!
 			const auto group_id = shapeAttrsGetID(group->m_Attrs);
 			SSVG_WARN(false, "Empty group element id=\"%.*s\"", strlenint(group_id), group_id.data());
 			parser->m_Ptr += 2;
@@ -1038,7 +1104,7 @@ bool parseShape_Text(ParserState* parser, Shape* text)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, text->m_Attrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_parsedShapeAttrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
@@ -1110,7 +1176,7 @@ bool parseShape_Path(ParserState* parser, Shape* path)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, path->m_Attrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_parsedShapeAttrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
@@ -1152,7 +1218,7 @@ bool parseShape_Rect(ParserState* parser, Shape* rect)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, rect->m_Attrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_parsedShapeAttrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
@@ -1204,7 +1270,7 @@ bool parseShape_Circle(ParserState* parser, Shape* circle)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, circle->m_Attrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_parsedShapeAttrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
@@ -1250,7 +1316,7 @@ bool parseShape_Line(ParserState* parser, Shape* line)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, line->m_Attrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_parsedShapeAttrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
@@ -1298,7 +1364,7 @@ bool parseShape_Ellipse(ParserState* parser, Shape* ellipse)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, ellipse->m_Attrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_parsedShapeAttrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
@@ -1346,7 +1412,7 @@ bool parseShape_PointList(ParserState* parser, Shape* shape)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, shape->m_Attrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_parsedShapeAttrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
@@ -1397,6 +1463,10 @@ bool parseShape_PointList(ParserState* parser, Shape* shape)
 
 bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAttributes* parentAttrs, const char* closingTag, uint32_t closingTagLen)
 {
+	assert(parser);
+	assert(shapeList);
+	assert(parentAttrs);
+	assert(closingTag);
 	struct ParseFunc
 	{
 		std::string_view tag;
@@ -1436,10 +1506,26 @@ bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAttribute
 		bool found = false;
 		for (uint32_t i = 0; i < numParseFuncs; ++i) {
 			if (tag == parseFuncs[i].tag) {
-				Shape* shape = shapeListAllocShape(shapeList, parseFuncs[i].type, parentAttrs);
+				const auto type = parseFuncs[i].type;
+				Shape* shape = shapeListAllocShape(shapeList, type);
 				SSVG_CHECK(shape != nullptr, "Shape allocation failed");
+				parser->m_parsedShapeAttrs.m_Flags = AttribFlags::None;
 
+				// For groups, always preallocate the attributes:
+				//   - groups almost always have an ID
+				//   - recursive nature of parsing a group
+				if (type == ShapeType::Group) {
+					shapeAllocAttributes(shape);
+				}
+
+				// Parse the shape
 				err = !parseFuncs[i].parseFunc(parser, shape);
+
+				if (!err && type != ShapeType::Group && parser->m_parsedShapeAttrs.m_Flags) {
+					ShapeAttributes* shapeAttrs = shapeAllocAttributes(shape, parentAttrs);
+					selectiveCopyShapeAttributes(shapeAttrs, &parser->m_parsedShapeAttrs);
+				}
+
 				found = true;
 				break;
 			}
@@ -1528,6 +1614,7 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 	parser.m_XMLString = xmlStr;
 	parser.m_Ptr = xmlStr;
 	parser.m_Flags = flags;
+	stdutils::memset<ShapeAttributes>(&parser.m_parsedShapeAttrs, 0);
 
 	bool err = false;
 	while (!parserDone(&parser) && !err) {
