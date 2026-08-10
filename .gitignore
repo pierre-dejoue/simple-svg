@@ -6,5 +6,6 @@
 /x64/Debug
 /x64/Release
 /*.opensdf
+/.vscode
 /misc
 /examples/svg_files/round_trip_*
