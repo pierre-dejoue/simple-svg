@@ -434,6 +434,18 @@ const ShapeAttributes* shapeGetAttributes(const Shape* shape);
 bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs = true);
 void shapeUpdateBounds(Shape* shape);
 
+namespace internals {
+
+struct AllocatedShapeAttrsCounters {
+	uint32_t numNodes;
+	uint32_t numAllocAttrs;
+	uint32_t numFreeAttrs;
+};
+
+AllocatedShapeAttrsCounters enumerateAllocatedShapeAttrs();
+
+} // internals
+
 } // namespace ssvg
 
 #endif		// SSVG_SSVG_H

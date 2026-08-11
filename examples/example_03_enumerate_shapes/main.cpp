@@ -115,6 +115,14 @@ std::ostream& operator<<(std::ostream& out, const ShapesCounters& counters)
 	return out;
 }
 
+std::ostream& operator<<(std::ostream& out, const ssvg::internals::AllocatedShapeAttrsCounters& counters)
+{
+	out << "ShapesAttributes:" << std::endl;
+	out << "    nodes:     " << counters.numNodes << std::endl;
+	out << "    allocated: " << counters.numAllocAttrs << std::endl;
+	out << "    free:      " << counters.numFreeAttrs << std::endl;
+	return out;
+}
 
 int main(int argc, char* argv[])
 {
@@ -137,7 +145,13 @@ int main(int argc, char* argv[])
 
 	const auto shapesCounters = enumerateShapes(ssvg::imageGetShapeList(img));
 
+	std::cout << std::endl;
 	std::cout << shapesCounters;
+
+	const auto allocatedShapeAttrsCounters = ssvg::internals::enumerateAllocatedShapeAttrs();
+
+	std::cout << std::endl;
+	std::cout << allocatedShapeAttrsCounters;
 
 	closeSVGImage(img);
 

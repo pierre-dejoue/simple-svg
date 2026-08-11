@@ -1471,4 +1471,24 @@ void shapeAttrsFree(ShapeAttributes* attrs)
 
 } // namespace
 
+namespace internals {
+
+AllocatedShapeAttrsCounters enumerateAllocatedShapeAttrs()
+{
+	AllocatedShapeAttrsCounters counters;
+	stdutils::memset<AllocatedShapeAttrsCounters>(&counters, 0);
+
+	ShapeAttributeFreeListNode* node = s_ShapeAttrFreeListHead;
+	while (node) {
+		counters.numNodes++;
+		counters.numAllocAttrs += node->m_NumAttrs - node->m_NumFree;
+		counters.numFreeAttrs += node->m_NumFree;
+		node = node->m_Next;
+	}
+
+	return counters;
+}
+
+} // namespace internals
+
 } // namespace svg
