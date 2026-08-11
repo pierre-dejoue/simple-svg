@@ -175,8 +175,26 @@ struct PathNum
 		uint32_t numSubpaths;
 		uint32_t numNodes;
 	};
+
 	SubpathNum closed;
 	SubpathNum open;
+};
+
+struct ShapesCounters {
+	struct PolyNum {
+		uint32_t numPoly;
+		uint32_t numPoints;
+	};
+
+	uint32_t numGroups;
+	uint32_t numRects;
+	uint32_t numCircles;
+	uint32_t numEllipses;
+	uint32_t numLines;
+	uint32_t numTexts;
+	PolyNum polygons;
+	PolyNum polylines;
+	PathNum paths;
 };
 
 // TODO: alignment-baseline
@@ -372,6 +390,7 @@ void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeIndex);
 void shapeListDeleteLastShape(ShapeList* shapeList);
 void shapeListCalcBounds(ShapeList* shapeList, float* bounds);
 uint32_t shapeListGetNumShapes(const ShapeList* shapeList);
+ShapesCounters shapeListEnumerate(const ShapeList* shapeList);
 
 // Manipulate Paths
 PathCmd* pathAllocCommand(Path* path, PathCmdType::Enum type);

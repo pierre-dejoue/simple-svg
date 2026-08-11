@@ -475,6 +475,83 @@ uint32_t shapeListGetNumShapes(const ShapeList* shapeList)
 	return shapeList->m_NumShapes;
 }
 
+namespace {
+
+void shapeListEnumerateRecursive(const ShapeList* shapeList, ShapesCounters* counters)
+{
+	assert(shapeList);
+	assert(counters);
+
+	const uint32_t numShapes = shapeList->m_NumShapes;
+	for (uint32_t shapeIndex = 0; shapeIndex < numShapes; ++shapeIndex) {
+		const ShapeType::Enum shapeType = shapeListGetShapeType(shapeList, shapeIndex);
+		switch (shapeType) {
+		case ShapeType::Group:
+			{
+				counters->numGroups++;
+				const ShapeList* childShapeList = shapeListGetGroupShapeList(shapeList, shapeIndex);
+				assert(childShapeList);
+				shapeListEnumerateRecursive(childShapeList, counters);
+			}
+			break;
+		case ShapeType::Rect:
+			counters->numRects++;
+			break;
+		case ShapeType::Circle:
+			counters->numCircles++;
+			break;
+		case ShapeType::Ellipse:
+			counters->numEllipses++;
+			break;
+		case ShapeType::Line:
+			counters->numLines++;
+			break;
+		case ShapeType::Polyline:
+		case ShapeType::Polygon:
+			{
+				ShapesCounters::PolyNum& polyNum = shapeType == ShapeType::Polyline ? counters->polylines : counters->polygons;
+				const PointList* ptList = shapeListGetPointList(shapeList, shapeIndex);
+				assert((ptList));
+				polyNum.numPoly++;
+				polyNum.numPoints += pointListGetNumPoints(ptList);
+			}
+			break;
+		case ShapeType::Path:
+			{
+				const Path* path = shapeListGetPath(shapeList, shapeIndex);
+				assert(path);
+				const PathNum pathNum = pathGetSubpathCounters(path);
+				counters->paths.open.numSubpaths   += pathNum.open.numSubpaths;
+				counters->paths.open.numNodes      += pathNum.open.numNodes;
+				counters->paths.closed.numSubpaths += pathNum.closed.numSubpaths;
+				counters->paths.closed.numNodes    += pathNum.closed.numNodes;
+			}
+			break;
+		case ShapeType::Text:
+			counters->numTexts++;
+			break;
+		default:
+			printf(" - (x) Unknown shape type\n");
+		}
+	}
+}
+
+} // namespace
+
+ShapesCounters shapeListEnumerate(const ssvg::ShapeList* shapeList)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+
+	ShapesCounters counters;
+	stdutils::memset<ShapesCounters>(&counters, 0);
+
+	if (shapeList) {
+		shapeListEnumerateRecursive(shapeList, &counters);
+	}
+
+	return counters;
+}
+
 void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeIndex)
 {
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
@@ -483,7 +560,6 @@ void shapeListDeleteShape(ShapeList* shapeList, uint32_t shapeIndex)
 	if (shapeIndex >= shapeList->m_NumShapes) { return; }
 
 	shapeClear(&shapeList->m_Shapes[shapeIndex]);
-
 	const uint32_t numShapesToMove = shapeList->m_NumShapes > (1 + shapeIndex) ? (shapeList->m_NumShapes - 1 - shapeIndex) : 0;
 	if (numShapesToMove > 0) {
 		stdutils::memmove<Shape>(&shapeList->m_Shapes[shapeIndex], numShapesToMove, &shapeList->m_Shapes[shapeIndex + 1], sizeof(Shape) * numShapesToMove);

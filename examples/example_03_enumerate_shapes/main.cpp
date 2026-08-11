@@ -13,95 +13,7 @@
 
 namespace fs = std::filesystem;
 
-struct ShapesCounters {
-	struct PolyNum {
-		uint32_t numPoly;
-		uint32_t numPoints;
-	};
-
-	uint32_t numGroups;
-	uint32_t numRects;
-	uint32_t numCircles;
-	uint32_t numEllipses;
-	uint32_t numLines;
-	uint32_t numTexts;
-	PolyNum polygons;
-	PolyNum polylines;
-	ssvg::PathNum paths;
-};
-
-std::ostream& operator<<(std::ostream& out, const ShapesCounters& counters);
-
-void enumerateShapesRecursive(const ssvg::ShapeList* shapeList, ShapesCounters* counters)
-{
-	assert(shapeList);
-	assert(counters);
-
-	const uint32_t numShapes = shapeList->m_NumShapes;
-	for (uint32_t shapeIndex = 0; shapeIndex < numShapes; ++shapeIndex) {
-		const ssvg::ShapeType::Enum shapeType = ssvg::shapeListGetShapeType(shapeList, shapeIndex);
-		switch (shapeType) {
-		case ssvg::ShapeType::Group:
-			{
-				counters->numGroups++;
-				const ssvg::ShapeList* childShapeList = ssvg::shapeListGetGroupShapeList(shapeList, shapeIndex);
-				assert(childShapeList);
-				enumerateShapesRecursive(childShapeList, counters);
-			}
-			break;
-		case ssvg::ShapeType::Rect:
-			counters->numRects++;
-			break;
-		case ssvg::ShapeType::Circle:
-			counters->numCircles++;
-			break;
-		case ssvg::ShapeType::Ellipse:
-			counters->numEllipses++;
-			break;
-		case ssvg::ShapeType::Line:
-			counters->numLines++;
-			break;
-		case ssvg::ShapeType::Polyline:
-		case ssvg::ShapeType::Polygon:
-			{
-				ShapesCounters::PolyNum& polyNum = shapeType == ssvg::ShapeType::Polyline ? counters->polylines : counters->polygons;
-				const ssvg::PointList* ptList = ssvg::shapeListGetPointList(shapeList, shapeIndex);
-				assert((ptList));
-				polyNum.numPoly++;
-				polyNum.numPoints += ssvg::pointListGetNumPoints(ptList);
-			}
-			break;
-		case ssvg::ShapeType::Path:
-			{
-				const ssvg::Path* path = ssvg::shapeListGetPath(shapeList, shapeIndex);
-				assert(path);
-				const ssvg::PathNum pathNum = ssvg::pathGetSubpathCounters(path);
-				counters->paths.open.numSubpaths   += pathNum.open.numSubpaths;
-				counters->paths.open.numNodes      += pathNum.open.numNodes;
-				counters->paths.closed.numSubpaths += pathNum.closed.numSubpaths;
-				counters->paths.closed.numNodes    += pathNum.closed.numNodes;
-			}
-			break;
-		case ssvg::ShapeType::Text:
-			counters->numTexts++;
-			break;
-		default:
-			printf(" - (x) Unknown shape type\n");
-		}
-	}
-}
-
-ShapesCounters enumerateShapes(const ssvg::ShapeList* shapeList)
-{
-	ShapesCounters counters;
-	stdutils::memset<ShapesCounters>(&counters, 0);
-
-	enumerateShapesRecursive(shapeList, &counters);
-
-	return counters;
-}
-
-std::ostream& operator<<(std::ostream& out, const ShapesCounters& counters)
+std::ostream& operator<<(std::ostream& out, const ssvg::ShapesCounters& counters)
 {
 	out << "Nb of groups: " << counters.numGroups << std::endl;
 	out << "Basic shapes:" << std::endl;
@@ -143,7 +55,7 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	const auto shapesCounters = enumerateShapes(ssvg::imageGetShapeList(img));
+	const auto shapesCounters = ssvg::shapeListEnumerate(ssvg::imageGetShapeList(img));
 
 	std::cout << std::endl;
 	std::cout << shapesCounters;
