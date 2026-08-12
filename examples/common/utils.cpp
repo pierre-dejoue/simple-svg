@@ -60,8 +60,14 @@ ssvg::Image* loadSVGImage(const fs::path& filepath)
 	return img;
 }
 
-void closeSVGImage(ssvg::Image* img)
+void closeSVGImage(ssvg::Image* img, const fs::path& filepath)
 {
+	std::string source;
+	if (!filepath.empty()) {
+		source = " ";
+		source.append(filepath.string());
+	}
+	printf("Closing ssvg:Image%s...\n", source.c_str());
 	ssvg::imageFree(img);
 }
 
@@ -84,4 +90,28 @@ bool saveImage(const fs::path& filepath, const ssvg::Image* img)
 		printf("%s\n", oss.str().c_str());
 	}
 	return success;
+}
+
+std::ostream& operator<<(std::ostream& out, const ssvg::ShapesCounters& counters)
+{
+	constexpr const char* indent = "    ";
+	out << indent << "Nb of groups: " << counters.numGroups << std::endl;
+	out << indent << "Basic shapes:" << std::endl;
+	out << indent << "    rect: " << counters.numRects << "; circle: " << counters.numCircles << "; ellipse: " << counters.numEllipses << std::endl;
+	out << indent << "    line: " << counters.numLines << "; "
+            << "polyline: " << counters.polylines.numPoly << " (" << counters.polylines.numPoints << " points); "
+	        << "polygon: "  << counters.polygons.numPoly  << " (" << counters.polygons.numPoints  << " points);" << std::endl;
+	out << indent << "Paths: " << std::endl;
+	out << indent << "    closed: " << counters.paths.closed.numSubpaths << " (" << counters.paths.closed.numNodes << " nodes)" << std::endl;
+	out << indent << "    open:   " << counters.paths.open.numSubpaths   << " (" << counters.paths.open.numNodes   << " nodes)" << std::endl;
+	return out;
+}
+
+std::ostream& operator<<(std::ostream& out, const ssvg::internals::AllocatedShapeAttrsCounters& counters)
+{
+	out << "ShapesAttributes:";
+	out <<  " nodes: " << counters.numNodes;
+	out << "; allocated: " << counters.numAllocAttrs;
+	out << "; free: " << counters.numFreeAttrs << std::endl;
+	return out;
 }

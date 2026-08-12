@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <filesystem>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -20,9 +21,23 @@ bool testParser(const char* filepath)
 		return false;
 	}
 
-	printf("- Root element contains %d shapes\n",  ssvg::imageGetNumShapes(img));
+	{
+		const auto shapesCounters = ssvg::shapeListEnumerate(ssvg::imageGetShapeList(img));
+		std::cout << shapesCounters;
+		const uint32_t rootNumChildren = ssvg::imageGetNumShapes(img);
+		std::cout << "The root element contains " << rootNumChildren << " shapes" << std::endl;
+	}
+	{
+		const auto allocatedShapeAttrsCounters = ssvg::internals::enumerateAllocatedShapeAttrs();
+		std::cout << allocatedShapeAttrsCounters;
+	}
 
-	closeSVGImage(img);
+	closeSVGImage(img, fs::path(filepath));
+
+	{
+		const auto allocatedShapeAttrsCounters = ssvg::internals::enumerateAllocatedShapeAttrs();
+		std::cout << allocatedShapeAttrsCounters;
+	}
 
 	return load_success;
 }
@@ -36,9 +51,9 @@ bool testRoundTrip(const char* input_filepath, const char* output_filepath)
 		return false;
 	}
 
-	const bool save_success = saveImage(output_filepath, img);
+	const bool save_success = saveImage(fs::path(output_filepath), img);
 
-	closeSVGImage(img);
+	closeSVGImage(img, fs::path(input_filepath));
 
 	return save_success;
 }

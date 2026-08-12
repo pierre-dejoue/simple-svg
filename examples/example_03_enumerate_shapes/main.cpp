@@ -13,29 +13,6 @@
 
 namespace fs = std::filesystem;
 
-std::ostream& operator<<(std::ostream& out, const ssvg::ShapesCounters& counters)
-{
-	out << "Nb of groups: " << counters.numGroups << std::endl;
-	out << "Basic shapes:" << std::endl;
-	out << "    rect: " << counters.numRects << "; circle: " << counters.numCircles << "; ellipse: " << counters.numEllipses << std::endl;
-	out << "    line: " << counters.numLines << "; "
-            << "polyline: " << counters.polylines.numPoly << " (" << counters.polylines.numPoints << " points); "
-	        << "polygon: "  << counters.polygons.numPoly  << " (" << counters.polygons.numPoints  << " points);" << std::endl;
-	out << "Paths: " << std::endl;
-	out << "    closed: " << counters.paths.closed.numSubpaths << " (" << counters.paths.closed.numNodes << " nodes)" << std::endl;
-	out << "    open:   " << counters.paths.open.numSubpaths   << " (" << counters.paths.open.numNodes   << " nodes)" << std::endl;
-	return out;
-}
-
-std::ostream& operator<<(std::ostream& out, const ssvg::internals::AllocatedShapeAttrsCounters& counters)
-{
-	out << "ShapesAttributes:" << std::endl;
-	out << "    nodes:     " << counters.numNodes << std::endl;
-	out << "    allocated: " << counters.numAllocAttrs << std::endl;
-	out << "    free:      " << counters.numFreeAttrs << std::endl;
-	return out;
-}
-
 int main(int argc, char* argv[])
 {
 	if (argc != 2)
