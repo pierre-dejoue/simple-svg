@@ -158,8 +158,8 @@ void resetShapeAttributes(ShapeAttributes* attrs)
 	SSVG_CHECK(attrs, "Nullptr to ShapeAttributes");
 	if (!attrs) { return; }
 
-	stdutils::memset<ssvg::ShapeAttributes>(attrs, 0);
-	ssvg::transformIdentity(&attrs->m_Transform[0]);
+	stdutils::memset<ShapeAttributes>(attrs, 0);
+	transformIdentity(&attrs->m_Transform[0]);
 
 	assert(attrs->m_Flags == AttribFlags::None);
 	assert(stdutils::strnlen(&attrs->m_FontFamily[0]) == '\0');
@@ -538,7 +538,7 @@ void shapeListEnumerateRecursive(const ShapeList* shapeList, ShapesCounters* cou
 
 } // namespace
 
-ShapesCounters shapeListEnumerate(const ssvg::ShapeList* shapeList)
+ShapesCounters shapeListEnumerate(const ShapeList* shapeList)
 {
 	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
 
@@ -1151,8 +1151,8 @@ void shutdownLib()
 
 const ShapeAttributes& defaultShapeAttributes()
 {
-	static ssvg::ShapeAttributes defaultAttrs = []() {
-		ssvg::ShapeAttributes attrs;
+	static ShapeAttributes defaultAttrs = []() {
+		ShapeAttributes attrs;
 		resetShapeAttributes(&attrs);
 
 		// Default according to the SVG standards
@@ -1160,12 +1160,12 @@ const ShapeAttributes& defaultShapeAttributes()
 		attrs.m_StrokeWidth = 1.0f;
 		attrs.m_StrokeMiterLimit = 4.0f;
 		attrs.m_StrokeOpacity = 1.0f;
-		attrs.m_StrokePaint.m_Type = ssvg::PaintType::None;
+		attrs.m_StrokePaint.m_Type = PaintType::None;
 		attrs.m_StrokePaint.m_ColorABGR = 0xFF000000;          // Black
-		attrs.m_StrokeLineCap = ssvg::LineCap::Butt;
-		attrs.m_StrokeLineJoin = ssvg::LineJoin::Miter;
+		attrs.m_StrokeLineCap = LineCap::Butt;
+		attrs.m_StrokeLineJoin = LineJoin::Miter;
 		attrs.m_FillOpacity = 1.0f;
-		attrs.m_FillPaint.m_Type = ssvg::PaintType::Color;
+		attrs.m_FillPaint.m_Type = PaintType::Color;
 		attrs.m_FillPaint.m_ColorABGR = 0xFF000000;            // Black
 		attrs.m_FillRule = FillRule::NonZero;
 
