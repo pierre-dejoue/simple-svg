@@ -1392,11 +1392,8 @@ void shapeClear(Shape* shape)
 	default:
 		break;
 	}
-	stdutils::memset<Shape>(shape, 0);
-
 	shapeAttrsFree(shape->m_Attrs);
-	shape->m_Attrs = nullptr;
-
+	stdutils::memset<Shape>(shape, 0);
 	assert(shapeIsEmptyGroup(shape));
 }
 
