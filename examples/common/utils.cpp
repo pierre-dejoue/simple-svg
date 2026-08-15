@@ -94,16 +94,16 @@ bool saveImage(const fs::path& filepath, const ssvg::Image* img)
 
 std::ostream& operator<<(std::ostream& out, const ssvg::ShapesCounters& counters)
 {
-	constexpr const char* indent = "    ";
-	out << indent << "Nb of groups: " << counters.numGroups << std::endl;
-	out << indent << "Basic shapes:" << std::endl;
-	out << indent << "    rect: " << counters.numRects << "; circle: " << counters.numCircles << "; ellipse: " << counters.numEllipses << std::endl;
-	out << indent << "    line: " << counters.numLines << "; "
+	constexpr const char* INDENT = "    ";
+	out << INDENT << "Nb of groups: " << counters.numGroups << std::endl;
+	out << INDENT << "Basic shapes:" << std::endl;
+	out << INDENT << "    rect: " << counters.numRects << "; circle: " << counters.numCircles << "; ellipse: " << counters.numEllipses << std::endl;
+	out << INDENT << "    line: " << counters.numLines << "; "
             << "polyline: " << counters.polylines.numPoly << " (" << counters.polylines.numPoints << " points); "
 	        << "polygon: "  << counters.polygons.numPoly  << " (" << counters.polygons.numPoints  << " points);" << std::endl;
-	out << indent << "Paths: " << std::endl;
-	out << indent << "    closed: " << counters.paths.closed.numSubpaths << " (" << counters.paths.closed.numNodes << " nodes)" << std::endl;
-	out << indent << "    open:   " << counters.paths.open.numSubpaths   << " (" << counters.paths.open.numNodes   << " nodes)" << std::endl;
+	out << INDENT << "Paths: " << std::endl;
+	out << INDENT << "    closed: " << counters.paths.closed.numSubpaths << " (" << counters.paths.closed.numNodes << " nodes)" << std::endl;
+	out << INDENT << "    open:   " << counters.paths.open.numSubpaths   << " (" << counters.paths.open.numNodes   << " nodes)" << std::endl;
 	return out;
 }
 
