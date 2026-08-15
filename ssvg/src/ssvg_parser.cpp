@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
 #include <string_view>
 
 namespace ssvg {
@@ -321,14 +322,23 @@ bool parseVersion(const std::string_view& verStr, uint16_t* maj, uint16_t* min)
 	return true;
 }
 
-bool parseNumber(const std::string_view& str, float* val, float min = -math::kFloatMax, float max = math::kFloatMax)
+bool parseNumber(const std::string_view& str, float& val, float min = -math::kFloatMax, float max = math::kFloatMax)
 {
-	*val = stdutils::clamp<float>((float)atof(str.data()), min, max);
+	std::stringstream in;
+	in << str;
+	in >> val;
+
+	if (!std::isfinite(val)) {
+		val = 0.f;
+		return false;
+	}
+
+	val = stdutils::clamp<float>(val, min, max);
 
 	return true;
 }
 
-bool parseLength(const std::string_view& str, float* len)
+bool parseLength(const std::string_view& str, float& len)
 {
 	// TODO: Parse length units and convert to pixels based on parser state.
 	return parseNumber(str, len);
@@ -910,7 +920,7 @@ ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const
 			return parsePaint(value, &attrs->m_StrokePaint) ? ParseAttr::OK : ParseAttr::Fail;
 		} else if (nameSuffix == "-miterlimit") {
 			attrs->m_Flags |= AttribFlags::StrokeMiterLimitChanged;
-			return parseNumber(value, &attrs->m_StrokeMiterLimit, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
+			return parseNumber(value, attrs->m_StrokeMiterLimit, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
 		} else if (nameSuffix == "-linejoin") {
 			attrs->m_Flags |= AttribFlags::StrokeLineJoinChanged;
 			if (value == "miter") {
@@ -939,10 +949,10 @@ ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const
 			return ParseAttr::OK;
 		} else if (nameSuffix == "-opacity") {
 			attrs->m_Flags |= AttribFlags::StrokeOpacityChanged;
-			return parseNumber(value, &attrs->m_StrokeOpacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
+			return parseNumber(value, attrs->m_StrokeOpacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
 		} else if (nameSuffix == "-width") {
 			attrs->m_Flags |= AttribFlags::StrokeWidthChanged;
-			return parseLength(value, &attrs->m_StrokeWidth) ? ParseAttr::OK : ParseAttr::Fail;
+			return parseLength(value, attrs->m_StrokeWidth) ? ParseAttr::OK : ParseAttr::Fail;
 		}
 	} else if (name.substr(0, 4) == "fill") {
 		const std::string_view nameSuffix = name.substr(4);
@@ -951,7 +961,7 @@ ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const
 			return parsePaint(value, &attrs->m_FillPaint) ? ParseAttr::OK : ParseAttr::Fail;
 		} else if (nameSuffix == "-opacity") {
 			attrs->m_Flags |= AttribFlags::FillOpacityChanged;
-			return parseNumber(value, &attrs->m_FillOpacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
+			return parseNumber(value, attrs->m_FillOpacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
 		} else if (nameSuffix == "-rule") {
 			attrs->m_Flags |= AttribFlags::FillRuleChanged;
 			if (value == "nonzero") {
@@ -972,11 +982,11 @@ ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const
 			return ParseAttr::OK;
 		} else if (nameSuffix == "-size") {
 			attrs->m_Flags |= AttribFlags::FontSizeChanged;
-			return parseLength(value, &attrs->m_FontSize) ? ParseAttr::OK : ParseAttr::Fail;
+			return parseLength(value, attrs->m_FontSize) ? ParseAttr::OK : ParseAttr::Fail;
 		}
 	} else if (name == "opacity") {
 		attrs->m_Flags |= AttribFlags::Opacity;
-		return parseNumber(value, &attrs->m_Opacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
+		return parseNumber(value, attrs->m_Opacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
 	} else if (name == "transform") {
 		attrs->m_Flags |= AttribFlags::Transformation;
 		return parseTransform(value, &attrs->m_Transform[0]) ? ParseAttr::OK : ParseAttr::Fail;
@@ -1110,9 +1120,9 @@ bool parseShape_Text(ParserState* parser, Shape* text)
 			} else if (res == ParseAttr::Unknown) {
 				// Text specific attributes
 				if (name == "x") {
-					err = !parseLength(value, &text->m_Text.x);
+					err = !parseLength(value, text->m_Text.x);
 				} else if (name == "y") {
-					err = !parseLength(value, &text->m_Text.y);
+					err = !parseLength(value, text->m_Text.y);
 				} else if (name == "text-anchor") {
 					if (value == "start") {
 						text->m_Text.m_Anchor = TextAnchor::Start;
@@ -1224,17 +1234,17 @@ bool parseShape_Rect(ParserState* parser, Shape* rect)
 			} else if (res == ParseAttr::Unknown) {
 				// Rect specific attributes.
 				if (name == "width") {
-					err = !parseLength(value, &rect->m_Rect.width);
+					err = !parseLength(value, rect->m_Rect.width);
 				} else if (name == "height") {
-					err = !parseLength(value, &rect->m_Rect.height);
+					err = !parseLength(value, rect->m_Rect.height);
 				} else if (name == "rx") {
-					err = !parseLength(value, &rect->m_Rect.rx);
+					err = !parseLength(value, rect->m_Rect.rx);
 				} else if (name == "ry") {
-					err = !parseLength(value, &rect->m_Rect.ry);
+					err = !parseLength(value, rect->m_Rect.ry);
 				} else if (name == "x") {
-					err = !parseLength(value, &rect->m_Rect.x);
+					err = !parseLength(value, rect->m_Rect.x);
 				} else if (name == "y") {
-					err = !parseLength(value, &rect->m_Rect.y);
+					err = !parseLength(value, rect->m_Rect.y);
 				} else {
 					SSVG_WARN(false, "Ignoring rect attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
@@ -1276,11 +1286,11 @@ bool parseShape_Circle(ParserState* parser, Shape* circle)
 			} else if (res == ParseAttr::Unknown) {
 				// Circle specific attributes.
 				if (name == "cx") {
-					err = !parseLength(value, &circle->m_Circle.cx);
+					err = !parseLength(value, circle->m_Circle.cx);
 				} else if (name == "cy") {
-					err = !parseLength(value, &circle->m_Circle.cy);
+					err = !parseLength(value, circle->m_Circle.cy);
 				} else if (name == "r") {
-					err = !parseLength(value, &circle->m_Circle.r);
+					err = !parseLength(value, circle->m_Circle.r);
 				} else {
 					SSVG_WARN(false, "Ignoring circle attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
@@ -1322,13 +1332,13 @@ bool parseShape_Line(ParserState* parser, Shape* line)
 			} else if (res == ParseAttr::Unknown) {
 				// Line specific attributes.
 				if (name == "x1") {
-					err = !parseLength(value, &line->m_Line.x1);
+					err = !parseLength(value, line->m_Line.x1);
 				} else if (name == "x2") {
-					err = !parseLength(value, &line->m_Line.x2);
+					err = !parseLength(value, line->m_Line.x2);
 				} else if (name == "y1") {
-					err = !parseLength(value, &line->m_Line.y1);
+					err = !parseLength(value, line->m_Line.y1);
 				} else if (name == "y2") {
-					err = !parseLength(value, &line->m_Line.y2);
+					err = !parseLength(value, line->m_Line.y2);
 				} else {
 					SSVG_WARN(false, "Ignoring line attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
@@ -1370,13 +1380,13 @@ bool parseShape_Ellipse(ParserState* parser, Shape* ellipse)
 			} else if (res == ParseAttr::Unknown) {
 				// Ellipse specific attributes.
 				if (name == "cx") {
-					err = !parseLength(value, &ellipse->m_Ellipse.cx);
+					err = !parseLength(value, ellipse->m_Ellipse.cx);
 				} else if (name == "cy") {
-					err = !parseLength(value, &ellipse->m_Ellipse.cy);
+					err = !parseLength(value, ellipse->m_Ellipse.cy);
 				} else if (name == "rx") {
-					err = !parseLength(value, &ellipse->m_Ellipse.rx);
+					err = !parseLength(value, ellipse->m_Ellipse.rx);
 				} else if (name == "ry") {
-					err = !parseLength(value, &ellipse->m_Ellipse.ry);
+					err = !parseLength(value, ellipse->m_Ellipse.ry);
 				} else {
 					SSVG_WARN(false, "Ignoring ellipse attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
