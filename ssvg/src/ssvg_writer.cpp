@@ -485,7 +485,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 				return false;
 			}
 			writer.write(" x=\"%g\" y=\"%g\"", shape->m_Text.x, shape->m_Text.y);
-			writer.out() << " text-anchor=\"" << textAnchorToString(shape->m_Text.m_Anchor) << "\">" << shape->m_Text.m_String << "</text>\n";
+			writer.out() << " text-anchor=\"" << textAnchorToString(shape->m_Text.m_Anchor) << "\">" << shape->m_Text.m_String.c_str() << "</text>\n";
 			break;
 		default:
 			SSVG_WARN(false, "Unknown shape type");

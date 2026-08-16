@@ -197,10 +197,28 @@ struct ShapesCounters {
 	PathNum paths;
 };
 
+struct OwnedString {
+	char* m_Buf;
+	uint32_t m_Len;
+
+	bool empty() const noexcept {
+		return m_Buf == nullptr;
+	}
+
+	uint32_t length() const noexcept {
+		return m_Buf ? m_Len : 0;
+	}
+
+	const char* c_str() const noexcept {
+		// If empty() returns true, the pointer points to a single null character.
+		return m_Buf ? m_Buf : "";
+	}
+};
+
 // TODO: alignment-baseline
 struct Text
 {
-	char* m_String;
+	OwnedString m_String;
 	float x;
 	float y;
 	TextAnchor::Enum m_Anchor;
@@ -366,7 +384,7 @@ uint32_t shapeListAddPolyline(ShapeList* shapeList, const float* coords, uint32_
 uint32_t shapeListAddPolygon(ShapeList* shapeList, const float* coords, uint32_t numPoints);
 uint32_t shapeListAddPath(ShapeList* shapeList, const Path* sourcePath = nullptr);
 uint32_t shapeListAddPathCommands(ShapeList* shapeList, const PathCmd* pathCommands, uint32_t commands);
-uint32_t shapeListAddText(ShapeList* shapeList, float x, float y, TextAnchor::Enum anchor, const char* text);
+uint32_t shapeListAddText(ShapeList* shapeList, float x, float y, TextAnchor::Enum anchor, const char* str);
 uint32_t shapeListMoveShapeToBack(ShapeList* shapeList, uint32_t shapeIndex);
 uint32_t shapeListMoveShapeToFront(ShapeList* shapeList, uint32_t shapeIndex);
 ShapeAttributes*       shapeListAllocShapeAttributes(    ShapeList* shapeList, uint32_t shapeIndex, const ShapeAttributes* parentAttrs = nullptr);
@@ -419,7 +437,13 @@ bool pointListFromString(PointList* ptList, const std::string_view& str);
 void pointListCalcBounds(const PointList* ptList, float* bounds);
 uint32_t pointListGetNumPoints(const PointList* ptList);
 
+// Manipulate owned strings
+OwnedString ownedStringAlloc(const char* str);
+OwnedString ownedStringAlloc(uint32_t len);
+void ownedStringClear(OwnedString& str);
+
 // Manipulate Text
+void textSetString(Text* text, const char* str);
 void textClear(Text* text);
 
 // Manipulate ShapeAttributes

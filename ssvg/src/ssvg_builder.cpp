@@ -6,6 +6,7 @@
 #include <stdutils/macros.h>
 #include <stdutils/minmax.h>
 #include <stdutils/memory.h>
+#include <stdutils/string.h>
 
 #include <cmath>
 
@@ -217,14 +218,16 @@ uint32_t shapeListAddText(ShapeList* shapeList, float x, float y, TextAnchor::En
 		tmpText.m_Text.x = x;
 		tmpText.m_Text.y = y;
 		tmpText.m_Text.m_Anchor = anchor;
-		tmpText.m_Text.m_String = (char*)str;
-
+		tmpText.m_Text.m_String.m_Buf = nullptr;
+		tmpText.m_Text.m_String.m_Len = 0;
 		shapeCopy(text, &tmpText, false);
+		textSetString(&text->m_Text, str);
 	} else {
 		text->m_Text.x = x;
 		text->m_Text.y = y;
 		text->m_Text.m_Anchor = anchor;
-		text->m_Text.m_String = nullptr;
+		text->m_Text.m_String.m_Buf = nullptr;
+		text->m_Text.m_String.m_Len = 0;
 	}
 
 	shapeUpdateBounds(text);

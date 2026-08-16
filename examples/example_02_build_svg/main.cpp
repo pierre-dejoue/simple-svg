@@ -44,8 +44,6 @@ bool testBuilder(const char* filepath)
 		// Text
 		const auto text_shape_id = ssvg::shapeListAddText(imgShapeList, 200.0f, 50.0f, ssvg::TextAnchor::Start, "This is a test string");
 		ssvg::shapeListAllocShapeAttributes(imgShapeList, text_shape_id, &textAttrs);
-
-
 	}
 
 	// Add shapes to a group

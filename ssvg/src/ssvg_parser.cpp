@@ -1113,6 +1113,7 @@ bool parseShape_Text(ParserState* parser, Shape* shape)
 	while (!parserDone(parser) && !err) {
 		SSVG_CHECK(!(parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>'), "Empty <text> element");
 		if (parser->m_Ptr[0] == '>') {
+			parser->m_Ptr++;
 			break;
 		}
 
@@ -1151,25 +1152,21 @@ bool parseShape_Text(ParserState* parser, Shape* shape)
 		return false;
 	}
 
-#if 1
-	parserSkipTag(parser);
-#else
 	// TODO: Parse <tspan> blocks
-	const char* txtPtr = parser->m_Ptr;
 
-	while (!parserDone(parser) && *parser->m_Ptr != '<') {
+	const char* txtBegin = parser->m_Ptr;
+	while (!parserDone(parser) && std::string_view(parser->m_Ptr, 2) != "</") {
 		++parser->m_Ptr;
 	}
+	const char* txtEnd = parser->m_Ptr;
 
 	if (parserDone(parser) || !parserExpectingString(parser, "</text>", 7)) {
 		return false;
 	}
 
-	const uint32_t txtLen = (uint32_t)(parser->m_Ptr - txtPtr);
-	text->m_Text.m_String = (char*)std::malloc(sizeof(char) * (txtLen + 1));
-	stdutils::memcpy<char>(text->m_Text.m_String, txtLen, txtPtr, txtLen);
-	text->m_Text.m_String[txtLen] = 0;
-#endif
+	const uint32_t txtLen = (uint32_t)(txtEnd - txtBegin);
+	std::string txt(txtBegin, txtEnd);	// TODO: filter text string
+	textSetString(&text, txt.c_str());
 
 	return true;
 }

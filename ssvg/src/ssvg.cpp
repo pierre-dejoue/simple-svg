@@ -1025,12 +1025,64 @@ uint32_t pointListGetNumPoints(const PointList* ptList)
 	return  ptList->m_NumPoints;
 }
 
+OwnedString ownedStringAlloc(const char* str)
+{
+	OwnedString ownedStr;
+	ownedStr.m_Buf = nullptr;
+	ownedStr.m_Len = 0;
+	if (str == nullptr) {
+		return ownedStr;
+	}
+	const std::size_t len = stdutils::strnlen(str);
+	if (len == 0) {
+		return ownedStr;
+	}
+	ownedStr.m_Buf = (char*)malloc((len + 1) * sizeof(char));
+	IGNORE_RETURN stdutils::memcpy<char>(ownedStr.m_Buf, len, str, len);
+	ownedStr.m_Buf[len] = '\0';
+	ownedStr.m_Len = len;
+	return ownedStr;
+}
+
+OwnedString ownedStringAlloc(uint32_t len)
+{
+	OwnedString ownedStr;
+	ownedStr.m_Buf = nullptr;
+	ownedStr.m_Len = 0;
+	if (len == 0) {
+		return ownedStr;
+	}
+	ownedStr.m_Buf = (char*)malloc((len + 1) * sizeof(char));
+	IGNORE_RETURN stdutils::memset<char>(ownedStr.m_Buf, len, '*', len * sizeof(char));
+	ownedStr.m_Buf[len] = '\0';
+	ownedStr.m_Len = len;
+	return ownedStr;
+}
+
+void ownedStringClear(OwnedString& str)
+{
+	if (str.m_Buf) {
+		std::free(str.m_Buf);
+	}
+	str.m_Buf = nullptr;
+	str.m_Len = 0;
+}
+
+void textSetString(Text* text, const char* str)
+{
+	SSVG_CHECK(text, "Nullptr to Text");
+	if (!text) { return; }
+
+	ownedStringClear(text->m_String);
+	text->m_String = ownedStringAlloc(str);
+}
+
 void textClear(Text* text)
 {
 	SSVG_CHECK(text, "Nullptr to Text");
 	if (!text) { return; }
 
-	std::free(text->m_String);
+	ownedStringClear(text->m_String);
 	stdutils::memset<Text>(text, 0);
 }
 
@@ -1348,16 +1400,10 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 		{
 			const Text* srcText = &src->m_Text;
 			Text* dstText = &dst->m_Text;
-			textClear(dstText);
-
 			dstText->x = srcText->x;
 			dstText->y = srcText->y;
 			dstText->m_Anchor = srcText->m_Anchor;
-
-			const uint32_t len = stdutils::strnlen(srcText->m_String);
-			dstText->m_String = (char*)std::malloc(sizeof(char) * (len + 1));
-			stdutils::memcpy<char>(dstText->m_String, len, srcText->m_String, len);
-			dstText->m_String[len] = '\0';
+			textSetString(dstText, srcText->m_String.c_str());
 		}
 		break;
 	default:

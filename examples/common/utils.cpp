@@ -97,7 +97,7 @@ std::ostream& operator<<(std::ostream& out, const ssvg::ShapesCounters& counters
 	constexpr const char* INDENT = "    ";
 	out << INDENT << "Nb of groups: " << counters.numGroups << std::endl;
 	out << INDENT << "Basic shapes:" << std::endl;
-	out << INDENT << "    rect: " << counters.numRects << "; circle: " << counters.numCircles << "; ellipse: " << counters.numEllipses << std::endl;
+	out << INDENT << "    rect: " << counters.numRects << "; circle: " << counters.numCircles << "; ellipse: " << counters.numEllipses << "; text: " << counters.numTexts << std::endl;
 	out << INDENT << "    line: " << counters.numLines << "; "
             << "polyline: " << counters.polylines.numPoly << " (" << counters.polylines.numPoints << " points); "
 	        << "polygon: "  << counters.polygons.numPoly  << " (" << counters.polygons.numPoints  << " points);" << std::endl;
