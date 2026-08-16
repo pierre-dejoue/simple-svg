@@ -1062,10 +1062,14 @@ void selectiveCopyShapeAttributes(ShapeAttributes* targetAttrs, const ShapeAttri
 	targetAttrs->m_Flags |= sourceAttrs->m_Flags;
 }
 
-bool parseShape_Group(ParserState* parser, Shape* group)
+bool parseShape_Group(ParserState* parser, Shape* shape)
 {
-	assert(group->m_Attrs);
-	assert(group->m_Attrs->m_Flags == AttribFlags::None);
+	assert(shape);
+	if (!shape) { return false; }
+	ShapeList& group = shape->m_ShapeList;
+	ShapeAttributes* attrs = shape->m_Attrs;
+	assert(attrs);
+	assert(attrs->m_Flags == AttribFlags::None);
 	bool err = false;
 	while (!parserDone(parser) && !err) {
 		parserSkipWhitespace(parser);
@@ -1073,7 +1077,7 @@ bool parseShape_Group(ParserState* parser, Shape* group)
 			break;
 		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
 			// TODO: Test this!
-			const auto group_id = shapeAttrsGetID(group->m_Attrs);
+			const auto group_id = shapeAttrsGetID(attrs);
 			SSVG_WARN(false, "Empty group element id=\"%.*s\"", strlenint(group_id), group_id.data());
 			parser->m_Ptr += 2;
 			return true;
@@ -1083,7 +1087,7 @@ bool parseShape_Group(ParserState* parser, Shape* group)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, group->m_Attrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, attrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
@@ -1097,11 +1101,14 @@ bool parseShape_Group(ParserState* parser, Shape* group)
 		return false;
 	}
 
-	return parseShapes(parser, &group->m_ShapeList, group->m_Attrs, "</g>", 4);
+	return parseShapes(parser, &group, attrs, "</g>", 4);
 }
 
-bool parseShape_Text(ParserState* parser, Shape* text)
+bool parseShape_Text(ParserState* parser, Shape* shape)
 {
+	assert(shape);
+	if (!shape) { return false; }
+	Text& text = shape->m_Text;
 	bool err = false;
 	while (!parserDone(parser) && !err) {
 		SSVG_CHECK(!(parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>'), "Empty <text> element");
@@ -1120,16 +1127,16 @@ bool parseShape_Text(ParserState* parser, Shape* text)
 			} else if (res == ParseAttr::Unknown) {
 				// Text specific attributes
 				if (name == "x") {
-					err = !parseLength(value, text->m_Text.x);
+					err = !parseLength(value, text.x);
 				} else if (name == "y") {
-					err = !parseLength(value, text->m_Text.y);
+					err = !parseLength(value, text.y);
 				} else if (name == "text-anchor") {
 					if (value == "start") {
-						text->m_Text.m_Anchor = TextAnchor::Start;
+						text.m_Anchor = TextAnchor::Start;
 					} else if (value == "middle") {
-						text->m_Text.m_Anchor = TextAnchor::Middle;
+						text.m_Anchor = TextAnchor::Middle;
 					} else if (value == "end") {
-						text->m_Text.m_Anchor = TextAnchor::End;
+						text.m_Anchor = TextAnchor::End;
 					} else {
 						err = true;
 					}
@@ -1167,8 +1174,11 @@ bool parseShape_Text(ParserState* parser, Shape* text)
 	return true;
 }
 
-bool parseShape_Path(ParserState* parser, Shape* path)
+bool parseShape_Path(ParserState* parser, Shape* shape)
 {
+	assert(shape);
+	if (!shape) { return false; }
+	Path& path = shape->m_Path;
 	bool err = false;
 	bool hasContents = false;
 	while (!parserDone(parser) && !err) {
@@ -1192,7 +1202,7 @@ bool parseShape_Path(ParserState* parser, Shape* path)
 			} else if (res == ParseAttr::Unknown) {
 				// Path specific attributes.
 				if (name == "d") {
-					err = !pathFromString(&path->m_Path, value, parser->m_Flags);
+					err = !pathFromString(&path, value, parser->m_Flags);
 				} else {
 					SSVG_WARN(false, "Ignoring path attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
@@ -1207,8 +1217,11 @@ bool parseShape_Path(ParserState* parser, Shape* path)
 	return !err;
 }
 
-bool parseShape_Rect(ParserState* parser, Shape* rect)
+bool parseShape_Rect(ParserState* parser, Shape* shape)
 {
+	assert(shape);
+	if (!shape) { return false; }
+	Rect& rect = shape->m_Rect;
 	bool err = false;
 	bool hasContents = false;
 	while (!parserDone(parser) && !err) {
@@ -1234,17 +1247,17 @@ bool parseShape_Rect(ParserState* parser, Shape* rect)
 			} else if (res == ParseAttr::Unknown) {
 				// Rect specific attributes.
 				if (name == "width") {
-					err = !parseLength(value, rect->m_Rect.width);
+					err = !parseLength(value, rect.width);
 				} else if (name == "height") {
-					err = !parseLength(value, rect->m_Rect.height);
+					err = !parseLength(value, rect.height);
 				} else if (name == "rx") {
-					err = !parseLength(value, rect->m_Rect.rx);
+					err = !parseLength(value, rect.rx);
 				} else if (name == "ry") {
-					err = !parseLength(value, rect->m_Rect.ry);
+					err = !parseLength(value, rect.ry);
 				} else if (name == "x") {
-					err = !parseLength(value, rect->m_Rect.x);
+					err = !parseLength(value, rect.x);
 				} else if (name == "y") {
-					err = !parseLength(value, rect->m_Rect.y);
+					err = !parseLength(value, rect.y);
 				} else {
 					SSVG_WARN(false, "Ignoring rect attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
@@ -1259,8 +1272,11 @@ bool parseShape_Rect(ParserState* parser, Shape* rect)
 	return !err;
 }
 
-bool parseShape_Circle(ParserState* parser, Shape* circle)
+bool parseShape_Circle(ParserState* parser, Shape* shape)
 {
+	assert(shape);
+	if (!shape) { return false; }
+	Circle& circle = shape->m_Circle;
 	bool err = false;
 	bool hasContents = false;
 	while (!parserDone(parser) && !err) {
@@ -1286,11 +1302,11 @@ bool parseShape_Circle(ParserState* parser, Shape* circle)
 			} else if (res == ParseAttr::Unknown) {
 				// Circle specific attributes.
 				if (name == "cx") {
-					err = !parseLength(value, circle->m_Circle.cx);
+					err = !parseLength(value, circle.cx);
 				} else if (name == "cy") {
-					err = !parseLength(value, circle->m_Circle.cy);
+					err = !parseLength(value, circle.cy);
 				} else if (name == "r") {
-					err = !parseLength(value, circle->m_Circle.r);
+					err = !parseLength(value, circle.r);
 				} else {
 					SSVG_WARN(false, "Ignoring circle attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
@@ -1305,8 +1321,11 @@ bool parseShape_Circle(ParserState* parser, Shape* circle)
 	return !err;
 }
 
-bool parseShape_Line(ParserState* parser, Shape* line)
+bool parseShape_Line(ParserState* parser, Shape* shape)
 {
+	assert(shape);
+	if (!shape) { return false; }
+	Line& line = shape->m_Line;
 	bool err = false;
 	bool hasContents = false;
 	while (!parserDone(parser) && !err) {
@@ -1332,13 +1351,13 @@ bool parseShape_Line(ParserState* parser, Shape* line)
 			} else if (res == ParseAttr::Unknown) {
 				// Line specific attributes.
 				if (name == "x1") {
-					err = !parseLength(value, line->m_Line.x1);
+					err = !parseLength(value, line.x1);
 				} else if (name == "x2") {
-					err = !parseLength(value, line->m_Line.x2);
+					err = !parseLength(value, line.x2);
 				} else if (name == "y1") {
-					err = !parseLength(value, line->m_Line.y1);
+					err = !parseLength(value, line.y1);
 				} else if (name == "y2") {
-					err = !parseLength(value, line->m_Line.y2);
+					err = !parseLength(value, line.y2);
 				} else {
 					SSVG_WARN(false, "Ignoring line attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
@@ -1353,8 +1372,11 @@ bool parseShape_Line(ParserState* parser, Shape* line)
 	return !err;
 }
 
-bool parseShape_Ellipse(ParserState* parser, Shape* ellipse)
+bool parseShape_Ellipse(ParserState* parser, Shape* shape)
 {
+	assert(shape);
+	if (!shape) { return false; }
+	Ellipse& ellipse = shape->m_Ellipse;
 	bool err = false;
 	bool hasContents = false;
 	while (!parserDone(parser) && !err) {
@@ -1380,13 +1402,13 @@ bool parseShape_Ellipse(ParserState* parser, Shape* ellipse)
 			} else if (res == ParseAttr::Unknown) {
 				// Ellipse specific attributes.
 				if (name == "cx") {
-					err = !parseLength(value, ellipse->m_Ellipse.cx);
+					err = !parseLength(value, ellipse.cx);
 				} else if (name == "cy") {
-					err = !parseLength(value, ellipse->m_Ellipse.cy);
+					err = !parseLength(value, ellipse.cy);
 				} else if (name == "rx") {
-					err = !parseLength(value, ellipse->m_Ellipse.rx);
+					err = !parseLength(value, ellipse.rx);
 				} else if (name == "ry") {
-					err = !parseLength(value, ellipse->m_Ellipse.ry);
+					err = !parseLength(value, ellipse.ry);
 				} else {
 					SSVG_WARN(false, "Ignoring ellipse attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
@@ -1403,6 +1425,9 @@ bool parseShape_Ellipse(ParserState* parser, Shape* ellipse)
 
 bool parseShape_PointList(ParserState* parser, Shape* shape)
 {
+	assert(shape);
+	if (!shape) { return false; }
+	PointList& pointList = shape->m_PointList;
 	bool err = false;
 	bool hasContents = false;
 	while (!parserDone(parser) && !err) {
@@ -1455,7 +1480,7 @@ bool parseShape_PointList(ParserState* parser, Shape* shape)
 						pointListClear(&ptList);
 						shape->m_Type = ShapeType::Path;
 					} else {
-						stdutils::memcpy<PointList>(&shape->m_PointList, &ptList);
+						stdutils::memcpy<PointList>(&pointList, &ptList);
 					}
 				} else {
 					SSVG_WARN(false, "Ignoring polygon/polyline attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
