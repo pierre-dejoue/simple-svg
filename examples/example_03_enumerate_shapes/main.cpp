@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	const auto shapesCounters = ssvg::shapeListEnumerate(ssvg::imageGetShapeList(img));
+	const auto shapesCounters = ssvg::shapeListEnumerate(ssvg::imageGetRootShapeList(img));
 
 	std::cout << std::endl;
 	std::cout << shapesCounters;

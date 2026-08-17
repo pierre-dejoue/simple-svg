@@ -60,9 +60,9 @@ uint32_t shapeListAddGroupWithShapes(ShapeList* shapeList, const Shape* children
 		// Create a temp group on the stack and use shapeCopy()
 		Shape tmpGroup = temporaryShape();
 		tmpGroup.m_Type = ShapeType::Group;
-		tmpGroup.m_ShapeList.m_Shapes = const_cast<Shape*>(children); // NOTE: Casting a const to not-const should be ok in this case since the tmpGroup is passed as const to shapeCopy().
-		tmpGroup.m_ShapeList.m_NumShapes = numChildren;
-		tmpGroup.m_ShapeList.m_Capacity = 0; // capacity < count == list is read-only (should assert in debug mode if you try to alloc/shrink the list).
+		tmpGroup.m_Group.m_ShapeList.m_Shapes = const_cast<Shape*>(children); // NOTE: Casting a const to not-const should be ok in this case since the tmpGroup is passed as const to shapeCopy().
+		tmpGroup.m_Group.m_ShapeList.m_NumShapes = numChildren;
+		tmpGroup.m_Group.m_ShapeList.m_Capacity = 0; // capacity < count == list is read-only (should assert in debug mode if you try to alloc/shrink the list).
 
 		shapeCopy(group, &tmpGroup, false);
 	}

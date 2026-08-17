@@ -24,7 +24,7 @@ bool testParser(const char* filepath)
 	}
 
 	{
-		const auto shapesCounters = ssvg::shapeListEnumerate(ssvg::imageGetShapeList(img));
+		const auto shapesCounters = ssvg::shapeListEnumerate(ssvg::imageGetRootShapeList(img));
 		std::cout << shapesCounters;
 		const uint32_t rootNumChildren = ssvg::imageGetNumShapes(img);
 		std::cout << INDENT << "The root element contains " << rootNumChildren << " shapes" << std::endl;

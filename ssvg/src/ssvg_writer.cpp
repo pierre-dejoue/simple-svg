@@ -367,6 +367,15 @@ bool writePath(StreamWriter& writer, const Path* path)
 	return true;
 }
 
+void writeTitle(StreamWriter& writer, const OwnedString& title, uint32_t indentation)
+{
+	if (title.empty()) {
+		return;
+	}
+	writer.indent(indentation);
+	writer.out() << "<title>" << title.c_str() << "</title>\n";
+}
+
 bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const ShapeAttributes* parentAttrs, uint32_t indentation)
 {
 	const uint32_t numShapes = shapeList->m_NumShapes;
@@ -376,19 +385,25 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		const ShapeType::Enum shapeType = shape->m_Type;
 		switch (shapeType) {
 		case ShapeType::Group:
-			writer.indent(indentation);
-			writer.out() << "<g";
-			if (!writeShapeAttributes(writer, shape->m_Attrs)) {
-				return false;
-			}
-			writer.out() << ">\n";
+			{
+				writer.indent(indentation);
+				writer.out() << "<g";
+				if (!writeShapeAttributes(writer, shape->m_Attrs)) {
+					return false;
+				}
+				writer.out() << ">\n";
 
-			if (!writeShapeList(writer, &shape->m_ShapeList, shape->m_Attrs, indentation + SSVG_CONFIG_OUTPUT_SVG_INDENT)) {
-				return false;
-			}
+				const uint32_t next_lvl_indentation = indentation + SSVG_CONFIG_OUTPUT_SVG_INDENT;
 
-			writer.indent(indentation);
-			writer.out() << "</g>\n";
+				writeTitle(writer, shape->m_Group.m_Title, next_lvl_indentation);
+
+				if (!writeShapeList(writer, &shape->m_Group.m_ShapeList, shape->m_Attrs, next_lvl_indentation)) {
+					return false;
+				}
+
+				writer.indent(indentation);
+				writer.out() << "</g>\n";
+			}
 			break;
 		case ShapeType::Rect:
 			writer.indent(indentation);
@@ -523,8 +538,11 @@ bool imageSave(const Image* img, std::ostream& out)
 	}
 	writer.out() << " xmlns=\"http://www.w3.org/2000/svg\">\n";
 
+	// Write image title
+	writeTitle(writer, img->m_RootContainer.m_Title, SSVG_CONFIG_OUTPUT_SVG_INDENT);
+
 	// Write shapes
-	if (!writeShapeList(writer, &img->m_ShapeList, &img->m_BaseAttrs, SSVG_CONFIG_OUTPUT_SVG_INDENT)) {
+	if (!writeShapeList(writer, &img->m_RootContainer.m_ShapeList, &img->m_BaseAttrs, SSVG_CONFIG_OUTPUT_SVG_INDENT)) {
 		return false;
 	}
 

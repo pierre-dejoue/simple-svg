@@ -26,7 +26,7 @@ bool testBuilder(const char* filepath)
 	ssvg::Image* img = ssvg::imageCreate();
 	assert(img);
 
-	ssvg::ShapeList* imgShapeList = ssvg::imageGetShapeList(img);
+	ssvg::ShapeList* imgShapeList = ssvg::imageGetRootShapeList(img);
 
 	// Add shapes to the image shape list
 	{
@@ -75,6 +75,8 @@ bool testBuilder(const char* filepath)
 		float groupTransform[6] = { 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 400.0f };
 		ssvg::shapeSetTransform(ssvg::shapeListGetShape(imgShapeList, groupIndex), &groupTransform[0]);
 	}
+
+	ssvg::imageSetTitle(img, "Build a SVG image programmatically");
 
 	const bool save_success = saveImage(filepath, img);
 

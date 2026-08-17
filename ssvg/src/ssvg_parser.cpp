@@ -95,7 +95,7 @@ const CSSColor kCSSColors[] = {
 
 constexpr uint32_t kNumCSSColors = sizeof(kCSSColors) / sizeof(CSSColor);
 
-bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAttributes* parentAttrs, const char* closingTag, uint32_t closingTagLen);
+bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes* parentAttrs, const char* closingTag, uint32_t closingTagLen);
 const char* parseCoord(const char* str, const char* end, float* coord);
 ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs);
 
@@ -1062,11 +1062,52 @@ void selectiveCopyShapeAttributes(ShapeAttributes* targetAttrs, const ShapeAttri
 	targetAttrs->m_Flags |= sourceAttrs->m_Flags;
 }
 
+bool parseNonShapeElement_Title(ParserState* parser, Group* group)
+{
+	assert(group);
+	if (!group) { return false; }
+	bool err = false;
+	while (!parserDone(parser) && !err) {
+		SSVG_CHECK(!(parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>'), "Empty <title> element");
+		if (parser->m_Ptr[0] == '>') {
+			parser->m_Ptr++;
+			break;
+		}
+
+		std::string_view name, value;
+		if (!parserGetAttribute(parser, &name, &value)) {
+			err = true;
+		} else {
+			SSVG_WARN(false, "Ignoring title attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
+		}
+	}
+
+	if (err || parserDone(parser)) {
+		return false;
+	}
+
+	const char* txtBegin = parser->m_Ptr;
+	while (!parserDone(parser) && std::string_view(parser->m_Ptr, 2) != "</") {
+		++parser->m_Ptr;
+	}
+	const char* txtEnd = parser->m_Ptr;
+
+	if (parserDone(parser) || !parserExpectingString(parser, "</title>", 8)) {
+		return false;
+	}
+
+	const uint32_t txtLen = (uint32_t)(txtEnd - txtBegin);
+	std::string txt(txtBegin, txtEnd);	// TODO: filter text string
+	groupSetTitle(group, txt.c_str());
+
+	return true;
+}
+
 bool parseShape_Group(ParserState* parser, Shape* shape)
 {
 	assert(shape);
 	if (!shape) { return false; }
-	ShapeList& group = shape->m_ShapeList;
+	Group& group = shape->m_Group;
 	ShapeAttributes* attrs = shape->m_Attrs;
 	assert(attrs);
 	assert(attrs->m_Flags == AttribFlags::None);
@@ -1101,7 +1142,7 @@ bool parseShape_Group(ParserState* parser, Shape* shape)
 		return false;
 	}
 
-	return parseShapes(parser, &group, attrs, "</g>", 4);
+	return parseSVGElements(parser, &group, attrs, "</g>", 4);
 }
 
 bool parseShape_Text(ParserState* parser, Shape* shape)
@@ -1493,20 +1534,30 @@ bool parseShape_PointList(ParserState* parser, Shape* shape)
 	return !err;
 }
 
-bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAttributes* parentAttrs, const char* closingTag, uint32_t closingTagLen)
+bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes* parentAttrs, const char* closingTag, uint32_t closingTagLen)
 {
 	assert(parser);
-	assert(shapeList);
+	assert(group);
 	assert(parentAttrs);
 	assert(closingTag);
-	struct ParseFunc
+
+	struct ParseNonShapeElementsFunc
+	{
+		std::string_view tag;
+		bool(*parseFunc)(ParserState*, Group*);
+	};
+	static const ParseNonShapeElementsFunc parseNonShapeElementsFunc[] = {
+		{ std::string_view("title"), parseNonShapeElement_Title },
+	};
+	static const uint32_t numParseNonShapeElementFuncs = sizeof(parseNonShapeElementsFunc) / sizeof(ParseNonShapeElementsFunc);
+
+	struct ParseShapeFunc
 	{
 		std::string_view tag;
 		ShapeType::Enum type;
 		bool(*parseFunc)(ParserState*, Shape*);
 	};
-
-	static const ParseFunc parseFuncs[] = {
+	static const ParseShapeFunc parseShapeFuncs[] = {
 		{ std::string_view("polyline"), ShapeType::Polyline, parseShape_PointList },
 		{ std::string_view("polygon"),  ShapeType::Polygon,  parseShape_PointList },
 		{ std::string_view("ellipse"),  ShapeType::Ellipse,  parseShape_Ellipse   },
@@ -1517,11 +1568,13 @@ bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAttribute
 		{ std::string_view("text"),     ShapeType::Text,     parseShape_Text      },
 		{ std::string_view("g"),        ShapeType::Group,    parseShape_Group     },
 	};
-	static const uint32_t numParseFuncs = sizeof(parseFuncs) / sizeof(ParseFunc);
+	static const uint32_t numParseShapeFuncs = sizeof(parseShapeFuncs) / sizeof(ParseShapeFunc);
 
-	SSVG_WARN(numParseFuncs == ShapeType::NumShapeTypes, "Some shapes won't be parsed");
+	SSVG_WARN(numParseShapeFuncs == ShapeType::NumShapeTypes, "Some shapes won't be parsed");
 
 	bool err = false;
+
+	ShapeList* shapeList = &group->m_ShapeList;
 
 	// Parse until the end-of-buffer
 	while (!parserDone(parser)) {
@@ -1536,9 +1589,24 @@ bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAttribute
 		}
 
 		bool found = false;
-		for (uint32_t i = 0; i < numParseFuncs; ++i) {
-			if (tag == parseFuncs[i].tag) {
-				const auto type = parseFuncs[i].type;
+
+		for (uint32_t i = 0; i < numParseNonShapeElementFuncs && !found; ++i) {
+			if (tag == parseNonShapeElementsFunc[i].tag) {
+				// Parse the non-shape element
+				err = !parseNonShapeElementsFunc[i].parseFunc(parser, group);
+
+				found = true;
+				break;
+			}
+		}
+
+		if (err) {
+			break;
+		}
+
+		for (uint32_t i = 0; i < numParseShapeFuncs && !found; ++i) {
+			if (tag == parseShapeFuncs[i].tag) {
+				const auto type = parseShapeFuncs[i].type;
 				Shape* shape = shapeListAllocShape(shapeList, type);
 				SSVG_CHECK(shape != nullptr, "Shape allocation failed");
 				parser->m_parsedShapeAttrs.m_Flags = AttribFlags::None;
@@ -1551,7 +1619,7 @@ bool parseShapes(ParserState* parser, ShapeList* shapeList, const ShapeAttribute
 				}
 
 				// Parse the shape
-				err = !parseFuncs[i].parseFunc(parser, shape);
+				err = !parseShapeFuncs[i].parseFunc(parser, shape);
 
 				if (!err && type != ShapeType::Group && parser->m_parsedShapeAttrs.m_Flags) {
 					ShapeAttributes* shapeAttrs = shapeAllocAttributes(shape, parentAttrs);
@@ -1628,7 +1696,7 @@ bool parseTag_svg(ParserState* parser, Image* img)
 		return false;
 	}
 
-	return parseShapes(parser, &img->m_ShapeList, &img->m_BaseAttrs, "</svg>", 6);
+	return parseSVGElements(parser, &img->m_RootContainer, &img->m_BaseAttrs, "</svg>", 6);
 }
 
 } // namespace
@@ -1678,7 +1746,7 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 			} else if (tag == "svg") {
 				err = !parseTag_svg(&parser, img);
 				if (!err && (parser.m_Flags & ImageLoadFlags::CalcShapeBounds) != 0) {
-					shapeListCalcBounds(&img->m_ShapeList, &img->m_BoundingRect[0]);
+					shapeListCalcBounds(&img->m_RootContainer.m_ShapeList, &img->m_BoundingRect[0]);
 				}
 			} else {
 				SSVG_WARN(false, "Ignoring unknown root tag %.*s", strlenint(tag), tag.data());

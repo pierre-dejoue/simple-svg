@@ -39,6 +39,70 @@ ShapeAttributeFreeListNode* s_ShapeAttrFreeListHead = nullptr;
 ShapeAttributes* shapeAttrsAlloc();
 void shapeAttrsFree(ShapeAttributes* attrs);
 
+const OwnedString& emptyOwnedString()
+{
+	static const OwnedString empty = []() {
+		OwnedString str;
+		str.m_Buf = nullptr;
+		str.m_Len = 0;
+		return str;
+	}();
+
+	return empty;
+}
+
+OwnedString ownedStringAlloc(const char* str)
+{
+	OwnedString ownedStr;
+	ownedStr.m_Buf = nullptr;
+	ownedStr.m_Len = 0;
+	if (str == nullptr) {
+		return ownedStr;
+	}
+	const std::size_t len = stdutils::strnlen(str);
+	if (len == 0) {
+		return ownedStr;
+	}
+	ownedStr.m_Buf = (char*)malloc((len + 1) * sizeof(char));
+	IGNORE_RETURN stdutils::memcpy<char>(ownedStr.m_Buf, len, str, len);
+	ownedStr.m_Buf[len] = '\0';
+	ownedStr.m_Len = len;
+	return ownedStr;
+}
+
+OwnedString ownedStringAlloc(uint32_t len)
+{
+	OwnedString ownedStr;
+	ownedStr.m_Buf = nullptr;
+	ownedStr.m_Len = 0;
+	if (len == 0) {
+		return ownedStr;
+	}
+	ownedStr.m_Buf = (char*)malloc((len + 1) * sizeof(char));
+	IGNORE_RETURN stdutils::memset<char>(ownedStr.m_Buf, len, '*', len * sizeof(char));
+	ownedStr.m_Buf[len] = '\0';
+	ownedStr.m_Len = len;
+	return ownedStr;
+}
+
+void ownedStringClear(OwnedString& ownedStr)
+{
+	if (ownedStr.m_Buf) {
+		std::free(ownedStr.m_Buf);
+	}
+	ownedStr.m_Buf = nullptr;
+	ownedStr.m_Len = 0;
+}
+
+void ownedStringSet(OwnedString& ownedStr, const char* str)
+{
+	ownedStringClear(ownedStr);
+	if (str == nullptr) {
+		return;
+	}
+	ownedStr = ownedStringAlloc(str);
+}
+
 } // namespace
 
 void transformIdentity(float* transform)
@@ -178,14 +242,52 @@ bool shapeListIsReadOnly(ShapeList* shapeList)
 
 } // namespace
 
+ShapeList* groupGetShapeList(Group* group)
+{
+	return const_cast<ShapeList*>(groupGetShapeList(const_cast<const Group*>(group)));
+}
+
+const ShapeList* groupGetShapeList(const Group* group)
+{
+	SSVG_CHECK(group, "Nullptr to Group");
+	if (!group) { return nullptr; }
+
+	return &group->m_ShapeList;
+}
+
+const OwnedString& groupGetTitle(const Group* group)
+{
+	SSVG_CHECK(group, "Nullptr to Group");
+	if (!group) { return emptyOwnedString(); }
+
+	return group->m_Title;
+}
+
+void groupSetTitle(Group* group, const char* str)
+{
+	SSVG_CHECK(group, "Nullptr to Group");
+	if (!group) { return; }
+
+	ownedStringSet(group->m_Title, str);
+}
+
+void groupClear(Group* group)
+{
+	SSVG_CHECK(group, "Nullptr to Group");
+	if (!group) { return; }
+
+	ownedStringClear(group->m_Title);
+	shapeListClear(&group->m_ShapeList);
+}
+
 // This is the state of a newly created shape. An empty group with no resources allocated.
 bool shapeIsEmptyGroup(Shape* shape)
 {
 	SSVG_CHECK(shape, "Nullptr to Shape");
 	return shape
 	    && shape->m_Type == ShapeType::Group
-	    && shape->m_ShapeList.m_Shapes == nullptr
-	    && shape->m_ShapeList.m_NumShapes == 0;
+	    && shape->m_Group.m_ShapeList.m_Shapes == nullptr
+	    && shape->m_Group.m_ShapeList.m_NumShapes == 0;
 }
 
 Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type)
@@ -348,6 +450,24 @@ ShapeType::Enum shapeListGetShapeType(const ShapeList* shapeList, uint32_t shape
 	return shapeList->m_Shapes[shapeIndex].m_Type;
 }
 
+Group* shapeListGetGroup(ShapeList* shapeList, uint32_t shapeIndex)
+{
+	return const_cast<Group*>(shapeListGetGroup(const_cast<const ShapeList*>(shapeList), shapeIndex));
+}
+
+const Group* shapeListGetGroup(const ShapeList* shapeList, uint32_t shapeIndex)
+{
+	SSVG_CHECK(shapeList, "Nullptr to ShapeList");
+	if (!shapeList) { return nullptr; }
+	SSVG_CHECK(shapeIndex < shapeList->m_NumShapes, "Out of bounds shape index");
+	if (shapeIndex >= shapeList->m_NumShapes) { return nullptr; }
+
+	Shape& shape = shapeList->m_Shapes[shapeIndex];
+	SSVG_WARN(shape.m_Type == ShapeType::Group, "The shape is not a Group");
+
+	return shape.m_Type == ShapeType::Group ? &shape.m_Group : nullptr;
+}
+
 ShapeList* shapeListGetGroupShapeList(ShapeList* shapeList, uint32_t shapeIndex)
 {
 	return const_cast<ShapeList*>(shapeListGetGroupShapeList(const_cast<const ShapeList*>(shapeList), shapeIndex));
@@ -363,7 +483,7 @@ const ShapeList* shapeListGetGroupShapeList(const ShapeList* shapeList, uint32_t
 	Shape& shape = shapeList->m_Shapes[shapeIndex];
 	SSVG_WARN(shape.m_Type == ShapeType::Group, "The shape is not a Group");
 
-	return shape.m_Type == ShapeType::Group ? &shape.m_ShapeList : nullptr;
+	return shape.m_Type == ShapeType::Group ? &shape.m_Group.m_ShapeList : nullptr;
 }
 
 PointList* shapeListGetPointList(ShapeList* shapeList, uint32_t shapeIndex)
@@ -1025,56 +1145,12 @@ uint32_t pointListGetNumPoints(const PointList* ptList)
 	return  ptList->m_NumPoints;
 }
 
-OwnedString ownedStringAlloc(const char* str)
-{
-	OwnedString ownedStr;
-	ownedStr.m_Buf = nullptr;
-	ownedStr.m_Len = 0;
-	if (str == nullptr) {
-		return ownedStr;
-	}
-	const std::size_t len = stdutils::strnlen(str);
-	if (len == 0) {
-		return ownedStr;
-	}
-	ownedStr.m_Buf = (char*)malloc((len + 1) * sizeof(char));
-	IGNORE_RETURN stdutils::memcpy<char>(ownedStr.m_Buf, len, str, len);
-	ownedStr.m_Buf[len] = '\0';
-	ownedStr.m_Len = len;
-	return ownedStr;
-}
-
-OwnedString ownedStringAlloc(uint32_t len)
-{
-	OwnedString ownedStr;
-	ownedStr.m_Buf = nullptr;
-	ownedStr.m_Len = 0;
-	if (len == 0) {
-		return ownedStr;
-	}
-	ownedStr.m_Buf = (char*)malloc((len + 1) * sizeof(char));
-	IGNORE_RETURN stdutils::memset<char>(ownedStr.m_Buf, len, '*', len * sizeof(char));
-	ownedStr.m_Buf[len] = '\0';
-	ownedStr.m_Len = len;
-	return ownedStr;
-}
-
-void ownedStringClear(OwnedString& str)
-{
-	if (str.m_Buf) {
-		std::free(str.m_Buf);
-	}
-	str.m_Buf = nullptr;
-	str.m_Len = 0;
-}
-
 void textSetString(Text* text, const char* str)
 {
 	SSVG_CHECK(text, "Nullptr to Text");
 	if (!text) { return; }
 
-	ownedStringClear(text->m_String);
-	text->m_String = ownedStringAlloc(str);
+	ownedStringSet(text->m_String, str);
 }
 
 void textClear(Text* text)
@@ -1163,7 +1239,7 @@ Image* imageCreate(const ShapeAttributes* baseAttrs)
 void imageFree(Image* img)
 {
 	if (!img) { return; }
-	shapeListClear(&img->m_ShapeList);
+	groupClear(&img->m_RootContainer);
 	std::free(img);
 }
 
@@ -1241,17 +1317,46 @@ const ShapeAttributes* imageGetShapeAttributes(const Image* img)
 	return &img->m_BaseAttrs;
 }
 
-ShapeList* imageGetShapeList(Image* img)
+Group* imageGetRootGroup(Image* img)
 {
-	return const_cast<ShapeList*>(imageGetShapeList(const_cast<const Image*>(img)));
+	return const_cast<Group*>(imageGetRootGroup(const_cast<const Image*>(img)));
 }
 
-const ShapeList* imageGetShapeList(const Image* img)
+const Group* imageGetRootGroup(const Image* img)
 {
 	SSVG_CHECK(img, "Nullptr to Image");
 	if (!img) { return nullptr; }
 
-	return &img->m_ShapeList;
+	return &img->m_RootContainer;
+}
+
+ShapeList* imageGetRootShapeList(Image* img)
+{
+	return const_cast<ShapeList*>(imageGetRootShapeList(const_cast<const Image*>(img)));
+}
+
+const ShapeList* imageGetRootShapeList(const Image* img)
+{
+	SSVG_CHECK(img, "Nullptr to Image");
+	if (!img) { return nullptr; }
+
+	return &img->m_RootContainer.m_ShapeList;
+}
+
+const OwnedString& imageGetTile(const Image* img)
+{
+	SSVG_CHECK(img, "Nullptr to Image");
+	if (!img) { return emptyOwnedString(); }
+
+	return img->m_RootContainer.m_Title;
+}
+
+void imageSetTitle(Image* img, const char* str)
+{
+	SSVG_CHECK(img, "Nullptr to Image");
+	if (!img) { return; }
+
+	ownedStringSet(img->m_RootContainer.m_Title, str);
 }
 
 uint32_t imageGetNumShapes(const Image* img)
@@ -1259,7 +1364,7 @@ uint32_t imageGetNumShapes(const Image* img)
 	SSVG_CHECK(img, "Nullptr to Image");
 	if (!img) { return 0; }
 
-	return img->m_ShapeList.m_NumShapes;
+	return img->m_RootContainer.m_ShapeList.m_NumShapes;
 }
 
 ShapeType::Enum shapeGetType(const Shape* shape)
@@ -1356,10 +1461,12 @@ bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs)
 	switch (type) {
 	case ShapeType::Group:
 		{
-			const ShapeList* srcShapeList = &src->m_ShapeList;
+			ownedStringSet(dst->m_Group.m_Title, src->m_Group.m_Title.c_str());
+
+			const ShapeList* srcShapeList = &src->m_Group.m_ShapeList;
 			const uint32_t numShapes = srcShapeList->m_NumShapes;
 
-			ShapeList* dstShapeList = &dst->m_ShapeList;
+			ShapeList* dstShapeList = &dst->m_Group.m_ShapeList;
 			shapeListReserve(dstShapeList, dstShapeList->m_NumShapes + numShapes);
 
 			for (uint32_t i = 0; i < numShapes; ++i) {
@@ -1424,7 +1531,7 @@ void shapeClear(Shape* shape)
 
 	switch (shape->m_Type) {
 	case ShapeType::Group:
-		shapeListClear(&shape->m_ShapeList);
+		groupClear(&shape->m_Group);
 		break;
 	case ShapeType::Path:
 		pathClear(&shape->m_Path);
@@ -1451,7 +1558,7 @@ void shapeUpdateBounds(Shape* shape)
 	const ShapeType::Enum type = shape->m_Type;
 	switch (type) {
 	case ShapeType::Group:
-		shapeListCalcBounds(&shape->m_ShapeList, &bounds[0]);
+		shapeListCalcBounds(&shape->m_Group.m_ShapeList, &bounds[0]);
 		break;
 	case ShapeType::Rect:
 		bounds[0] = shape->m_Rect.x;

@@ -306,6 +306,12 @@ struct ShapeList
 	uint32_t m_Capacity;
 };
 
+struct Group
+{
+	ShapeList m_ShapeList;
+	OwnedString m_Title;
+};
+
 struct Shape
 {
 	ShapeType::Enum m_Type;
@@ -314,7 +320,7 @@ struct Shape
 
 	union
 	{
-		ShapeList m_ShapeList; // NOTE: Used for ShapeType::Group
+		Group m_Group;
 		PointList m_PointList; // NOTE: Used for ShapeType::Polyline and ShapeType::Polygon
 		Rect m_Rect;
 		Circle m_Circle;
@@ -327,7 +333,7 @@ struct Shape
 
 struct Image
 {
-	ShapeList m_ShapeList;
+	Group m_RootContainer;
 	ShapeAttributes m_BaseAttrs;
 	float m_Width;
 	float m_Height;
@@ -373,9 +379,20 @@ void shapeListFree(ShapeList* shapeList);
 bool imageSave(const Image* img, std::ostream& out);
 ShapeAttributes*       imageGetShapeAttributes(      Image* img);
 const ShapeAttributes* imageGetShapeAttributes(const Image* img);
-ShapeList*             imageGetShapeList(      Image* img);
-const ShapeList*       imageGetShapeList(const Image* img);
+Group*                 imageGetRootGroup(      Image* img);
+const Group*           imageGetRootGroup(const Image* img);
+ShapeList*             imageGetRootShapeList(      Image* img);
+const ShapeList*       imageGetRootShapeList(const Image* img);
+const OwnedString& imageGetTile(const Image* img);
+void               imageSetTitle(Image* img, const char* str);
 uint32_t imageGetNumShapes(const Image* img);
+
+// Manipulate Groups
+ShapeList*             groupGetShapeList(      Group* group);
+const ShapeList*       groupGetShapeList(const Group* group);
+const OwnedString&     groupGetTitle(const Group* group);
+void                   groupSetTitle(Group* group, const char* str);
+void groupClear(Group* group);
 
 // Manipulate ShapeLists
 Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type);
@@ -401,10 +418,12 @@ ShapeAttributes*       shapeListGetShapeAttributes(      ShapeList* shapeList, u
 const ShapeAttributes* shapeListGetShapeAttributes(const ShapeList* shapeList, uint32_t shapeIndex);
 ShapeType::Enum shapeListGetShapeType(const ShapeList* shapeList, uint32_t shapeIndex);
 Shape*     shapeListGetShape(ShapeList* shapeList, uint32_t shapeIndex);
+Group*     shapeListGetGroup(ShapeList* shapeList, uint32_t shapeIndex);                        // Only for ShapeType::Group
 ShapeList* shapeListGetGroupShapeList(ShapeList* shapeList, uint32_t shapeIndex);               // Only for ShapeType::Group
 PointList* shapeListGetPointList(ShapeList* shapeList, uint32_t shapeIndex);                    // Only for ShapeType::Polyline and ShapeType::Polygon
 Path*      shapeListGetPath(ShapeList* shapeList, uint32_t shapeIndex);                         // Only for ShapeType::Path
 const Shape*     shapeListGetShape(const ShapeList* shapeList, uint32_t shapeIndex);
+const Group*     shapeListGetGroup(const ShapeList* shapeList, uint32_t shapeIndex);            // Only for ShapeType::Group
 const ShapeList* shapeListGetGroupShapeList(const ShapeList* shapeList, uint32_t shapeIndex);   // Only for ShapeType::Group
 const PointList* shapeListGetPointList(const ShapeList* shapeList, uint32_t shapeIndex);        // Only for ShapeType::Polyline and ShapeType::Polygon
 const Path*      shapeListGetPath(const ShapeList* shapeList, uint32_t shapeIndex);             // Only for ShapeType::Path
@@ -445,11 +464,6 @@ void pointListClear(PointList* ptList);
 bool pointListFromString(PointList* ptList, const std::string_view& str);
 void pointListCalcBounds(const PointList* ptList, float* bounds);
 uint32_t pointListGetNumPoints(const PointList* ptList);
-
-// Manipulate owned strings
-OwnedString ownedStringAlloc(const char* str);
-OwnedString ownedStringAlloc(uint32_t len);
-void ownedStringClear(OwnedString& str);
 
 // Manipulate Text
 void textSetString(Text* text, const char* str);
