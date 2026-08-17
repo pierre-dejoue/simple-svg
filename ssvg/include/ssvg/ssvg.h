@@ -17,6 +17,15 @@
 #	define SSVG_CONFIG_CLASS_MAX_LEN 0
 #endif
 
+// Default font size:
+//  - The SVG standard says "medium" is the default font size.
+//  - The CSS standard defines "medium" as whatever the default of the renderer is.
+//  - The de facto standard of most renderers is medium = 12pt = 16px.
+#ifndef SSVG_CONFIG_DEFAULT_FONT_SIZE_IN_PX
+#	define SSVG_CONFIG_DEFAULT_FONT_SIZE_IN_PX 16
+#endif
+
+
 #ifndef SSVG_CONFIG_OUTPUT_SVG_INDENT
 #	define SSVG_CONFIG_OUTPUT_SVG_INDENT 2
 #endif
