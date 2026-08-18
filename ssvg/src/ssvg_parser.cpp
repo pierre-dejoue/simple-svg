@@ -136,7 +136,7 @@ inline const char* skipCommaWhitespace(const char* ptr, const char* end)
 
 inline bool parserDone(ParserState* parser)
 {
-	return *parser->m_Ptr == 0;
+	return *parser->m_Ptr == '\0';
 }
 
 inline void parserSkipWhitespace(ParserState* parser)
@@ -146,8 +146,6 @@ inline void parserSkipWhitespace(ParserState* parser)
 
 bool parserExpectingChar(ParserState* parser, char ch)
 {
-	parserSkipWhitespace(parser);
-
 	if (*parser->m_Ptr == ch) {
 		++parser->m_Ptr;
 		return true;
@@ -158,8 +156,6 @@ bool parserExpectingChar(ParserState* parser, char ch)
 
 bool parserMatchString(ParserState* parser, const char* str, uint32_t len)
 {
-	parserSkipWhitespace(parser);
-
 	return !std::strncmp(parser->m_Ptr, str, len);
 }
 
@@ -167,7 +163,6 @@ inline bool parserExpectingString(ParserState* parser, const char* str, uint32_t
 {
 	if (parserMatchString(parser, str, len)) {
 		parser->m_Ptr += len;
-		parserSkipWhitespace(parser);
 		return true;
 	}
 
@@ -211,15 +206,30 @@ void parserSkipTag(ParserState* parser)
 	}
 }
 
-void parserSkipComment(ParserState* parser)
+void parserSkipEndOfComment(ParserState* parser)
 {
 	while (!parserDone(parser)) {
-		if (parser->m_Ptr[0] == '-' && parser->m_Ptr[1] == '-' && parser->m_Ptr[2] == '>') {
+		if (std::string_view(parser->m_Ptr, 3) == "-->") {
 			parser->m_Ptr += 3;
 			break;
 		}
-
 		parser->m_Ptr++;
+	}
+}
+
+void parserSkipWhitespaceAndComments(ParserState* parser)
+{
+	const char* prevPtr = nullptr;
+	while (!parserDone(parser) && parser->m_Ptr > prevPtr) {
+		prevPtr = parser->m_Ptr;
+		parserSkipWhitespace(parser);
+
+		// Not all comment tags are followed by a space, so specifically detect those
+		if (std::string_view(parser->m_Ptr, 4) != "<!--") {
+			break;
+		}
+		parser->m_Ptr += 4;
+		parserSkipEndOfComment(parser);
 	}
 }
 
@@ -227,12 +237,14 @@ bool parserGetTag(ParserState* parser, std::string_view* tag)
 {
 	assert(parser);
 	assert(tag);
+
+	parserSkipWhitespaceAndComments(parser);
 	if (!parserExpectingChar(parser, '<')) {
 		return false;
 	}
 	parserSkipWhitespace(parser); // Is it valid to have a whitespace after the < for a tag?
 
-	const char* tagPtr = parser->m_Ptr;
+	const char* tagBegin = parser->m_Ptr;
 	++parser->m_Ptr;
 
 	// Search for the next whitespace or closing angle bracket
@@ -244,13 +256,9 @@ bool parserGetTag(ParserState* parser, std::string_view* tag)
 		return false;
 	}
 
-	assert(tagPtr <= parser->m_Ptr);
-	*tag = std::string_view(tagPtr, parser->m_Ptr - tagPtr);
-
-	if (*tag == "!--") {
-		parserSkipComment(parser);
-		return parserGetTag(parser, tag);
-	}
+	const char* tagEnd = parser->m_Ptr;
+	assert(tagBegin <= tagEnd);
+	*tag = std::string_view(tagBegin, tagEnd - tagBegin);
 
 	return true;
 }
@@ -1578,6 +1586,7 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes* 
 
 	// Parse until the end-of-buffer
 	while (!parserDone(parser)) {
+		parserSkipWhitespaceAndComments(parser);
 		if (parserMatchString(parser, closingTag, closingTagLen)) {
 			break;
 		}
@@ -1647,7 +1656,7 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes* 
 
 	shapeListShrinkToFit(shapeList);
 
-	// Skip the closing tag.
+	// Skip the closing tag
 	return parserExpectingString(parser, closingTag, closingTagLen);
 }
 
@@ -1720,7 +1729,7 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 	while (!parserDone(&parser) && !err) {
 		std::string_view tag;
 		if (!parserGetTag(&parser, &tag)) {
-			err = true;
+			err = !parserDone(&parser);
 		} else {
 			if (tag == "?xml") {
 				// Special case: Search for "?>".
