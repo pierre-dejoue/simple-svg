@@ -95,7 +95,7 @@ const CSSColor kCSSColors[] = {
 
 constexpr uint32_t kNumCSSColors = sizeof(kCSSColors) / sizeof(CSSColor);
 
-bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes* parentAttrs, const char* closingTag, uint32_t closingTagLen);
+bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes* parentAttrs, std::string_view closingTag);
 const char* parseCoord(const char* str, const char* end, float* coord);
 ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs);
 
@@ -154,15 +154,15 @@ bool parserExpectingChar(ParserState* parser, char ch)
 	return false;
 }
 
-bool parserMatchString(ParserState* parser, const char* str, uint32_t len)
+bool parserMatchString(ParserState* parser, std::string_view str)
 {
-	return !std::strncmp(parser->m_Ptr, str, len);
+	return !std::strncmp(parser->m_Ptr, str.data(), str.size());
 }
 
-inline bool parserExpectingString(ParserState* parser, const char* str, uint32_t len)
+inline bool parserExpectingString(ParserState* parser, std::string_view str)
 {
-	if (parserMatchString(parser, str, len)) {
-		parser->m_Ptr += len;
+	if (parserMatchString(parser, str)) {
+		parser->m_Ptr += str.size();
 		return true;
 	}
 
@@ -1100,7 +1100,7 @@ bool parseNonShapeElement_Title(ParserState* parser, Group* group)
 	}
 	const char* txtEnd = parser->m_Ptr;
 
-	if (parserDone(parser) || !parserExpectingString(parser, "</title>", 8)) {
+	if (parserDone(parser) || !parserExpectingString(parser, "</title>")) {
 		return false;
 	}
 
@@ -1150,7 +1150,7 @@ bool parseShape_Group(ParserState* parser, Shape* shape)
 		return false;
 	}
 
-	return parseSVGElements(parser, &group, attrs, "</g>", 4);
+	return parseSVGElements(parser, &group, attrs, "</g>");
 }
 
 bool parseShape_Text(ParserState* parser, Shape* shape)
@@ -1209,7 +1209,7 @@ bool parseShape_Text(ParserState* parser, Shape* shape)
 	}
 	const char* txtEnd = parser->m_Ptr;
 
-	if (parserDone(parser) || !parserExpectingString(parser, "</text>", 7)) {
+	if (parserDone(parser) || !parserExpectingString(parser, "</text>")) {
 		return false;
 	}
 
@@ -1542,12 +1542,12 @@ bool parseShape_PointList(ParserState* parser, Shape* shape)
 	return !err;
 }
 
-bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes* parentAttrs, const char* closingTag, uint32_t closingTagLen)
+bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes* parentAttrs, std::string_view closingTag)
 {
 	assert(parser);
 	assert(group);
 	assert(parentAttrs);
-	assert(closingTag);
+	assert(closingTag.size() > 2 && closingTag[0] == '<' && closingTag[1] == '/' && closingTag[closingTag.size()-1] == '>');
 
 	struct ParseNonShapeElementsFunc
 	{
@@ -1587,7 +1587,7 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes* 
 	// Parse until the end-of-buffer
 	while (!parserDone(parser)) {
 		parserSkipWhitespaceAndComments(parser);
-		if (parserMatchString(parser, closingTag, closingTagLen)) {
+		if (parserMatchString(parser, closingTag)) {
 			break;
 		}
 
@@ -1657,7 +1657,7 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes* 
 	shapeListShrinkToFit(shapeList);
 
 	// Skip the closing tag
-	return parserExpectingString(parser, closingTag, closingTagLen);
+	return parserExpectingString(parser, closingTag);
 }
 
 bool parseTag_svg(ParserState* parser, Image* img)
@@ -1705,7 +1705,7 @@ bool parseTag_svg(ParserState* parser, Image* img)
 		return false;
 	}
 
-	return parseSVGElements(parser, &img->m_RootContainer, &img->m_BaseAttrs, "</svg>", 6);
+	return parseSVGElements(parser, &img->m_RootContainer, &img->m_BaseAttrs, "</svg>");
 }
 
 } // namespace
