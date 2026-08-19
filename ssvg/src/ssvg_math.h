@@ -3,6 +3,7 @@
 
 #include <stdutils/constants.h>
 
+#include <cmath>
 #include <limits>
 
 namespace ssvg {
@@ -24,7 +25,12 @@ inline constexpr float sign(float a)
 	return static_cast<float>( (0.0f < a) - (0.0f > a) );
 }
 
+inline float normalizedDiagonal(float w, float h)
+{
+	return std::sqrt(w * w + h * h) / std::sqrt(2.f);
+}
+
 } // namespace math
 } // namespace ssvg
 
-#endif		// SSVG_SSVG_MATH_H
+#endif      // SSVG_SSVG_MATH_H

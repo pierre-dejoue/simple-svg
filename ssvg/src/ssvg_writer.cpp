@@ -2,6 +2,7 @@
 
 #include "ssvg_debug.h"
 #include "ssvg_math.h"
+#include "ssvg_private.h"
 
 #include <stdutils/macros.h>
 #include <stdutils/memory.h>
@@ -234,28 +235,29 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, Sa
 
 		const bool saveExtra = !conditionalPaints || (strokeType != PaintType::None && strokeType != PaintType::Transparent);
 		if (saveExtra) {
-			const float miterLimit = stdutils::clamp(attrs->m_StrokeMiterLimit, 1.0f, math::kFloatMax);
 			if (attrs->m_Flags & AttribFlags::StrokeMiterLimitChanged) {
+				const float miterLimit = stdutils::clamp(attrs->m_StrokeMiterLimit, 1.0f, math::kFloatMax);
 				writer.write(" stroke-miterlimit=\"%g\"", miterLimit);
 			}
 
-			const float width = stdutils::clamp(attrs->m_StrokeWidth, 0.f, math::kFloatMax);
 			if (attrs->m_Flags & AttribFlags::StrokeWidthChanged) {
-				writer.write(" stroke-width=\"%g\"", width);
+				const float width = stdutils::clamp(attrs->m_StrokeWidth.m_Length, 0.f, math::kFloatMax);
+			    const char* widthUnit = width > 0.f ? lengthUnitToString(attrs->m_StrokeWidth.m_Unit).data() : "";
+				writer.write(" stroke-width=\"%g%s\"", width, widthUnit);
 			}
 
-			const float opacity = stdutils::clamp(attrs->m_StrokeOpacity, 0.f, 1.f);
 			if (attrs->m_Flags & AttribFlags::StrokeOpacityChanged) {
+				const float opacity = stdutils::clamp(attrs->m_StrokeOpacity, 0.f, 1.f);
 				writer.write(" stroke-opacity=\"%g\"", opacity);
 			}
 
-			const LineJoin::Enum lineJoin = attrs->m_StrokeLineJoin;
 			if (attrs->m_Flags & AttribFlags::StrokeLineJoinChanged) {
+				const LineJoin::Enum lineJoin = attrs->m_StrokeLineJoin;
 				writer.out() << " stroke-linejoin=\"" << lineJoinToString(lineJoin) << "\"";
 			}
 
-			const LineCap::Enum lineCap = attrs->m_StrokeLineCap;
 			if (attrs->m_Flags & AttribFlags::StrokeLineCapChanged) {
+				const LineCap::Enum lineCap = attrs->m_StrokeLineCap;
 				writer.out() << " stroke-linecap=\"" << lineCapToString(lineCap) << "\"";
 			}
 		}
@@ -296,9 +298,10 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, Sa
 			writer.out() << " font-family=\"" << fontFamily << "\"";
 		}
 
-		const float fontSize = attrs->m_FontSize;
+		const float& fontSize = attrs->m_FontSize.m_Length;
+		const char* fontSizeUnit = lengthUnitToString(attrs->m_FontSize.m_Unit).data();
 		if (attrs->m_Flags & AttribFlags::FontSizeChanged) {
-			writer.write(" font-size=\"%g\"", fontSize);
+			writer.write(" font-size=\"%g%s\"", fontSize, fontSizeUnit);
 		}
 	}
 
@@ -521,11 +524,15 @@ bool imageSave(const Image* img, std::ostream& out)
 
 	// Open the <svg> element
 	writer.out() << "<svg";
-	if (img->m_Width != 0.0f) {
-		writer.write(" width=\"%g\"", img->m_Width);
+	if (img->m_Width.m_Length != 0.0f) {
+		const float width = img->m_Width.m_Length;
+		const char* widthUnit = lengthUnitToString(img->m_Width.m_Unit).data();
+		writer.write(" width=\"%g%s\"", width, widthUnit);
 	}
-	if (img->m_Height != 0.0f) {
-		writer.write(" height=\"%g\"", img->m_Height);
+	if (img->m_Height.m_Length != 0.0f) {
+		const float height = img->m_Height.m_Length;
+		const char* heightUnit = lengthUnitToString(img->m_Height.m_Unit).data();
+		writer.write(" height=\"%g%s\"", height, heightUnit);
 	}
 	if (img->m_VerMajor != 0) {
 		writer.write(" version=\"%u.%u\"", img->m_VerMajor, img->m_VerMinor);

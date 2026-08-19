@@ -17,14 +17,28 @@
 #	define SSVG_CONFIG_CLASS_MAX_LEN 0
 #endif
 
-// Default font size:
+// Default parser font size:
 //  - The SVG standard says "medium" is the default font size.
 //  - The CSS standard defines "medium" as whatever the default of the renderer is.
 //  - The de facto standard of most renderers is medium = 12pt = 16px.
-#ifndef SSVG_CONFIG_DEFAULT_FONT_SIZE_IN_PX
-#	define SSVG_CONFIG_DEFAULT_FONT_SIZE_IN_PX 16
+#ifndef SSVG_CONFIG_PARSER_DEFAULT_FONT_SIZE_IN_PX
+#	define SSVG_CONFIG_PARSER_DEFAULT_FONT_SIZE_IN_PX 16
 #endif
 
+#ifndef SSVG_CONFIG_DEFAULT_DPI
+#	define SSVG_CONFIG_DEFAULT_DPI 96
+#endif
+
+// When parsing an SVG image, in the absence of a viewbox, and if the SVG container
+// width and height are dependent on the outside container (e.g. "100%"), use the
+// following completely arbitrary viewport size as the default to convert all
+// dependent lengths to pixels.
+#ifndef SSVG_CONFIG_PARSER_DEFAULT_VIEWPORT_WIDTH_IN_PX
+#	define SSVG_CONFIG_PARSER_DEFAULT_VIEWPORT_WIDTH_IN_PX 800
+#endif
+#ifndef SSVG_CONFIG_PARSER_DEFAULT_VIEWPORT_HEIGHT_IN_PX
+#	define SSVG_CONFIG_PARSER_DEFAULT_VIEWPORT_HEIGHT_IN_PX 600
+#endif
 
 #ifndef SSVG_CONFIG_OUTPUT_SVG_INDENT
 #	define SSVG_CONFIG_OUTPUT_SVG_INDENT 2
@@ -41,6 +55,29 @@ struct BaseProfile
 		Basic,
 		Tiny
 	};
+};
+
+struct LengthUnit
+{
+	enum Enum : uint32_t
+	{
+		User = 0,   // (No specifier) User Unit
+		PX,         // "px" Pixels
+		Percent,    // "%"  A percentage
+		EM,         // "em" Relative to font size
+		EX,         // "ex" Relative to font x-height
+		IN,         // "in" Inches
+		CM,         // "cm" Centimeters
+		MM,         // "mm" Millimeters
+		PT,         // "pt" Points
+		PC,         // "pc" Picas
+	};
+};
+
+struct Length
+{
+	float            m_Length;
+	LengthUnit::Enum m_Unit;
 };
 
 struct ShapeType
@@ -280,13 +317,13 @@ struct ShapeAttributes
 	float m_Transform[TRANSFORM_ARRAY_SZ];
 	float m_StrokeMiterLimit;
 	float m_StrokeOpacity;
-	float m_StrokeWidth;
+	Length m_StrokeWidth;
 	float m_FillOpacity;
 	float m_Opacity;
 	LineJoin::Enum m_StrokeLineJoin;
 	LineCap::Enum m_StrokeLineCap;
 	FillRule::Enum m_FillRule;
-	float m_FontSize;
+	Length m_FontSize;
 	char m_FontFamily[SSVG_CONFIG_FONT_FAMILY_MAX_LEN];
 	char m_ID[SSVG_CONFIG_ID_MAX_LEN];
 #if SSVG_CONFIG_CLASS_MAX_LEN
@@ -335,8 +372,8 @@ struct Image
 {
 	Group m_RootContainer;
 	ShapeAttributes m_BaseAttrs;
-	float m_Width;
-	float m_Height;
+	Length m_Width;
+	Length m_Height;
 	float m_ViewBox[VIEW_BOX_ARRAY_SZ];
 	float m_BoundingRect[BOUNDING_RECT_ARRAY_SZ];
 	BaseProfile::Enum m_BaseProfile;
@@ -514,4 +551,4 @@ AllocatedShapeAttrsCounters enumerateAllocatedShapeAttrs();
 
 } // namespace ssvg
 
-#endif		// SSVG_SSVG_H
+#endif      // SSVG_SSVG_H

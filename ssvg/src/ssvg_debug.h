@@ -45,4 +45,4 @@
 	} while(0)
 #endif
 
-#endif		// SSVG_SSVG_DEBUG_H
+#endif      // SSVG_SSVG_DEBUG_H

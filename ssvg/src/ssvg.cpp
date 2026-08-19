@@ -2,6 +2,7 @@
 
 #include "ssvg_debug.h"
 #include "ssvg_math.h"
+#include "ssvg_private.h"
 
 #include <stdutils/macros.h>
 #include <stdutils/memory.h>
@@ -13,6 +14,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <string_view>
+#include <string>
 
 namespace ssvg
 {
@@ -104,6 +106,68 @@ void ownedStringSet(OwnedString& ownedStr, const char* str)
 }
 
 } // namespace
+
+std::string_view lengthUnitToString(LengthUnit::Enum lengthUnit)
+{
+	switch(lengthUnit) {
+		case LengthUnit::User:          return "";
+		case LengthUnit::PX:            return "px";
+		case LengthUnit::Percent:       return "%";
+		case LengthUnit::EM:            return "em";
+		case LengthUnit::EX:            return "ex";
+		case LengthUnit::IN:            return "in";
+		case LengthUnit::CM:            return "cm";
+		case LengthUnit::MM:            return "mm";
+		case LengthUnit::PT:            return "pt";
+		case LengthUnit::PC:            return "pc";
+		default:
+			assert(0);
+			break;
+	}
+	return "";
+}
+
+float convertLengthToPixel(const Length& length, LengthAxis::Enum axis, const LengthContext* lengthContext)
+{
+	constexpr float DPI = (float)(SSVG_CONFIG_DEFAULT_DPI);
+	switch(length.m_Unit) {
+		case LengthUnit::User:
+		case LengthUnit::PX:
+			return length.m_Length;
+		case LengthUnit::Percent:
+		{
+			assert(lengthContext);
+			if (!lengthContext) { break; }
+			const float referenceLength = (axis == LengthAxis::Radial
+				? lengthContext->m_ViewportDiag
+				: (axis == LengthAxis::Y ? lengthContext->m_ViewportHeight : lengthContext->m_ViewportWidth));
+			return referenceLength * (length.m_Length / 100.f);
+		}
+		case LengthUnit::EM:
+			assert(lengthContext);
+			if (!lengthContext) { break; }
+			return lengthContext->m_FontSize * length.m_Length;
+		case LengthUnit::EX:
+			assert(lengthContext);
+			if (!lengthContext) { break; }
+			return 0.5f * lengthContext->m_FontSize * length.m_Length;
+		case LengthUnit::IN:
+			return DPI * length.m_Length;
+		case LengthUnit::CM:
+			return (DPI / 2.54f) * length.m_Length;
+		case LengthUnit::MM:
+			return (DPI / 25.4f) * length.m_Length;
+		case LengthUnit::PT:
+			return (DPI / 72.f) * length.m_Length;
+		case LengthUnit::PC:
+			return (DPI / 6.f) * length.m_Length;
+		default:
+			assert(0);
+			break;
+	}
+	// By default, return the raw length value
+	return length.m_Length;
+}
 
 void transformIdentity(float* transform)
 {
@@ -1285,7 +1349,7 @@ const ShapeAttributes& defaultShapeAttributes()
 
 		// Default according to the SVG standards
 		attrs.m_Opacity = 1.0f;
-		attrs.m_StrokeWidth = 1.0f;
+		attrs.m_StrokeWidth = Length{1.0f, LengthUnit::User};
 		attrs.m_StrokeMiterLimit = 4.0f;
 		attrs.m_StrokeOpacity = 1.0f;
 		attrs.m_StrokePaint.m_Type = PaintType::None;
@@ -1296,7 +1360,7 @@ const ShapeAttributes& defaultShapeAttributes()
 		attrs.m_FillPaint.m_Type = PaintType::Color;
 		attrs.m_FillPaint.m_ColorABGR = 0xFF000000;                 // Black
 		attrs.m_FillRule = FillRule::NonZero;
-		attrs.m_FontSize = SSVG_CONFIG_DEFAULT_FONT_SIZE_IN_PX;     // Usually this is 12pt = 16px
+		attrs.m_FontSize = Length{SSVG_CONFIG_PARSER_DEFAULT_FONT_SIZE_IN_PX, LengthUnit::PX};  // Usually this is 12pt = 16px
 
 		return attrs;
 	}();

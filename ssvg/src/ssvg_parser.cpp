@@ -2,6 +2,7 @@
 
 #include "ssvg_debug.h"
 #include "ssvg_math.h"
+#include "ssvg_private.h"
 
 #include <stdutils/macros.h>
 #include <stdutils/memory.h>
@@ -14,6 +15,7 @@
 #include <cstring>
 #include <sstream>
 #include <string_view>
+#include <tuple>
 
 namespace ssvg {
 
@@ -44,7 +46,8 @@ struct ParserState
 	const char* m_XMLString;
 	const char* m_Ptr;
 	ImageLoadFlags::Type m_Flags;
-	ShapeAttributes m_parsedShapeAttrs;
+	ShapeAttributes m_ParsedShapeAttrs;
+	LengthContext* m_LengthContext;
 };
 
 struct CSSColor
@@ -95,7 +98,7 @@ const CSSColor kCSSColors[] = {
 
 constexpr uint32_t kNumCSSColors = sizeof(kCSSColors) / sizeof(CSSColor);
 
-bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes* parentAttrs, std::string_view closingTag);
+bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& parentAttrs, std::string_view closingTag);
 const char* parseCoord(const char* str, const char* end, float* coord);
 ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs);
 
@@ -116,6 +119,7 @@ inline uint8_t charToNibble(char ch)
 
 inline const char* skipWhitespace(const char* ptr, const char* end)
 {
+	assert(ptr);
 	while (ptr != end && stdutils::ascii::isspace(*ptr) && *ptr != '\0') {
 		++ptr;
 	}
@@ -125,6 +129,7 @@ inline const char* skipWhitespace(const char* ptr, const char* end)
 
 inline const char* skipCommaWhitespace(const char* ptr, const char* end)
 {
+	assert(ptr);
 	// comma-wsp: (wsp+ comma? wsp*) | (comma wsp*)
 	ptr = skipWhitespace(ptr, end);
 	if (*ptr == ',') {
@@ -134,18 +139,21 @@ inline const char* skipCommaWhitespace(const char* ptr, const char* end)
 	return ptr;
 }
 
-inline bool parserDone(ParserState* parser)
+inline bool parserIsDone(ParserState* parser) noexcept
 {
-	return *parser->m_Ptr == '\0';
+	assert(parser);
+	return (parser && parser->m_Ptr) ? (*parser->m_Ptr == '\0') : true;
 }
 
 inline void parserSkipWhitespace(ParserState* parser)
 {
+	assert(parser);
 	parser->m_Ptr = skipWhitespace(parser->m_Ptr, nullptr);
 }
 
 bool parserExpectingChar(ParserState* parser, char ch)
 {
+	assert(parser);
 	if (*parser->m_Ptr == ch) {
 		++parser->m_Ptr;
 		return true;
@@ -156,11 +164,13 @@ bool parserExpectingChar(ParserState* parser, char ch)
 
 bool parserMatchString(ParserState* parser, std::string_view str)
 {
+	assert(parser);
 	return !std::strncmp(parser->m_Ptr, str.data(), str.size());
 }
 
 inline bool parserExpectingString(ParserState* parser, std::string_view str)
 {
+	assert(parser);
 	if (parserMatchString(parser, str)) {
 		parser->m_Ptr += str.size();
 		return true;
@@ -172,10 +182,11 @@ inline bool parserExpectingString(ParserState* parser, std::string_view str)
 // Skips the currently entered tag by counting > and <.
 void parserSkipTag(ParserState* parser)
 {
+	assert(parser);
 	uint32_t level = 0;
 	uint32_t numOpenBrackets = 1;
 	bool incLevelOnClose = true;
-	while (!parserDone(parser)) {
+	while (!parserIsDone(parser)) {
 		char ch = *parser->m_Ptr;
 		parser->m_Ptr++;
 
@@ -208,7 +219,8 @@ void parserSkipTag(ParserState* parser)
 
 void parserSkipEndOfComment(ParserState* parser)
 {
-	while (!parserDone(parser)) {
+	assert(parser);
+	while (!parserIsDone(parser)) {
 		if (std::string_view(parser->m_Ptr, 3) == "-->") {
 			parser->m_Ptr += 3;
 			break;
@@ -219,8 +231,9 @@ void parserSkipEndOfComment(ParserState* parser)
 
 void parserSkipWhitespaceAndComments(ParserState* parser)
 {
+	assert(parser);
 	const char* prevPtr = nullptr;
-	while (!parserDone(parser) && parser->m_Ptr > prevPtr) {
+	while (!parserIsDone(parser) && parser->m_Ptr > prevPtr) {
 		prevPtr = parser->m_Ptr;
 		parserSkipWhitespace(parser);
 
@@ -248,11 +261,11 @@ bool parserGetTag(ParserState* parser, std::string_view* tag)
 	++parser->m_Ptr;
 
 	// Search for the next whitespace or closing angle bracket
-	while (!parserDone(parser) && !stdutils::ascii::isspace(*parser->m_Ptr) && *parser->m_Ptr != '>') {
+	while (!parserIsDone(parser) && !stdutils::ascii::isspace(*parser->m_Ptr) && *parser->m_Ptr != '>') {
 		++parser->m_Ptr;
 	}
 
-	if (parserDone(parser)) {
+	if (parserIsDone(parser)) {
 		return false;
 	}
 
@@ -265,6 +278,7 @@ bool parserGetTag(ParserState* parser, std::string_view* tag)
 
 bool parserGetAttribute(ParserState* parser, std::string_view* name, std::string_view* value)
 {
+	assert(parser);
 	parserSkipWhitespace(parser);
 
 	if (!stdutils::ascii::isalpha(*parser->m_Ptr)) {
@@ -330,26 +344,79 @@ bool parseVersion(const std::string_view& verStr, uint16_t* maj, uint16_t* min)
 	return true;
 }
 
+inline std::istream& parseNumber(std::istream& in, float& val, bool& success, float min = -math::kFloatMax, float max = math::kFloatMax)
+{
+	success = false;
+	in >> val;
+	if (!std::isfinite(val)) {
+		val = 0.f;
+		return in;
+	}
+	val = stdutils::clamp<float>(val, min, max);
+	success = std::isfinite(val);
+
+	return in;
+}
+
 bool parseNumber(const std::string_view& str, float& val, float min = -math::kFloatMax, float max = math::kFloatMax)
 {
 	std::stringstream in;
 	in << str;
-	in >> val;
+	bool success = false;
+	parseNumber(in, val, success, min, max);
 
-	if (!std::isfinite(val)) {
-		val = 0.f;
-		return false;
-	}
-
-	val = stdutils::clamp<float>(val, min, max);
-
-	return true;
+	return success;
 }
 
-bool parseLength(const std::string_view& str, float& len)
+LengthUnit::Enum lengthUnitFind(std::string_view length)
 {
-	// TODO: Parse length units and convert to pixels based on parser state.
-	return parseNumber(str, len);
+	const std::string lowerLength = stdutils::string::tolower(length);
+	if (stdutils::string::ends_with(lowerLength, "px")) {
+		return LengthUnit::PX;
+	} else if (stdutils::string::ends_with(lowerLength, '%')) {
+		return LengthUnit::Percent;
+	} else if (stdutils::string::ends_with(lowerLength, "em")) {
+		return LengthUnit::EM;
+	} else if (stdutils::string::ends_with(lowerLength, "ex")) {
+		return LengthUnit::EX;
+	} else if (stdutils::string::ends_with(lowerLength, "in")) {
+		return LengthUnit::IN;
+	} else if (stdutils::string::ends_with(lowerLength, "cm")) {
+		return LengthUnit::CM;
+	} else if (stdutils::string::ends_with(lowerLength, "mm")) {
+		return LengthUnit::MM;
+	} else if (stdutils::string::ends_with(lowerLength, "pt")) {
+		return LengthUnit::PT;
+	} else if (stdutils::string::ends_with(lowerLength, "pc")) {
+		return LengthUnit::PC;
+	}
+	// The default
+	return LengthUnit::User;
+}
+
+bool parseLength(const std::string_view& str, Length& length)
+{
+	stdutils::memset<Length>(&length, 0);
+
+	// Parse the unit first
+	length.m_Unit = lengthUnitFind(str);
+
+	// Strip the unit from the end of the input string
+	const auto unitLen = lengthUnitToString(length.m_Unit).size();
+	const std::string_view value = str.substr(0, str.length() - unitLen);
+
+	// Parse the numerical value
+	const bool success = parseNumber(value, length.m_Length);
+	SSVG_WARN(success, "Failed to parse length \"%s\" (value: \"%s\")", std::string(str).c_str(), std::string(value).c_str());
+
+	return success;
+}
+
+bool parsePositiveLength(const std::string_view& str, Length& length)
+{
+	constexpr float MIN_LENGTH = 0.f;
+	constexpr float MAX_LENGTH = math::kFloatMax;
+	return stdutils::clamp<float>(parseLength(str, length), MIN_LENGTH, MAX_LENGTH);
 }
 
 bool parsePaint(const std::string_view& str, Paint* paint)
@@ -459,7 +526,7 @@ bool parseViewBox(const std::string_view& str, float* viewBox)
 	ptr = parseCoord(ptr, end, &viewBox[0]);
 	ptr = parseCoord(ptr, end, &viewBox[1]);
 	ptr = parseCoord(ptr, end, &viewBox[2]);
-	parseCoord(ptr, end, &viewBox[3]);
+	ptr = parseCoord(ptr, end, &viewBox[3]);
 
 	return true;
 }
@@ -960,7 +1027,7 @@ ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const
 			return parseNumber(value, attrs->m_StrokeOpacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
 		} else if (nameSuffix == "-width") {
 			attrs->m_Flags |= AttribFlags::StrokeWidthChanged;
-			return parseLength(value, attrs->m_StrokeWidth) ? ParseAttr::OK : ParseAttr::Fail;
+			return parsePositiveLength(value, attrs->m_StrokeWidth) ? ParseAttr::OK : ParseAttr::Fail;
 		}
 	} else if (name.substr(0, 4) == "fill") {
 		const std::string_view nameSuffix = name.substr(4);
@@ -990,7 +1057,7 @@ ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const
 			return ParseAttr::OK;
 		} else if (nameSuffix == "-size") {
 			attrs->m_Flags |= AttribFlags::FontSizeChanged;
-			return parseLength(value, attrs->m_FontSize) ? ParseAttr::OK : ParseAttr::Fail;
+			return parsePositiveLength(value, attrs->m_FontSize) ? ParseAttr::OK : ParseAttr::Fail;
 		}
 	} else if (name == "opacity") {
 		attrs->m_Flags |= AttribFlags::Opacity;
@@ -1075,7 +1142,7 @@ bool parseNonShapeElement_Title(ParserState* parser, Group* group)
 	assert(group);
 	if (!group) { return false; }
 	bool err = false;
-	while (!parserDone(parser) && !err) {
+	while (!parserIsDone(parser) && !err) {
 		SSVG_CHECK(!(parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>'), "Empty <title> element");
 		if (parser->m_Ptr[0] == '>') {
 			parser->m_Ptr++;
@@ -1090,17 +1157,17 @@ bool parseNonShapeElement_Title(ParserState* parser, Group* group)
 		}
 	}
 
-	if (err || parserDone(parser)) {
+	if (err || parserIsDone(parser)) {
 		return false;
 	}
 
 	const char* txtBegin = parser->m_Ptr;
-	while (!parserDone(parser) && std::string_view(parser->m_Ptr, 2) != "</") {
+	while (!parserIsDone(parser) && std::string_view(parser->m_Ptr, 2) != "</") {
 		++parser->m_Ptr;
 	}
 	const char* txtEnd = parser->m_Ptr;
 
-	if (parserDone(parser) || !parserExpectingString(parser, "</title>")) {
+	if (parserIsDone(parser) || !parserExpectingString(parser, "</title>")) {
 		return false;
 	}
 
@@ -1113,14 +1180,18 @@ bool parseNonShapeElement_Title(ParserState* parser, Group* group)
 
 bool parseShape_Group(ParserState* parser, Shape* shape)
 {
+	assert(parser);
+	if (!parser) { return false; }
+	assert(parser->m_LengthContext);
 	assert(shape);
 	if (!shape) { return false; }
 	Group& group = shape->m_Group;
 	ShapeAttributes* attrs = shape->m_Attrs;
-	assert(attrs);
+	SSVG_CHECK(attrs, "A contrainer type shape must always allocate its own ShapeAttributes");
+	if (!attrs) { return false; }
 	assert(attrs->m_Flags == AttribFlags::None);
 	bool err = false;
-	while (!parserDone(parser) && !err) {
+	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 		if (parserExpectingChar(parser, '>')) {
 			break;
@@ -1150,7 +1221,11 @@ bool parseShape_Group(ParserState* parser, Shape* shape)
 		return false;
 	}
 
-	return parseSVGElements(parser, &group, attrs, "</g>");
+	if (parser->m_LengthContext) {
+		parser->m_LengthContext->m_FontSize = convertLengthToPixel(attrs->m_FontSize, LengthAxis::Radial, parser->m_LengthContext);
+	}
+
+	return parseSVGElements(parser, &group, *attrs, "</g>");
 }
 
 bool parseShape_Text(ParserState* parser, Shape* shape)
@@ -1159,7 +1234,7 @@ bool parseShape_Text(ParserState* parser, Shape* shape)
 	if (!shape) { return false; }
 	Text& text = shape->m_Text;
 	bool err = false;
-	while (!parserDone(parser) && !err) {
+	while (!parserIsDone(parser) && !err) {
 		SSVG_CHECK(!(parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>'), "Empty <text> element");
 		if (parser->m_Ptr[0] == '>') {
 			parser->m_Ptr++;
@@ -1171,15 +1246,19 @@ bool parseShape_Text(ParserState* parser, Shape* shape)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_parsedShapeAttrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
 				// Text specific attributes
 				if (name == "x") {
-					err = !parseLength(value, text.x);
+					Length x;
+					err = !parseLength(value, x);
+					text.x = !err ? convertLengthToPixel(x, LengthAxis::X, parser->m_LengthContext) : 0.f;
 				} else if (name == "y") {
-					err = !parseLength(value, text.y);
+					Length y;
+					err = !parseLength(value, y);
+					text.y = !err ? convertLengthToPixel(y, LengthAxis::Y, parser->m_LengthContext) : 0.f;
 				} else if (name == "text-anchor") {
 					if (value == "start") {
 						text.m_Anchor = TextAnchor::Start;
@@ -1197,19 +1276,19 @@ bool parseShape_Text(ParserState* parser, Shape* shape)
 		}
 	}
 
-	if (err || parserDone(parser)) {
+	if (err || parserIsDone(parser)) {
 		return false;
 	}
 
 	// TODO: Parse <tspan> blocks
 
 	const char* txtBegin = parser->m_Ptr;
-	while (!parserDone(parser) && std::string_view(parser->m_Ptr, 2) != "</") {
+	while (!parserIsDone(parser) && std::string_view(parser->m_Ptr, 2) != "</") {
 		++parser->m_Ptr;
 	}
 	const char* txtEnd = parser->m_Ptr;
 
-	if (parserDone(parser) || !parserExpectingString(parser, "</text>")) {
+	if (parserIsDone(parser) || !parserExpectingString(parser, "</text>")) {
 		return false;
 	}
 
@@ -1227,7 +1306,7 @@ bool parseShape_Path(ParserState* parser, Shape* shape)
 	Path& path = shape->m_Path;
 	bool err = false;
 	bool hasContents = false;
-	while (!parserDone(parser) && !err) {
+	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 		if (parser->m_Ptr[0] == '>') {
 			// NOTE: Don't skip the closing bracket because parserSkipTag() expects it.
@@ -1242,7 +1321,7 @@ bool parseShape_Path(ParserState* parser, Shape* shape)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_parsedShapeAttrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
@@ -1270,7 +1349,7 @@ bool parseShape_Rect(ParserState* parser, Shape* shape)
 	Rect& rect = shape->m_Rect;
 	bool err = false;
 	bool hasContents = false;
-	while (!parserDone(parser) && !err) {
+	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 
 		if (parser->m_Ptr[0] == '>') {
@@ -1287,23 +1366,30 @@ bool parseShape_Rect(ParserState* parser, Shape* shape)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_parsedShapeAttrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
+				Length len;
 				// Rect specific attributes.
 				if (name == "width") {
-					err = !parseLength(value, rect.width);
+					err = !parsePositiveLength(value, len);
+					rect.width = !err ? convertLengthToPixel(len, LengthAxis::X, parser->m_LengthContext) : 0.f;
 				} else if (name == "height") {
-					err = !parseLength(value, rect.height);
+					err = !parsePositiveLength(value, len);
+					rect.height = !err ? convertLengthToPixel(len, LengthAxis::Y, parser->m_LengthContext) : 0.f;
 				} else if (name == "rx") {
-					err = !parseLength(value, rect.rx);
+					err = !parsePositiveLength(value, len);
+					rect.rx = !err ? convertLengthToPixel(len, LengthAxis::X, parser->m_LengthContext) : 0.f;
 				} else if (name == "ry") {
-					err = !parseLength(value, rect.ry);
+					err = !parsePositiveLength(value, len);
+					rect.ry = !err ? convertLengthToPixel(len, LengthAxis::Y, parser->m_LengthContext) : 0.f;
 				} else if (name == "x") {
-					err = !parseLength(value, rect.x);
+					err = !parseLength(value, len);
+					rect.x = !err ? convertLengthToPixel(len, LengthAxis::X, parser->m_LengthContext) : 0.f;
 				} else if (name == "y") {
-					err = !parseLength(value, rect.y);
+					err = !parseLength(value, len);
+					rect.y = !err ? convertLengthToPixel(len, LengthAxis::Y, parser->m_LengthContext) : 0.f;
 				} else {
 					SSVG_WARN(false, "Ignoring rect attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
@@ -1325,7 +1411,7 @@ bool parseShape_Circle(ParserState* parser, Shape* shape)
 	Circle& circle = shape->m_Circle;
 	bool err = false;
 	bool hasContents = false;
-	while (!parserDone(parser) && !err) {
+	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 
 		if (parser->m_Ptr[0] == '>') {
@@ -1342,17 +1428,21 @@ bool parseShape_Circle(ParserState* parser, Shape* shape)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_parsedShapeAttrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
+				Length len;
 				// Circle specific attributes.
 				if (name == "cx") {
-					err = !parseLength(value, circle.cx);
+					err = !parseLength(value, len);
+					circle.cx = !err ? convertLengthToPixel(len, LengthAxis::X, parser->m_LengthContext) : 0.f;
 				} else if (name == "cy") {
-					err = !parseLength(value, circle.cy);
+					err = !parseLength(value, len);
+					circle.cy = !err ? convertLengthToPixel(len, LengthAxis::Y, parser->m_LengthContext) : 0.f;
 				} else if (name == "r") {
-					err = !parseLength(value, circle.r);
+					err = !parsePositiveLength(value, len);
+					circle.r = !err ? convertLengthToPixel(len, LengthAxis::Radial, parser->m_LengthContext) : 0.f;
 				} else {
 					SSVG_WARN(false, "Ignoring circle attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
@@ -1374,7 +1464,7 @@ bool parseShape_Line(ParserState* parser, Shape* shape)
 	Line& line = shape->m_Line;
 	bool err = false;
 	bool hasContents = false;
-	while (!parserDone(parser) && !err) {
+	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 
 		if (parser->m_Ptr[0] == '>') {
@@ -1391,19 +1481,24 @@ bool parseShape_Line(ParserState* parser, Shape* shape)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_parsedShapeAttrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
+				Length len;
 				// Line specific attributes.
 				if (name == "x1") {
-					err = !parseLength(value, line.x1);
+					err = !parseLength(value, len);
+					line.x1 = !err ? convertLengthToPixel(len, LengthAxis::X, parser->m_LengthContext) : 0.f;
 				} else if (name == "x2") {
-					err = !parseLength(value, line.x2);
+					err = !parseLength(value, len);
+					line.x2 = !err ? convertLengthToPixel(len, LengthAxis::X, parser->m_LengthContext) : 0.f;
 				} else if (name == "y1") {
-					err = !parseLength(value, line.y1);
+					err = !parseLength(value, len);
+					line.y1 = !err ? convertLengthToPixel(len, LengthAxis::Y, parser->m_LengthContext) : 0.f;
 				} else if (name == "y2") {
-					err = !parseLength(value, line.y2);
+					err = !parseLength(value, len);
+					line.y2 = !err ? convertLengthToPixel(len, LengthAxis::Y, parser->m_LengthContext) : 0.f;
 				} else {
 					SSVG_WARN(false, "Ignoring line attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
@@ -1425,7 +1520,7 @@ bool parseShape_Ellipse(ParserState* parser, Shape* shape)
 	Ellipse& ellipse = shape->m_Ellipse;
 	bool err = false;
 	bool hasContents = false;
-	while (!parserDone(parser) && !err) {
+	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 
 		if (parser->m_Ptr[0] == '>') {
@@ -1442,19 +1537,24 @@ bool parseShape_Ellipse(ParserState* parser, Shape* shape)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_parsedShapeAttrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
+				Length len;
 				// Ellipse specific attributes.
 				if (name == "cx") {
-					err = !parseLength(value, ellipse.cx);
+					err = !parseLength(value, len);
+					ellipse.cx = !err ? convertLengthToPixel(len, LengthAxis::X, parser->m_LengthContext) : 0.f;
 				} else if (name == "cy") {
-					err = !parseLength(value, ellipse.cy);
+					err = !parseLength(value, len);
+					ellipse.cy = !err ? convertLengthToPixel(len, LengthAxis::Y, parser->m_LengthContext) : 0.f;
 				} else if (name == "rx") {
-					err = !parseLength(value, ellipse.rx);
+					err = !parsePositiveLength(value, len);
+					ellipse.rx = !err ? convertLengthToPixel(len, LengthAxis::X, parser->m_LengthContext) : 0.f;
 				} else if (name == "ry") {
-					err = !parseLength(value, ellipse.ry);
+					err = !parsePositiveLength(value, len);
+					ellipse.ry = !err ? convertLengthToPixel(len, LengthAxis::Y, parser->m_LengthContext) : 0.f;
 				} else {
 					SSVG_WARN(false, "Ignoring ellipse attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 				}
@@ -1476,7 +1576,7 @@ bool parseShape_PointList(ParserState* parser, Shape* shape)
 	PointList& pointList = shape->m_PointList;
 	bool err = false;
 	bool hasContents = false;
-	while (!parserDone(parser) && !err) {
+	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 
 		if (parser->m_Ptr[0] == '>') {
@@ -1493,7 +1593,7 @@ bool parseShape_PointList(ParserState* parser, Shape* shape)
 			err = true;
 		} else {
 			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_parsedShapeAttrs);
+			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs);
 			if (res == ParseAttr::Fail) {
 				err = true;
 			} else if (res == ParseAttr::Unknown) {
@@ -1542,11 +1642,11 @@ bool parseShape_PointList(ParserState* parser, Shape* shape)
 	return !err;
 }
 
-bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes* parentAttrs, std::string_view closingTag)
+bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& parentAttrs, std::string_view closingTag)
 {
 	assert(parser);
+	assert(parser->m_LengthContext);
 	assert(group);
-	assert(parentAttrs);
 	assert(closingTag.size() > 2 && closingTag[0] == '<' && closingTag[1] == '/' && closingTag[closingTag.size()-1] == '>');
 
 	struct ParseNonShapeElementsFunc
@@ -1554,10 +1654,21 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes* 
 		std::string_view tag;
 		bool(*parseFunc)(ParserState*, Group*);
 	};
-	static const ParseNonShapeElementsFunc parseNonShapeElementsFunc[] = {
+	static const ParseNonShapeElementsFunc parseNonShapeElementsFuncs[] = {
 		{ std::string_view("title"), parseNonShapeElement_Title },
 	};
-	static const uint32_t numParseNonShapeElementFuncs = sizeof(parseNonShapeElementsFunc) / sizeof(ParseNonShapeElementsFunc);
+	static const uint32_t numParseNonShapeElementFuncs = sizeof(parseNonShapeElementsFuncs) / sizeof(ParseNonShapeElementsFunc);
+
+	struct ParseContainerFunc
+	{
+		std::string_view tag;
+		ShapeType::Enum type;
+		bool(*parseFunc)(ParserState*, Shape*);
+	};
+	static const ParseContainerFunc parseContainerFuncs[] = {
+		{ std::string_view("g"),        ShapeType::Group,    parseShape_Group     },
+	};
+	static const uint32_t numParseContainerFuncs = sizeof(parseContainerFuncs) / sizeof(ParseContainerFunc);
 
 	struct ParseShapeFunc
 	{
@@ -1574,83 +1685,104 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes* 
 		{ std::string_view("rect"),     ShapeType::Rect,     parseShape_Rect      },
 		{ std::string_view("path"),     ShapeType::Path,     parseShape_Path      },
 		{ std::string_view("text"),     ShapeType::Text,     parseShape_Text      },
-		{ std::string_view("g"),        ShapeType::Group,    parseShape_Group     },
 	};
 	static const uint32_t numParseShapeFuncs = sizeof(parseShapeFuncs) / sizeof(ParseShapeFunc);
 
-	SSVG_WARN(numParseShapeFuncs == ShapeType::NumShapeTypes, "Some shapes won't be parsed");
-
 	bool err = false;
+	std::string_view tag;
 
 	ShapeList* shapeList = &group->m_ShapeList;
 
 	// Parse until the end-of-buffer
-	while (!parserDone(parser)) {
+	while (!parserIsDone(parser)) {
 		parserSkipWhitespaceAndComments(parser);
 		if (parserMatchString(parser, closingTag)) {
 			break;
 		}
 
-		std::string_view tag;
 		if (!parserGetTag(parser, &tag)) {
 			err = true;
 			break;
 		}
 
-		bool found = false;
+		bool tagFound = false;
 
-		for (uint32_t i = 0; i < numParseNonShapeElementFuncs && !found; ++i) {
-			if (tag == parseNonShapeElementsFunc[i].tag) {
+		// Non-rendered elements (e.g. <title>)
+		for (uint32_t i = 0; i < numParseNonShapeElementFuncs && !tagFound; ++i) {
+			const auto& parseNonShapeElementsFunc = parseNonShapeElementsFuncs[i];
+			if (tag == parseNonShapeElementsFunc.tag) {
+				tagFound = true;
 				// Parse the non-shape element
-				err = !parseNonShapeElementsFunc[i].parseFunc(parser, group);
+				err = !parseNonShapeElementsFunc.parseFunc(parser, group);
 
-				found = true;
 				break;
 			}
 		}
-
 		if (err) {
 			break;
 		}
 
-		for (uint32_t i = 0; i < numParseShapeFuncs && !found; ++i) {
-			if (tag == parseShapeFuncs[i].tag) {
-				const auto type = parseShapeFuncs[i].type;
+		// Containers (e.g. <g>)
+		for (uint32_t i = 0; i < numParseContainerFuncs && !tagFound; ++i) {
+			const auto& parseContainerFunc = parseContainerFuncs[i];
+			if (tag == parseContainerFunc.tag) {
+				tagFound = true;
+				const auto type = parseContainerFunc.type;
 				Shape* shape = shapeListAllocShape(shapeList, type);
 				SSVG_CHECK(shape != nullptr, "Shape allocation failed");
-				parser->m_parsedShapeAttrs.m_Flags = AttribFlags::None;
 
-				// For groups, always preallocate the attributes:
+				// For container, always preallocate the attributes:
 				//   - groups almost always have an ID
-				//   - recursive nature of parsing a group
-				if (type == ShapeType::Group) {
-					shapeAllocAttributes(shape);
-				}
+				//   - The recursive nature of parsing a group requires the copy of the parent attrs
+				shapeAllocAttributes(shape, &parentAttrs);
+
+				LengthContext lengthContext = *parser->m_LengthContext;
+				stdutils::ScopedPtrToLocal<LengthContext> scopedLengthContext(&parser->m_LengthContext, lengthContext);
 
 				// Parse the shape
-				err = !parseShapeFuncs[i].parseFunc(parser, shape);
+				err = !parseContainerFunc.parseFunc(parser, shape);
 
-				if (!err && type != ShapeType::Group && parser->m_parsedShapeAttrs.m_Flags) {
-					ShapeAttributes* shapeAttrs = shapeAllocAttributes(shape, parentAttrs);
-					selectiveCopyShapeAttributes(shapeAttrs, &parser->m_parsedShapeAttrs);
-				}
-
-				found = true;
 				break;
 			}
 		}
-
 		if (err) {
 			break;
 		}
 
-		if (!found) {
-			SSVG_WARN(false, "Ignoring element <%.*s>", strlenint(tag), tag.data());
+		// Rendered elements (e.g. <path>, <rect>, <text> etc.)
+		for (uint32_t i = 0; i < numParseShapeFuncs && !tagFound; ++i) {
+			const auto& parseShapeFunc = parseShapeFuncs[i];
+			if (tag == parseShapeFunc.tag) {
+				tagFound = true;
+				const auto type = parseShapeFunc.type;
+				Shape* shape = shapeListAllocShape(shapeList, type);
+				SSVG_CHECK(shape != nullptr, "Shape allocation failed");
+				parser->m_ParsedShapeAttrs.m_Flags = AttribFlags::None;
+
+				// Parse the shape
+				err = !parseShapeFunc.parseFunc(parser, shape);
+
+				if (!err && parser->m_ParsedShapeAttrs.m_Flags) {
+					ShapeAttributes* shapeAttrs = shapeAllocAttributes(shape, &parentAttrs);
+					selectiveCopyShapeAttributes(shapeAttrs, &parser->m_ParsedShapeAttrs);
+				}
+
+				break;
+			}
+		}
+		if (err) {
+			break;
+		}
+
+		SSVG_WARN(tagFound, "Ignoring element <%.*s>", strlenint(tag), tag.data());
+		if (!tagFound) {
 			parserSkipTag(parser);
 		}
 	}
 
-	if (err || parserDone(parser)) {
+	SSVG_WARN(!err, "Error parsing the SVG elements. Last tag: \"%s\"", std::string(tag).c_str());
+	SSVG_WARN(!parserIsDone(parser), "End of stream before the closing tag \"%s\". Last opening tag: \"%s\"", std::string(closingTag).c_str(), std::string(tag).c_str());
+	if (err || parserIsDone(parser)) {
 		return false;
 	}
 
@@ -1664,7 +1796,7 @@ bool parseTag_svg(ParserState* parser, Image* img)
 {
 	// Parse svg tag attributes...
 	bool err = false;
-	while (!parserDone(parser) && !err) {
+	while (!parserIsDone(parser) && !err) {
 		if (parserExpectingChar(parser, '>')) {
 			break;
 		}
@@ -1687,9 +1819,9 @@ bool parseTag_svg(ParserState* parser, Image* img)
 					SSVG_WARN(false, "Unknown baseProfile \"%.*s\"", strlenint(value), value.data());
 				}
 			} else if (name == "width") {
-				img->m_Width = (float)atof(value.data());
+				IGNORE_RETURN parsePositiveLength(value, img->m_Width);
 			} else if (name == "height") {
-				img->m_Height = (float)atof(value.data());
+				IGNORE_RETURN parsePositiveLength(value, img->m_Height);
 			} else if (name == "viewBox") {
 				parseViewBox(value, &img->m_ViewBox[0]);
 			} else if (name == "xmlns" || name == "id") {
@@ -1705,7 +1837,34 @@ bool parseTag_svg(ParserState* parser, Image* img)
 		return false;
 	}
 
-	return parseSVGElements(parser, &img->m_RootContainer, &img->m_BaseAttrs, "</svg>");
+	// Set the length context, used to convert length units to pixels
+	LengthContext lengthContext = [img]() {
+		LengthContext context;
+		const float viewBoxWidth  = img->m_ViewBox[2];
+		const float viewBoxHeight = img->m_ViewBox[3];
+		assert(img->m_BaseAttrs.m_FontSize.m_Unit != LengthUnit::EM
+			&& img->m_BaseAttrs.m_FontSize.m_Unit != LengthUnit::EX
+			&& img->m_BaseAttrs.m_FontSize.m_Unit != LengthUnit::Percent);
+		context.m_FontSize = convertLengthToPixel(img->m_BaseAttrs.m_FontSize);
+		context.m_ViewportWidth  = SSVG_CONFIG_PARSER_DEFAULT_VIEWPORT_WIDTH_IN_PX;
+		context.m_ViewportHeight = SSVG_CONFIG_PARSER_DEFAULT_VIEWPORT_HEIGHT_IN_PX;
+		if (viewBoxWidth > 0.f && viewBoxHeight > 0.f) {
+			context.m_ViewportWidth  = viewBoxWidth;
+			context.m_ViewportHeight = viewBoxHeight;
+		} else if (img->m_Width.m_Length  > 0.f && img->m_Width.m_Unit  != LengthUnit::Percent
+				&& img->m_Height.m_Length > 0.f && img->m_Height.m_Unit != LengthUnit::Percent) {
+			context.m_ViewportWidth  = convertLengthToPixel(img->m_Width,  LengthAxis::X, &context);
+			context.m_ViewportHeight = convertLengthToPixel(img->m_Height, LengthAxis::Y, &context);
+		}
+		context.m_ViewportDiag = math::normalizedDiagonal(context.m_ViewportWidth, context.m_ViewportHeight);
+		assert(context.m_FontSize > 0.f);
+		assert(context.m_ViewportWidth > 0.f);
+		assert(context.m_ViewportHeight > 0.f);
+		assert(context.m_ViewportDiag > 0.f);
+		return context;
+	}();
+	parser->m_LengthContext = &lengthContext;
+	return parseSVGElements(parser, &img->m_RootContainer, img->m_BaseAttrs, "</svg>");
 }
 
 } // namespace
@@ -1723,17 +1882,17 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 	parser.m_XMLString = xmlStr;
 	parser.m_Ptr = xmlStr;
 	parser.m_Flags = flags;
-	stdutils::memset<ShapeAttributes>(&parser.m_parsedShapeAttrs, 0);
+	stdutils::memset<ShapeAttributes>(&parser.m_ParsedShapeAttrs, 0);
 
 	bool err = false;
-	while (!parserDone(&parser) && !err) {
+	while (!parserIsDone(&parser) && !err) {
 		std::string_view tag;
 		if (!parserGetTag(&parser, &tag)) {
-			err = !parserDone(&parser);
+			err = !parserIsDone(&parser);
 		} else {
 			if (tag == "?xml") {
 				// Special case: Search for "?>".
-				while (!parserDone(&parser)) {
+				while (!parserIsDone(&parser)) {
 					if (parser.m_Ptr[0] == '?' && parser.m_Ptr[1] == '>') {
 						parser.m_Ptr += 2;
 						break;
@@ -1741,17 +1900,17 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 					++parser.m_Ptr;
 				}
 
-				err = parserDone(&parser);
+				err = parserIsDone(&parser);
 			} else if (tag == "!DOCTYPE") {
 				// Special case: Search for first '>'.
-				while (!parserDone(&parser)) {
+				while (!parserIsDone(&parser)) {
 					char ch = *parser.m_Ptr++;
 					if (ch == '>') {
 						break;
 					}
 				}
 
-				err = parserDone(&parser);
+				err = parserIsDone(&parser);
 			} else if (tag == "svg") {
 				err = !parseTag_svg(&parser, img);
 				if (!err && (parser.m_Flags & ImageLoadFlags::CalcShapeBounds) != 0) {

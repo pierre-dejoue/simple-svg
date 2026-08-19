@@ -81,6 +81,31 @@ bool is_printable_ascii(const char* str, std::size_t max_len = DEFAULT_MAX_LEN);
 bool is_printable_ascii(const std::string& str);
 
 /**
+ * String prefix and suffix, before C++20
+ */
+constexpr bool starts_with(std::string_view str, std::string_view prefix)
+{
+    const auto prefix_len = prefix.length();
+    return str.length() >= prefix_len && str.substr(0, prefix_len) == prefix;
+}
+
+constexpr bool starts_with(std::string_view str, char c)
+{
+    return !str.empty() && str[0] == c;
+}
+
+constexpr bool ends_with(std::string_view str, std::string_view suffix)
+{
+    const auto suffix_len = suffix.length();
+    return str.length() >= suffix_len && str.substr(str.length() - suffix_len, suffix_len) == suffix;
+}
+
+constexpr bool ends_with(std::string_view str, char c)
+{
+    return !str.empty() && str[str.length() - 1] == c;
+}
+
+/**
  * A string identifier
  *
  * It shall only contain the characters: 'a-z', 'A-Z', '0-9', '#', '.', '-', '_'

@@ -18,7 +18,7 @@ bool testBuilder(const char* filepath)
 	ssvg::ShapeAttributes textAttrs = []() {
 		auto attrs = ssvg::defaultShapeAttributes();
 		ssvg::shapeAttrsSetFontFamily(&attrs, "sans-serif");
-		attrs.m_FontSize = 20.0f;
+		attrs.m_FontSize = ssvg::Length{20.0f, ssvg::LengthUnit::PX};
 		return attrs;
 	}();
 
