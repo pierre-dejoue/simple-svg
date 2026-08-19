@@ -67,7 +67,7 @@ void closeSVGImage(ssvg::Image* img, const fs::path& filepath)
 		source = " ";
 		source.append(filepath.string());
 	}
-	printf("Closing ssvg:Image%s...\n", source.c_str());
+	printf("Closing ssvg::Image%s...\n", source.c_str());
 	ssvg::imageFree(img);
 }
 
@@ -79,6 +79,11 @@ bool saveImage(const fs::path& filepath, const ssvg::Image* img)
 		std::basic_ofstream<char> ostream(filepath, std::ios_base::out);
 		if (ostream.is_open()) {
 			success = ssvg::imageSave(img, ostream);
+			if (success) {
+				printf("Saved ssvg::Image to \"%s\"...\n", filepath.string().c_str());
+			} else {
+				printf("(x) Failed to save ssvg::Image to \"%s\"...\n", filepath.string().c_str());
+			}
 		} else {
 			std::stringstream oss;
 			oss << "Cannot open file: " << filepath;

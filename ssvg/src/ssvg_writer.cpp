@@ -540,7 +540,9 @@ bool imageSave(const Image* img, std::ostream& out)
 	if (img->m_BaseProfile != BaseProfile::None) {
 		writer.out() << " baseProfile=\"" << baseProfileToString(img->m_BaseProfile) << "\"";
 	}
-	if (img->m_ViewBox[2] > 0.0f && img->m_ViewBox[3] > 0.0f) {
+	const float viewBoxWidth  = img->m_ViewBox[2];
+	const float viewBoxHeight = img->m_ViewBox[3];
+	if (viewBoxWidth > 0.0f && viewBoxHeight > 0.0f) {
 		writer.write(" viewBox=\"%g %g %g %g\"", img->m_ViewBox[0], img->m_ViewBox[1], img->m_ViewBox[2], img->m_ViewBox[3]);
 	}
 	writer.out() << " xmlns=\"http://www.w3.org/2000/svg\">\n";

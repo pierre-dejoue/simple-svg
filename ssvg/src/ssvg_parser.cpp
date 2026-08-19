@@ -1796,6 +1796,7 @@ bool parseTag_svg(ParserState* parser, Image* img)
 {
 	// Parse svg tag attributes...
 	bool err = false;
+	bool hasViewBox = false;
 	while (!parserIsDone(parser) && !err) {
 		if (parserExpectingChar(parser, '>')) {
 			break;
@@ -1823,25 +1824,28 @@ bool parseTag_svg(ParserState* parser, Image* img)
 			} else if (name == "height") {
 				IGNORE_RETURN parsePositiveLength(value, img->m_Height);
 			} else if (name == "viewBox") {
-				parseViewBox(value, &img->m_ViewBox[0]);
+				hasViewBox = parseViewBox(value, &img->m_ViewBox[0]);
+				SSVG_WARN(hasViewBox, "Failed to parse the ViewBox");
 			} else if (name == "xmlns" || name == "id") {
 				// Ignore. This is here in order to shut up the trace message below.
 			} else {
 				// Unknown attribute. Ignore it (parser has already moved forward)
-				SSVG_WARN(false, "Ignoring svg attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
+				SSVG_WARN(false, "Ignoring SVG attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 			}
 		}
 	}
+
+	SSVG_WARN(hasViewBox, "The SVG has no ViewBox");
 
 	if (err) {
 		return false;
 	}
 
 	// Set the length context, used to convert length units to pixels
-	LengthContext lengthContext = [img]() {
+	LengthContext lengthContext = [img, hasViewBox]() {
 		LengthContext context;
-		const float viewBoxWidth  = img->m_ViewBox[2];
-		const float viewBoxHeight = img->m_ViewBox[3];
+		const float viewBoxWidth  = hasViewBox ? img->m_ViewBox[2] : 0.f;
+		const float viewBoxHeight = hasViewBox ? img->m_ViewBox[3] : 0.f;
 		assert(img->m_BaseAttrs.m_FontSize.m_Unit != LengthUnit::EM
 			&& img->m_BaseAttrs.m_FontSize.m_Unit != LengthUnit::EX
 			&& img->m_BaseAttrs.m_FontSize.m_Unit != LengthUnit::Percent);
