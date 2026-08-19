@@ -37,7 +37,7 @@ struct SaveAttr
 		// Common combinations
 		Unique = Transform | ID,
 		Shape = Unique | Stroke | Fill,
-		Text = Unique | Fill | Font | ConditionalPaints,
+		Text = Unique | Stroke | Fill | Font | ConditionalPaints,
 	};
 };
 
