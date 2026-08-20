@@ -180,43 +180,67 @@ inline bool parserExpectingString(ParserState* parser, std::string_view str)
 	return false;
 }
 
-// Skips the currently entered tag by counting > and <.
-void parserSkipTag(ParserState* parser)
+//
+// Advance the stream passed the end of the tag passed as argument.
+// It is assumed that the starting pointer is passed the beginning tag
+// (after "<tag") but before the closing bracket '>'
+//
+// Illustrative example:
+//
+//   <tag id="1"><g><tag id="2">Hello, World!</tag></g></tag><rect x="0"....
+//     start ---^                                            ^--- after parserSkipTag
+//
+bool parserSkipTag(ParserState* parser, std::string_view tag)
 {
 	assert(parser);
 	parser->m_ExpectClosingTag = false;
-	uint32_t level = 0;
-	uint32_t numOpenBrackets = 1;
-	bool incLevelOnClose = true;
-	while (!parserIsDone(parser)) {
-		char ch = *parser->m_Ptr;
-		parser->m_Ptr++;
+	uint32_t numOpenTags = 1;                    // We are already passed the 1st opening tag "<tag"
+	bool stateLookForEndOfOpeningTag = true;     // Binary state machine (states explained below)
+	while (!parserIsDone(parser) && numOpenTags > 0) {
+		char ch = *parser->m_Ptr++;     // Advance by at least one character each loop
 
-		if (ch == '/' && *parser->m_Ptr == '>') {
-			SSVG_CHECK(numOpenBrackets != 0, "Unbalanced brackets");
-			parser->m_Ptr++;
-			--numOpenBrackets;
-		} else if (ch == '>') {
-			SSVG_CHECK(numOpenBrackets != 0, "Unbalanced brackets");
-			--numOpenBrackets;
-			if (incLevelOnClose) {
-				++level;
-			}
-			incLevelOnClose = true;
-		} else if (ch == '<') {
-			++numOpenBrackets;
-			if (*parser->m_Ptr == '/') {
-				SSVG_CHECK(level != 0, "Unbalanched tags");
+		if (stateLookForEndOfOpeningTag) {
+			//
+			// In this state, we are looking for the end of the opening tag "<tag":
+			//  - Either a "/>" string, meaning self-closing, e.g. "<tag id="3" />"
+			//  - Or a simple ">" string, for a normal opening tag, e.g. "<tag>"
+			//
+			if (ch == '/' && *parser->m_Ptr == '>') {
 				parser->m_Ptr++;
-				--level;
-				incLevelOnClose = false;
-			}
-		}
-
-		if (numOpenBrackets == 0 && level == 0) {
-			break;
+				assert(numOpenTags > 0);
+				numOpenTags--;
+				stateLookForEndOfOpeningTag = false;
+			} else if (ch == '>') {
+				stateLookForEndOfOpeningTag = false;
+			} // Else, keep advancing....
+		} else {
+			assert(!stateLookForEndOfOpeningTag);
+			//
+			// In this state, we are looking for either a closing tag "</tag>", or another opening tag "<tag"
+			//
+			if (ch == '<') {
+				const bool isAClosingTag = (*parser->m_Ptr == '/');
+				if (isAClosingTag) { parser->m_Ptr++; }
+				if (parserExpectingString(parser, tag)) {
+					char nextCh = *parser->m_Ptr;
+					if (isAClosingTag) {
+						if (nextCh == '>') {
+							parser->m_Ptr++;
+							assert(numOpenTags > 0);
+							numOpenTags--;
+						}
+					} else { // Opening tag
+						if (nextCh == '>' || nextCh == '/' || stdutils::ascii::isspace(nextCh)) {
+							numOpenTags++;
+							stateLookForEndOfOpeningTag = true;
+						}
+					}
+				}
+			} // Else, keep advancing....
 		}
 	}
+
+	return (numOpenTags == 0);
 }
 
 void parserSkipEndOfComment(ParserState* parser)
@@ -248,14 +272,13 @@ void parserSkipWhitespaceAndComments(ParserState* parser)
 	}
 }
 
-bool parserGetTag(ParserState* parser, std::string_view* tag)
+std::string_view parserGetTag(ParserState* parser)
 {
 	assert(parser);
-	assert(tag);
 
 	parserSkipWhitespaceAndComments(parser);
 	if (!parserExpectingChar(parser, '<')) {
-		return false;
+		return std::string_view();
 	}
 	parserSkipWhitespace(parser); // Is it valid to have a whitespace after the < for a tag?
 
@@ -268,14 +291,20 @@ bool parserGetTag(ParserState* parser, std::string_view* tag)
 	}
 
 	if (parserIsDone(parser)) {
-		return false;
+		return std::string_view();
 	}
 
 	const char* tagEnd = parser->m_Ptr;
 	assert(tagBegin <= tagEnd);
-	*tag = std::string_view(tagBegin, tagEnd - tagBegin);
+	std::string_view tag(tagBegin, tagEnd - tagBegin);
 
-	return true;
+	SSVG_WARN(!tag.empty(), "Empty tag");
+	SSVG_WARN(*tagBegin != '/', "Unexpected closing tag \"<%s>\"", std::string(tag).c_str());
+	if (*tagBegin == '/') {
+		return std::string_view();
+	}
+
+	return tag;
 }
 
 bool parserGetAttribute(ParserState* parser, std::string_view* name, std::string_view* value)
@@ -1674,7 +1703,8 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& 
 			break;
 		}
 
-		if (!parserGetTag(parser, &tag)) {
+		tag = parserGetTag(parser);
+		if (tag.empty()) {
 			err = true;
 			break;
 		}
@@ -1742,8 +1772,8 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& 
 					selectiveCopyShapeAttributes(shapeAttrs, &parser->m_ParsedShapeAttrs);
 				}
 
-				if (parser->m_ExpectClosingTag) {
-					parserSkipTag(parser);
+				if (!err && parser->m_ExpectClosingTag) {
+					err = !parserSkipTag(parser, tag);
 				}
 
 				break;
@@ -1755,7 +1785,7 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& 
 
 		SSVG_WARN(tagFound, "Ignoring element <%.*s>", strlenint(tag), tag.data());
 		if (!tagFound) {
-			parserSkipTag(parser);
+			err = !parserSkipTag(parser, tag);
 		}
 	}
 
@@ -1879,8 +1909,8 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 
 	bool err = false;
 	while (!parserIsDone(&parser) && !err) {
-		std::string_view tag;
-		if (!parserGetTag(&parser, &tag)) {
+		const std::string_view tag = parserGetTag(&parser);
+		if (tag.empty()) {
 			err = !parserIsDone(&parser);
 		} else {
 			if (tag == "?xml") {
@@ -1911,7 +1941,7 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 				}
 			} else {
 				SSVG_WARN(false, "Ignoring unknown XML root tag %.*s", strlenint(tag), tag.data());
-				parserSkipTag(&parser);
+				err = !parserSkipTag(&parser, tag);
 			}
 		}
 	}
