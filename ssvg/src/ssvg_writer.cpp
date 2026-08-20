@@ -134,49 +134,54 @@ bool transformIsIdentity(const float* transform)
 class StreamWriter
 {
 public:
-	StreamWriter(std::ostream& out, uint32_t str_len)
-		: m_out{out}
-		, m_str{nullptr}
-		, m_str_len{str_len}
+	StreamWriter(std::ostream& out, uint32_t strLen, uint32_t baseIndentation = 0)
+		: m_Out{out}
+		, m_Str{nullptr}
+		, m_StrLen{strLen}
+		, m_BaseIndent{stdutils::clamp<uint32_t>(baseIndentation, 0, 32)}
 	{
-		assert(str_len > 1);
-		m_str = (char*)std::malloc(str_len);
-		IGNORE_RETURN stdutils::memset<char>(m_str, str_len, 0, str_len);
+		assert(strLen > 1);
+		m_Str = (char*)std::malloc(strLen);
+		IGNORE_RETURN stdutils::memset<char>(m_Str, strLen, 0, strLen);
 	}
 
 	~StreamWriter()
 	{
-		std::free(m_str);
-		m_str = nullptr;
+		std::free(m_Str);
+		m_Str = nullptr;
 	}
 
-	std::ostream& out() const noexcept { return m_out; }
+	std::ostream& out() const noexcept { return m_Out; }
 
 	template <typename... Args>
 	bool write(const char* format, Args&&... args);
 
-	void indent(uint32_t n);
+	void indent(uint32_t lvl);
+
+	uint32_t baseIndentation() const noexcept { return m_BaseIndent; }
 
 private:
-	std::ostream& m_out;
-	char*         m_str;
-	uint32_t      m_str_len;
+	std::ostream& m_Out;
+	char*         m_Str;
+	uint32_t      m_StrLen;
+	uint32_t      m_BaseIndent;
 };
 
 template <typename... Args>
 bool StreamWriter::write(const char* format, Args&&... args)
 {
-	assert(m_str);
-	const int written = std::snprintf(m_str, m_str_len, format, std::forward<Args>(args)...);
-	const bool success = 0 <= written && written < m_str_len;
-	if (success) { m_out << m_str; }
+	assert(m_Str);
+	const int written = std::snprintf(m_Str, m_StrLen, format, std::forward<Args>(args)...);
+	const bool success = 0 <= written && written < m_StrLen;
+	if (success) { m_Out << m_Str; }
 	return success;
 }
 
-void StreamWriter::indent(uint32_t n)
+void StreamWriter::indent(uint32_t lvl)
 {
-	for (uint32_t c = 0; c < n; c++) {
-		m_out.put(' ');
+	const uint32_t numSpaces = lvl * m_BaseIndent;
+	for (uint32_t n = 0; n < numSpaces; n++) {
+		m_Out.put(' ');
 	}
 }
 
@@ -370,18 +375,19 @@ bool writePath(StreamWriter& writer, const Path* path)
 	return true;
 }
 
-void writeTitle(StreamWriter& writer, const OwnedString& title, uint32_t indentation)
+void writeTitle(StreamWriter& writer, const OwnedString& title, uint32_t indentationLevel)
 {
 	if (title.empty()) {
 		return;
 	}
-	writer.indent(indentation);
+	writer.indent(indentationLevel);
 	writer.out() << "<title>" << title.c_str() << "</title>\n";
 }
 
-bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const ShapeAttributes* parentAttrs, uint32_t indentation)
+bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const ShapeAttributes* parentAttrs, uint32_t treeDepth = 0)
 {
 	const uint32_t numShapes = shapeList->m_NumShapes;
+	const uint32_t indentationLevel = treeDepth + 1;
 	for (uint32_t iShape = 0; iShape < numShapes; ++iShape) {
 		const Shape* shape = &shapeList->m_Shapes[iShape];
 
@@ -389,27 +395,25 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		switch (shapeType) {
 		case ShapeType::Group:
 			{
-				writer.indent(indentation);
+				writer.indent(indentationLevel);
 				writer.out() << "<g";
 				if (!writeShapeAttributes(writer, shape->m_Attrs)) {
 					return false;
 				}
 				writer.out() << ">\n";
 
-				const uint32_t next_lvl_indentation = indentation + SSVG_CONFIG_OUTPUT_SVG_INDENT;
+				writeTitle(writer, shape->m_Group.m_Title, indentationLevel + 1);
 
-				writeTitle(writer, shape->m_Group.m_Title, next_lvl_indentation);
-
-				if (!writeShapeList(writer, &shape->m_Group.m_ShapeList, shape->m_Attrs, next_lvl_indentation)) {
+				if (!writeShapeList(writer, &shape->m_Group.m_ShapeList, shape->m_Attrs, treeDepth + 1)) {
 					return false;
 				}
 
-				writer.indent(indentation);
+				writer.indent(indentationLevel);
 				writer.out() << "</g>\n";
 			}
 			break;
 		case ShapeType::Rect:
-			writer.indent(indentation);
+			writer.indent(indentationLevel);
 			writer.out() << "<rect";
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
@@ -429,7 +433,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 			writer.out() << " />\n";
 			break;
 		case ShapeType::Circle:
-			writer.indent(indentation);
+			writer.indent(indentationLevel);
 			writer.out() << "<circle";
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
@@ -440,7 +444,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 				, shape->m_Circle.r);
 			break;
 		case ShapeType::Ellipse:
-			writer.indent(indentation);
+			writer.indent(indentationLevel);
 			writer.out() << "<ellipse";
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
@@ -452,7 +456,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 				, shape->m_Ellipse.ry);
 			break;
 		case ShapeType::Line:
-			writer.indent(indentation);
+			writer.indent(indentationLevel);
 			writer.out() << "<line";
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
@@ -464,7 +468,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 				, shape->m_Line.y2);
 			break;
 		case ShapeType::Polyline:
-			writer.indent(indentation);
+			writer.indent(indentationLevel);
 			writer.out() << "<polyline";
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
@@ -475,7 +479,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 			writer.out() << " />\n";
 			break;
 		case ShapeType::Polygon:
-			writer.indent(indentation);
+			writer.indent(indentationLevel);
 			writer.out() << "<polygon";
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
@@ -486,7 +490,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 			writer.out() << " />\n";
 			break;
 		case ShapeType::Path:
-			writer.indent(indentation);
+			writer.indent(indentationLevel);
 			writer.out() << "<path";
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
@@ -497,7 +501,7 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 			writer.out() << " />\n";
 			break;
 		case ShapeType::Text:
-			writer.indent(indentation);
+			writer.indent(indentationLevel);
 			writer.out() << "<text";
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Text)) {
 				return false;
@@ -515,12 +519,27 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 
 } // namespace
 
-bool imageSave(const Image* img, std::ostream& out)
+const ImageWriterOptions& defaultImageWriterOptions()
+{
+	static const ImageWriterOptions defaultOptions = []() {
+		ImageWriterOptions options;
+		stdutils::memset<ImageWriterOptions>(&options, 0);
+		options.m_Indentation = SSVG_CONFIG_WRITER_DEFAULT_INDENTATION;
+		return options;
+	}();
+	return defaultOptions;
+}
+
+bool imageSave(const Image* img, std::ostream& out, const ImageWriterOptions* options)
 {
 	assert(img);
-	constexpr uint32_t SSVG_FORMAT_BUFFER_LEN = 256;
+	if (!img) { return false; }
 
-	StreamWriter writer(out, SSVG_FORMAT_BUFFER_LEN);
+	// Use the default writer options if none is provided as argument
+	options = options ? options : &defaultImageWriterOptions();
+
+	constexpr uint32_t SSVG_FORMAT_BUFFER_LEN = 256;
+	StreamWriter writer(out, SSVG_FORMAT_BUFFER_LEN, options->m_Indentation);
 
 	// Open the <svg> element
 	writer.out() << "<svg";
@@ -548,10 +567,11 @@ bool imageSave(const Image* img, std::ostream& out)
 	writer.out() << " xmlns=\"http://www.w3.org/2000/svg\">\n";
 
 	// Write image title
-	writeTitle(writer, img->m_RootContainer.m_Title, SSVG_CONFIG_OUTPUT_SVG_INDENT);
+	constexpr uint32_t indendationLevel = 1;
+	writeTitle(writer, img->m_RootContainer.m_Title, indendationLevel);
 
 	// Write shapes
-	if (!writeShapeList(writer, &img->m_RootContainer.m_ShapeList, &img->m_BaseAttrs, SSVG_CONFIG_OUTPUT_SVG_INDENT)) {
+	if (!writeShapeList(writer, &img->m_RootContainer.m_ShapeList, &img->m_BaseAttrs)) {
 		return false;
 	}
 

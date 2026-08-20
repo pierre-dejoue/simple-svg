@@ -1794,6 +1794,9 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& 
 
 bool parseTag_svg(ParserState* parser, Image* img)
 {
+	assert(parser);
+	if (!parser) { return false; }
+
 	// Parse svg tag attributes...
 	bool err = false;
 	bool hasViewBox = false;
@@ -1886,6 +1889,7 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 	parser.m_XMLString = xmlStr;
 	parser.m_Ptr = xmlStr;
 	parser.m_Flags = flags;
+	parser.m_LengthContext = nullptr;
 	stdutils::memset<ShapeAttributes>(&parser.m_ParsedShapeAttrs, 0);
 
 	bool err = false;

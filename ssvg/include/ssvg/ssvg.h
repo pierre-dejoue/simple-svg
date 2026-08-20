@@ -40,8 +40,8 @@
 #	define SSVG_CONFIG_PARSER_DEFAULT_VIEWPORT_HEIGHT_IN_PX 600
 #endif
 
-#ifndef SSVG_CONFIG_OUTPUT_SVG_INDENT
-#	define SSVG_CONFIG_OUTPUT_SVG_INDENT 2
+#ifndef SSVG_CONFIG_WRITER_DEFAULT_INDENTATION
+#	define SSVG_CONFIG_WRITER_DEFAULT_INDENTATION 2
 #endif
 
 namespace ssvg {
@@ -271,7 +271,7 @@ struct Text
 };
 
 // TODO: Gradients
-// TODO: Images (???)
+// TODO: Images
 struct Paint
 {
 	PaintType::Enum m_Type;
@@ -396,6 +396,11 @@ struct ImageLoadFlags
 	};
 };
 
+struct ImageWriterOptions
+{
+	uint32_t m_Indentation;
+};
+
 // Library setup
 void initLib();
 void shutdownLib();
@@ -412,8 +417,11 @@ void imageFree(Image* img);
 ShapeList* shapeListCreate();
 void shapeListFree(ShapeList* shapeList);
 
+// Save images
+const ImageWriterOptions& defaultImageWriterOptions();
+bool imageSave(const Image* img, std::ostream& out, const ImageWriterOptions* options = nullptr);
+
 // Manipulate Images
-bool imageSave(const Image* img, std::ostream& out);
 ShapeAttributes*       imageGetShapeAttributes(      Image* img);
 const ShapeAttributes* imageGetShapeAttributes(const Image* img);
 Group*                 imageGetRootGroup(      Image* img);
