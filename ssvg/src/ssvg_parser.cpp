@@ -48,6 +48,7 @@ struct ParserState
 	ImageLoadFlags::Type m_Flags;
 	ShapeAttributes m_ParsedShapeAttrs;
 	LengthContext* m_LengthContext;
+	bool m_ExpectClosingTag;             // Temporarily set when the parser is on the '>' character of normal tag (i.e. not a self-closing tag)
 };
 
 struct CSSColor
@@ -183,6 +184,7 @@ inline bool parserExpectingString(ParserState* parser, std::string_view str)
 void parserSkipTag(ParserState* parser)
 {
 	assert(parser);
+	parser->m_ExpectClosingTag = false;
 	uint32_t level = 0;
 	uint32_t numOpenBrackets = 1;
 	bool incLevelOnClose = true;
@@ -1194,6 +1196,7 @@ bool parseShape_Group(ParserState* parser, Shape* shape)
 	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 		if (parserExpectingChar(parser, '>')) {
+			// Expect aa closing tag, which is handled in this function
 			break;
 		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
 			// TODO: Test this!
@@ -1305,12 +1308,12 @@ bool parseShape_Path(ParserState* parser, Shape* shape)
 	if (!shape) { return false; }
 	Path& path = shape->m_Path;
 	bool err = false;
-	bool hasContents = false;
 	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 		if (parser->m_Ptr[0] == '>') {
 			// NOTE: Don't skip the closing bracket because parserSkipTag() expects it.
-			hasContents = true;
+			parser->m_ExpectClosingTag = true;
+			break;
 		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
 			parser->m_Ptr += 2;
 			break;
@@ -1335,10 +1338,6 @@ bool parseShape_Path(ParserState* parser, Shape* shape)
 		}
 	}
 
-	if (hasContents) {
-		parserSkipTag(parser);
-	}
-
 	return !err;
 }
 
@@ -1348,13 +1347,12 @@ bool parseShape_Rect(ParserState* parser, Shape* shape)
 	if (!shape) { return false; }
 	Rect& rect = shape->m_Rect;
 	bool err = false;
-	bool hasContents = false;
 	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 
 		if (parser->m_Ptr[0] == '>') {
 			// NOTE: Don't skip the closing bracket because parserSkipTag() expects it.
-			hasContents = true;
+			parser->m_ExpectClosingTag = true;
 			break;
 		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
 			parser->m_Ptr += 2;
@@ -1397,10 +1395,6 @@ bool parseShape_Rect(ParserState* parser, Shape* shape)
 		}
 	}
 
-	if (hasContents) {
-		parserSkipTag(parser);
-	}
-
 	return !err;
 }
 
@@ -1410,13 +1404,12 @@ bool parseShape_Circle(ParserState* parser, Shape* shape)
 	if (!shape) { return false; }
 	Circle& circle = shape->m_Circle;
 	bool err = false;
-	bool hasContents = false;
 	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 
 		if (parser->m_Ptr[0] == '>') {
 			// NOTE: Don't skip the closing bracket because parserSkipTag() expects it.
-			hasContents = true;
+			parser->m_ExpectClosingTag = true;
 			break;
 		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
 			parser->m_Ptr += 2;
@@ -1450,10 +1443,6 @@ bool parseShape_Circle(ParserState* parser, Shape* shape)
 		}
 	}
 
-	if (hasContents) {
-		parserSkipTag(parser);
-	}
-
 	return !err;
 }
 
@@ -1463,13 +1452,12 @@ bool parseShape_Line(ParserState* parser, Shape* shape)
 	if (!shape) { return false; }
 	Line& line = shape->m_Line;
 	bool err = false;
-	bool hasContents = false;
 	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 
 		if (parser->m_Ptr[0] == '>') {
 			// NOTE: Don't skip the closing bracket because parserSkipTag() expects it.
-			hasContents = true;
+			parser->m_ExpectClosingTag = true;
 			break;
 		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
 			parser->m_Ptr += 2;
@@ -1506,10 +1494,6 @@ bool parseShape_Line(ParserState* parser, Shape* shape)
 		}
 	}
 
-	if (hasContents) {
-		parserSkipTag(parser);
-	}
-
 	return !err;
 }
 
@@ -1519,13 +1503,12 @@ bool parseShape_Ellipse(ParserState* parser, Shape* shape)
 	if (!shape) { return false; }
 	Ellipse& ellipse = shape->m_Ellipse;
 	bool err = false;
-	bool hasContents = false;
 	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 
 		if (parser->m_Ptr[0] == '>') {
 			// NOTE: Don't skip the closing bracket because parserSkipTag() expects it.
-			hasContents = true;
+			parser->m_ExpectClosingTag = true;
 			break;
 		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
 			parser->m_Ptr += 2;
@@ -1562,10 +1545,6 @@ bool parseShape_Ellipse(ParserState* parser, Shape* shape)
 		}
 	}
 
-	if (hasContents) {
-		parserSkipTag(parser);
-	}
-
 	return !err;
 }
 
@@ -1575,13 +1554,12 @@ bool parseShape_PointList(ParserState* parser, Shape* shape)
 	if (!shape) { return false; }
 	PointList& pointList = shape->m_PointList;
 	bool err = false;
-	bool hasContents = false;
 	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 
 		if (parser->m_Ptr[0] == '>') {
 			// NOTE: Don't skip the closing bracket because parserSkipTag() expects it.
-			hasContents = true;
+			parser->m_ExpectClosingTag = true;
 			break;
 		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
 			parser->m_Ptr += 2;
@@ -1633,10 +1611,6 @@ bool parseShape_PointList(ParserState* parser, Shape* shape)
 				}
 			}
 		}
-	}
-
-	if (hasContents) {
-		parserSkipTag(parser);
 	}
 
 	return !err;
@@ -1758,6 +1732,7 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& 
 				Shape* shape = shapeListAllocShape(shapeList, type);
 				SSVG_CHECK(shape != nullptr, "Shape allocation failed");
 				parser->m_ParsedShapeAttrs.m_Flags = AttribFlags::None;
+				parser->m_ExpectClosingTag = false;
 
 				// Parse the shape
 				err = !parseShapeFunc.parseFunc(parser, shape);
@@ -1765,6 +1740,10 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& 
 				if (!err && parser->m_ParsedShapeAttrs.m_Flags) {
 					ShapeAttributes* shapeAttrs = shapeAllocAttributes(shape, &parentAttrs);
 					selectiveCopyShapeAttributes(shapeAttrs, &parser->m_ParsedShapeAttrs);
+				}
+
+				if (parser->m_ExpectClosingTag) {
+					parserSkipTag(parser);
 				}
 
 				break;
@@ -1874,23 +1853,29 @@ bool parseTag_svg(ParserState* parser, Image* img)
 	return parseSVGElements(parser, &img->m_RootContainer, img->m_BaseAttrs, "</svg>");
 }
 
+ParserState initialParserState(const char* xmlStr, uint32_t flags)
+{
+	ParserState parser;
+	stdutils::memset<ParserState>(&parser, 0);
+	parser.m_XMLString = xmlStr;
+	parser.m_Ptr = xmlStr;
+	parser.m_Flags = flags;
+
+	return parser;
+}
+
 } // namespace
 
 Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* baseAttrs)
 {
-	if (!xmlStr || *xmlStr == 0) {
+	if (!xmlStr || *xmlStr == '\0') {
 		return nullptr;
 	}
 
 	Image* img = imageCreate(baseAttrs);
 	if (!img) { return nullptr; }
 
-	ParserState parser;
-	parser.m_XMLString = xmlStr;
-	parser.m_Ptr = xmlStr;
-	parser.m_Flags = flags;
-	parser.m_LengthContext = nullptr;
-	stdutils::memset<ShapeAttributes>(&parser.m_ParsedShapeAttrs, 0);
+	ParserState parser = initialParserState(xmlStr, flags);
 
 	bool err = false;
 	while (!parserIsDone(&parser) && !err) {
@@ -1925,7 +1910,7 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 					shapeListCalcBounds(&img->m_RootContainer.m_ShapeList, &img->m_BoundingRect[0]);
 				}
 			} else {
-				SSVG_WARN(false, "Ignoring unknown root tag %.*s", strlenint(tag), tag.data());
+				SSVG_WARN(false, "Ignoring unknown XML root tag %.*s", strlenint(tag), tag.data());
 				parserSkipTag(&parser);
 			}
 		}
