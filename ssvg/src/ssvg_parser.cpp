@@ -1209,13 +1209,15 @@ bool parseNonShapeElement_Title(ParserState* parser, Group* group)
 	return true;
 }
 
-bool parseShape_Group(ParserState* parser, Shape* shape)
+bool parseContainer_Group(ParserState* parser, Shape* shape, std::string_view closingTag)
 {
 	assert(parser);
 	if (!parser) { return false; }
 	assert(parser->m_LengthContext);
 	assert(shape);
 	if (!shape) { return false; }
+	assert(closingTag.size() > 2 && closingTag[0] == '<' && closingTag[1] == '/' && closingTag[closingTag.size()-1] == '>');
+
 	Group& group = shape->m_Group;
 	ShapeAttributes* attrs = shape->m_Attrs;
 	SSVG_CHECK(attrs, "A contrainer type shape must always allocate its own ShapeAttributes");
@@ -1257,7 +1259,7 @@ bool parseShape_Group(ParserState* parser, Shape* shape)
 		parser->m_LengthContext->m_FontSize = convertLengthToPixel(attrs->m_FontSize, LengthAxis::Radial, parser->m_LengthContext);
 	}
 
-	return parseSVGElements(parser, &group, *attrs, "</g>");
+	return parseSVGElements(parser, &group, *attrs, closingTag);
 }
 
 bool parseShape_Text(ParserState* parser, Shape* shape)
@@ -1648,8 +1650,10 @@ bool parseShape_PointList(ParserState* parser, Shape* shape)
 bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& parentAttrs, std::string_view closingTag)
 {
 	assert(parser);
+	if (!parser) { return false; }
 	assert(parser->m_LengthContext);
 	assert(group);
+	if (!group) { return false; }
 	assert(closingTag.size() > 2 && closingTag[0] == '<' && closingTag[1] == '/' && closingTag[closingTag.size()-1] == '>');
 
 	struct ParseNonShapeElementsFunc
@@ -1666,10 +1670,11 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& 
 	{
 		std::string_view tag;
 		ShapeType::Enum type;
-		bool(*parseFunc)(ParserState*, Shape*);
+		bool(*parseFunc)(ParserState*, Shape*, std::string_view);
+		std::string_view closingTag;
 	};
 	static const ParseContainerFunc parseContainerFuncs[] = {
-		{ std::string_view("g"),        ShapeType::Group,    parseShape_Group     },
+		{ std::string_view("g"),        ShapeType::Group,    parseContainer_Group,  "</g>" },
 	};
 	static const uint32_t numParseContainerFuncs = sizeof(parseContainerFuncs) / sizeof(ParseContainerFunc);
 
@@ -1744,7 +1749,7 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& 
 				stdutils::ScopedPtrToLocal<LengthContext> scopedLengthContext(&parser->m_LengthContext, lengthContext);
 
 				// Parse the shape
-				err = !parseContainerFunc.parseFunc(parser, shape);
+				err = !parseContainerFunc.parseFunc(parser, shape, parseContainerFunc.closingTag);
 
 				break;
 			}
