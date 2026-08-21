@@ -100,6 +100,7 @@ const CSSColor kCSSColors[] = {
 constexpr uint32_t kNumCSSColors = sizeof(kCSSColors) / sizeof(CSSColor);
 
 bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& parentAttrs, std::string_view closingTag);
+const char* parseColorComponent(const char* str, const char* end, float& comp);
 const char* parseCoord(const char* str, const char* end, float* coord);
 ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs);
 
@@ -131,7 +132,7 @@ inline const char* skipWhitespace(const char* ptr, const char* end)
 inline const char* skipCommaWhitespace(const char* ptr, const char* end)
 {
 	assert(ptr);
-	// comma-wsp: (wsp+ comma? wsp*) | (comma wsp*)
+	// comma-wsp: (wsp* comma? wsp*) | (comma wsp*)
 	ptr = skipWhitespace(ptr, end);
 	if (*ptr == ',') {
 		ptr = skipWhitespace(ptr + 1, end);
@@ -452,14 +453,16 @@ bool parsePositiveLength(const std::string_view& str, Length& length)
 
 bool parsePaint(const std::string_view& str, Paint* paint)
 {
-	// TODO: Handle more cases.
 	if (str == "none") {
 		paint->m_Type = PaintType::None;
 	} else if (str == "transparent") {
 		paint->m_Type = PaintType::Transparent;
+	} else if (str == "inherit") {
+		// Do not modify the current paint color
+		return false;
+	} else if (str == "currentColor") {
+		paint->m_Type = PaintType::CurrentColor;
 	} else {
-		paint->m_Type = PaintType::Color;
-
 		const char* ptr = str.data();
 		paint->m_ColorABGR = 0xFF000000;
 		if (*ptr == '#') {
@@ -483,9 +486,9 @@ bool parsePaint(const std::string_view& str, Paint* paint)
 			float color[3];
 			const char* end = strend(str);
 			ptr += 4;
-			ptr = parseCoord(ptr, end, &color[0]);
-			ptr = parseCoord(ptr, end, &color[1]);
-			ptr = parseCoord(ptr, end, &color[2]);
+			ptr = parseColorComponent(ptr, end, color[0]);
+			ptr = parseColorComponent(ptr, end, color[1]);
+			ptr = parseColorComponent(ptr, end, color[2]);
 
 			paint->m_ColorABGR |= ((uint32_t)color[0]) | ((uint32_t)color[1] << 8) | ((uint32_t)color[2] << 16);
 		} else if (str.substr(0, 5) ==  "rgba(") {
@@ -493,10 +496,10 @@ bool parsePaint(const std::string_view& str, Paint* paint)
 			float color[4];
 			const char* end = strend(str);
 			ptr += 5;
-			ptr = parseCoord(ptr, end, &color[0]);
-			ptr = parseCoord(ptr, end, &color[1]);
-			ptr = parseCoord(ptr, end, &color[2]);
-			ptr = parseCoord(ptr, end, &color[3]);
+			ptr = parseColorComponent(ptr, end, color[0]);
+			ptr = parseColorComponent(ptr, end, color[1]);
+			ptr = parseColorComponent(ptr, end, color[2]);
+			ptr = parseColorComponent(ptr, end, color[3]);
 
 			paint->m_ColorABGR = ((uint32_t)color[0]) | ((uint32_t)color[1] << 8) | ((uint32_t)color[2] << 16) | ((uint32_t)(color[3] * 255.0f) << 24);
 		} else {
@@ -512,11 +515,34 @@ bool parsePaint(const std::string_view& str, Paint* paint)
 
 			if (!found) {
 				SSVG_WARN(false, "Unhandled paint value: %.*s", strlenint(str), str.data());
+				return false;
 			}
 		}
+		// If the parsing of the color was successful
+		paint->m_Type = PaintType::Color;
 	}
 
 	return true;
+}
+
+const char* parseColorComponent(const char* str, const char* end, float& comp)
+{
+	const char* ptr = skipCommaWhitespace(str, end);
+
+	SSVG_CHECK(ptr != end && !stdutils::ascii::isalpha(*ptr), "Parse error");
+
+	char* coordEnd = nullptr;
+	comp = stdutils::clamp<float>(strtof(ptr, &coordEnd), 0.f, 255.f);
+
+	SSVG_CHECK(coordEnd != nullptr, "Failed to parse coordinate");
+	SSVG_CHECK(coordEnd <= end, "strtof() read past end of buffer");
+
+	if (coordEnd && *coordEnd == '%') {
+		coordEnd++;
+		comp = stdutils::clamp<float>(std::round(comp * 2.55f), 0.f, 255.f);
+	}
+
+	return skipCommaWhitespace(coordEnd, end);
 }
 
 const char* parseCoord(const char* str, const char* end, float* coord)
@@ -525,7 +551,7 @@ const char* parseCoord(const char* str, const char* end, float* coord)
 
 	SSVG_CHECK(ptr != end && !stdutils::ascii::isalpha(*ptr), "Parse error");
 
-	char* coordEnd;
+	char* coordEnd = nullptr;
 	*coord = strtof(ptr, &coordEnd);
 
 	SSVG_CHECK(coordEnd != nullptr, "Failed to parse coordinate");
@@ -1017,13 +1043,16 @@ ParseAttr::Result parseStyle(const std::string_view& str, ShapeAttributes* attrs
 
 ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs)
 {
+	assert(attrs);
 	if (name == "style") {
 		return parseStyle(value, attrs);
 	} else if (name.substr(0, 6) == "stroke") {
 		const std::string_view nameSuffix = name.substr(6);
 		if (nameSuffix.length() == 0) {
-			attrs->m_Flags |= AttribFlags::StrokePaintChanged;
-			return parsePaint(value, &attrs->m_StrokePaint) ? ParseAttr::OK : ParseAttr::Fail;
+			if (parsePaint(value, &attrs->m_StrokePaint)) {
+				attrs->m_Flags |= AttribFlags::StrokePaintChanged;
+			}
+			return ParseAttr::OK;
 		} else if (nameSuffix == "-miterlimit") {
 			attrs->m_Flags |= AttribFlags::StrokeMiterLimitChanged;
 			return parseNumber(value, attrs->m_StrokeMiterLimit, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
@@ -1063,8 +1092,10 @@ ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const
 	} else if (name.substr(0, 4) == "fill") {
 		const std::string_view nameSuffix = name.substr(4);
 		if (nameSuffix.length() == 0) {
-			attrs->m_Flags |= AttribFlags::FillPaintChanged;
-			return parsePaint(value, &attrs->m_FillPaint) ? ParseAttr::OK : ParseAttr::Fail;
+			if (parsePaint(value, &attrs->m_FillPaint)) {
+				attrs->m_Flags |= AttribFlags::FillPaintChanged;
+			}
+			return ParseAttr::OK;
 		} else if (nameSuffix == "-opacity") {
 			attrs->m_Flags |= AttribFlags::FillOpacityChanged;
 			return parseNumber(value, attrs->m_FillOpacity, 0.0f, 1.0f) ? ParseAttr::OK : ParseAttr::Fail;
@@ -1078,6 +1109,14 @@ ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const
 				return ParseAttr::Fail;
 			}
 
+			return ParseAttr::OK;
+		}
+	} else if (name.substr(0, 5) == "color") {
+		const std::string_view nameSuffix = name.substr(5);
+		if (nameSuffix.length() == 0) {
+			if (parsePaint(value, &attrs->m_ColorPaint)) {
+				attrs->m_Flags |= AttribFlags::ColorPaintChanged;
+			}
 			return ParseAttr::OK;
 		}
 	} else if (name.substr(0, 4) == "font") {
@@ -1117,8 +1156,15 @@ void selectiveCopyShapeAttributes(ShapeAttributes* targetAttrs, const ShapeAttri
 	assert(sourceAttrs);
 
 	const auto flags = sourceAttrs->m_Flags;
+	if (flags & AttribFlags::ColorPaintChanged) {              // Before StrokePaintChanged and FillPaintChanged
+		targetAttrs->m_ColorPaint = sourceAttrs->m_ColorPaint;
+	}
 	if (flags & AttribFlags::StrokePaintChanged) {
-		targetAttrs->m_StrokePaint = sourceAttrs->m_StrokePaint;
+		if (sourceAttrs->m_StrokePaint.m_Type == PaintType::CurrentColor) {
+			targetAttrs->m_StrokePaint = targetAttrs->m_ColorPaint;
+		} else {
+			targetAttrs->m_StrokePaint = sourceAttrs->m_StrokePaint;
+		}
 	}
 	if (flags & AttribFlags::StrokeMiterLimitChanged) {
 		targetAttrs->m_StrokeMiterLimit = sourceAttrs->m_StrokeMiterLimit;
@@ -1136,7 +1182,11 @@ void selectiveCopyShapeAttributes(ShapeAttributes* targetAttrs, const ShapeAttri
 		targetAttrs->m_StrokeLineCap = sourceAttrs->m_StrokeLineCap;
 	}
 	if (flags & AttribFlags::FillPaintChanged) {
-		targetAttrs->m_FillPaint = sourceAttrs->m_FillPaint;
+		if (sourceAttrs->m_FillPaint.m_Type == PaintType::CurrentColor) {
+			targetAttrs->m_FillPaint = targetAttrs->m_ColorPaint;
+		} else {
+			targetAttrs->m_FillPaint = sourceAttrs->m_FillPaint;
+		}
 	}
 	if (flags & AttribFlags::FillOpacityChanged) {
 		targetAttrs->m_FillOpacity = sourceAttrs->m_FillOpacity;
@@ -1257,6 +1307,12 @@ bool parseContainer_Group(ParserState* parser, Shape* shape, std::string_view cl
 
 	if (parser->m_LengthContext) {
 		parser->m_LengthContext->m_FontSize = convertLengthToPixel(attrs->m_FontSize, LengthAxis::Radial, parser->m_LengthContext);
+	}
+	if (attrs->m_StrokePaint.m_Type == PaintType::CurrentColor && attrs->m_ColorPaint.m_Type != PaintType::None) {
+		attrs->m_StrokePaint = attrs->m_ColorPaint;
+	}
+	if (attrs->m_FillPaint.m_Type == PaintType::CurrentColor && attrs->m_ColorPaint.m_Type != PaintType::None) {
+		attrs->m_FillPaint = attrs->m_ColorPaint;
 	}
 
 	return parseSVGElements(parser, &group, *attrs, closingTag);
@@ -1743,7 +1799,7 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& 
 				// For container, always preallocate the attributes:
 				//   - groups almost always have an ID
 				//   - The recursive nature of parsing a group requires the copy of the parent attrs
-				shapeAllocAttributes(shape, &parentAttrs);
+				ShapeAttributes* attrs = shapeAllocAttributes(shape, &parentAttrs);
 
 				LengthContext lengthContext = *parser->m_LengthContext;
 				stdutils::ScopedPtrToLocal<LengthContext> scopedLengthContext(&parser->m_LengthContext, lengthContext);

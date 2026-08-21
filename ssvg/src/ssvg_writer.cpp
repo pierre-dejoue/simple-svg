@@ -26,18 +26,19 @@ struct SaveAttr
 		Transform   = 1 << 1,
 		Stroke      = 1 << 2,
 		Fill        = 1 << 3,
-		Font        = 1 << 4,
-		Class       = 1 << 5,
-		Opacity     = 1 << 6,
-		All         =(1 << 7) - 1,
+		Color       = 1 << 4,
+		Font        = 1 << 5,
+		Class       = 1 << 6,
+		Opacity     = 1 << 7,
+		All         =(1 << 8) - 1,
 
 		// Special flag
 		ConditionalPaints = 0x80000000, // If set, and PaintType == None || Transparent don't save stroke-width, stroke-opacity, etc.
 
 		// Common combinations
 		Unique = Transform | ID,
-		Shape = Unique | Stroke | Fill,
-		Text = Unique | Stroke | Fill | Font | ConditionalPaints,
+		Shape = Unique  | Stroke | Fill | Color,
+		Text = Unique | Stroke | Fill | Color | Font | ConditionalPaints,
 	};
 };
 
@@ -185,13 +186,33 @@ void StreamWriter::indent(uint32_t lvl)
 	}
 }
 
-bool colorToHex(StreamWriter& writer, uint32_t abgr)
+void colorToHex(StreamWriter& writer, uint32_t abgr)
 {
 	const uint32_t r = (abgr      ) & 0x000000FF;
 	const uint32_t g = (abgr >>  8) & 0x000000FF;
 	const uint32_t b = (abgr >> 16) & 0x000000FF;
+	IGNORE_RETURN writer.write("#%02X%02X%02X", r, g, b);
+}
 
-	return writer.write("#%02X%02X%02X", r, g, b);
+void writePaintColorValue(StreamWriter& writer, const Paint& paint)
+{
+	switch (paint.m_Type) {
+		case PaintType::None:
+			writer.out() << "none";
+			break;
+		case PaintType::Transparent:
+			writer.out() << " transparent";
+			break;
+		case PaintType::CurrentColor:
+			writer.out() << "currentColor";
+			break;
+		case PaintType::Color:
+			colorToHex(writer, paint.m_ColorABGR);
+			break;
+		default:
+			SSVG_CHECK(false, "Unknown paint type (%d)", paint.m_Type);
+			break;
+	}
 }
 
 bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, SaveAttr::Type flags = SaveAttr::All)
@@ -223,21 +244,13 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, Sa
 	}
 
 	if (flags & SaveAttr::Stroke) {
-		const PaintType::Enum strokeType = attrs->m_StrokePaint.m_Type;
-
 		if (attrs->m_Flags & AttribFlags::StrokePaintChanged) {
-			if (strokeType == PaintType::None) {
-				writer.out() << " stroke=\"none\"";
-			} else if (strokeType == PaintType::Transparent) {
-				writer.out() << " stroke=\"transparent\"";
-			} else if (strokeType == PaintType::Color) {
-				const uint32_t abgr = attrs->m_StrokePaint.m_ColorABGR;
-				writer.out() << " stroke=\"";
-				colorToHex(writer, abgr);
-				writer.out() << "\"";
-			}
+			writer.out() << " stroke=\"";
+			writePaintColorValue(writer, attrs->m_StrokePaint);
+			writer.out() << "\"";
 		}
 
+		const PaintType::Enum strokeType = attrs->m_StrokePaint.m_Type;
 		const bool saveExtra = !conditionalPaints || (strokeType != PaintType::None && strokeType != PaintType::Transparent);
 		if (saveExtra) {
 			if (attrs->m_Flags & AttribFlags::StrokeMiterLimitChanged) {
@@ -269,21 +282,13 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, Sa
 	}
 
 	if (flags & SaveAttr::Fill) {
-		const PaintType::Enum fillType = attrs->m_FillPaint.m_Type;
-
 		if (attrs->m_Flags & AttribFlags::FillPaintChanged) {
-			if (fillType == PaintType::None) {
-				writer.out() << " fill=\"none\"";
-			} else if (fillType == PaintType::Transparent) {
-				writer.out() << " fill=\"transparent\"";
-			} else if (fillType == PaintType::Color) {
-				const uint32_t abgr = attrs->m_FillPaint.m_ColorABGR;
-				writer.out() << " fill=\"";
-				colorToHex(writer, abgr);
-				writer.out() << "\"";
-			}
+			writer.out() << " fill=\"";
+			writePaintColorValue(writer, attrs->m_FillPaint);
+			writer.out() << "\"";
 		}
 
+		const PaintType::Enum fillType = attrs->m_FillPaint.m_Type;
 		const bool saveExtra = !conditionalPaints || (fillType != PaintType::None && fillType != PaintType::Transparent);
 		if (saveExtra) {
 			const float opacity = stdutils::clamp(attrs->m_FillOpacity, 0.f, 1.f);
@@ -294,6 +299,14 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, Sa
 			if (attrs->m_Flags & AttribFlags::FillRuleChanged) {
 				writer.out() << " fill-rule=\"" << fillRuleToString(attrs->m_FillRule) << "\"";
 			}
+		}
+	}
+
+	if (flags & SaveAttr::Color) {
+		if (attrs->m_Flags & AttribFlags::ColorPaintChanged) {
+			writer.out() << " color=\"";
+			writePaintColorValue(writer, attrs->m_ColorPaint);
+			writer.out() << "\"";
 		}
 	}
 

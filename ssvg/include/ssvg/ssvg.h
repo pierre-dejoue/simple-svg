@@ -127,7 +127,8 @@ struct PaintType
 	{
 		None = 0,
 		Transparent, // Does it make sense?
-		Color
+		CurrentColor,
+		Color,
 	};
 };
 
@@ -297,13 +298,14 @@ struct AttribFlags
 		FillPaintChanged        = 1 << 6,
 		FillOpacityChanged      = 1 << 7,
 		FillRuleChanged         = 1 << 8,
-		FontSizeChanged         = 1 << 9,
-		FontFamilyChanged       = 1 << 10,
-		Opacity                 = 1 << 11,
-		Transformation          = 1 << 12,
-		ElementID               = 1 << 13,
-		ElementClass            = 1 << 14,
-		All                     =(1 << 15) - 1
+		ColorPaintChanged       = 1 << 9,
+		FontSizeChanged         = 1 << 10,
+		FontFamilyChanged       = 1 << 11,
+		Opacity                 = 1 << 12,
+		Transformation          = 1 << 13,
+		ElementID               = 1 << 14,
+		ElementClass            = 1 << 15,
+		All                     =(1 << 16) - 1
 	};
 };
 
@@ -314,6 +316,7 @@ struct ShapeAttributes
 	AttribFlags::Type m_Flags;
 	Paint m_StrokePaint;
 	Paint m_FillPaint;
+	Paint m_ColorPaint;
 	float m_Transform[TRANSFORM_ARRAY_SZ];
 	float m_StrokeMiterLimit;
 	float m_StrokeOpacity;

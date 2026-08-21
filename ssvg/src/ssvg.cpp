@@ -1360,6 +1360,8 @@ const ShapeAttributes& defaultShapeAttributes()
 		attrs.m_FillPaint.m_Type = PaintType::Color;
 		attrs.m_FillPaint.m_ColorABGR = 0xFF000000;                 // Black
 		attrs.m_FillRule = FillRule::NonZero;
+		attrs.m_ColorPaint.m_Type = PaintType::None;
+		attrs.m_ColorPaint.m_ColorABGR = 0xFF000000;                // Black
 		attrs.m_FontSize = Length{SSVG_CONFIG_PARSER_DEFAULT_FONT_SIZE_IN_PX, LengthUnit::PX};  // Usually this is 12pt = 16px
 
 		return attrs;
