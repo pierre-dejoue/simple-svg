@@ -44,6 +44,12 @@
 #	define SSVG_CONFIG_WRITER_DEFAULT_INDENTATION 2
 #endif
 
+// Add the XML declaration line at the top of the output SVG:
+//   <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+#ifndef SSVG_CONFIG_WRITER_DEFAULT_ADD_XML_DECLARATION
+#	define SSVG_CONFIG_WRITER_DEFAULT_ADD_XML_DECLARATION 0
+#endif
+
 namespace ssvg {
 
 struct BaseProfile
@@ -402,6 +408,7 @@ struct ImageLoadFlags
 struct ImageWriterOptions
 {
 	uint32_t m_Indentation;
+	bool m_XMLDeclationHeader;
 };
 
 // Library setup

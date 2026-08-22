@@ -538,6 +538,7 @@ const ImageWriterOptions& defaultImageWriterOptions()
 		ImageWriterOptions options;
 		stdutils::memset<ImageWriterOptions>(&options, 0);
 		options.m_Indentation = SSVG_CONFIG_WRITER_DEFAULT_INDENTATION;
+		options.m_XMLDeclationHeader = (bool)SSVG_CONFIG_WRITER_DEFAULT_ADD_XML_DECLARATION;
 		return options;
 	}();
 	return defaultOptions;
@@ -554,7 +555,12 @@ bool imageSave(const Image* img, std::ostream& out, const ImageWriterOptions* op
 	constexpr uint32_t SSVG_FORMAT_BUFFER_LEN = 256;
 	StreamWriter writer(out, SSVG_FORMAT_BUFFER_LEN, options->m_Indentation);
 
-	// Open the <svg> element
+	// XML declaration line
+	if (options->m_XMLDeclationHeader) {
+		writer.out() << "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n";
+	}
+
+	// Open the root <svg> element
 	writer.out() << "<svg";
 	if (img->m_Width.m_Length != 0.0f) {
 		const float width = img->m_Width.m_Length;
