@@ -562,26 +562,35 @@ bool imageSave(const Image* img, std::ostream& out, const ImageWriterOptions* op
 
 	// Open the root <svg> element
 	writer.out() << "<svg";
-	if (img->m_Width.m_Length != 0.0f) {
-		const float width = img->m_Width.m_Length;
-		const char* widthUnit = lengthUnitToString(img->m_Width.m_Unit).data();
-		writer.write(" width=\"%g%s\"", width, widthUnit);
+	const ViewPort& viewport = img->m_ViewPort;
+	{
+		const Length& widthL = viewport.m_Width;
+		if (widthL.m_Length != 0.0f) {
+			const float width = widthL.m_Length;
+			const char* widthUnit = lengthUnitToString(widthL.m_Unit).data();
+			writer.write(" width=\"%g%s\"", width, widthUnit);
+		}
 	}
-	if (img->m_Height.m_Length != 0.0f) {
-		const float height = img->m_Height.m_Length;
-		const char* heightUnit = lengthUnitToString(img->m_Height.m_Unit).data();
-		writer.write(" height=\"%g%s\"", height, heightUnit);
+	{
+		const Length& heightL = viewport.m_Height;
+		if (heightL.m_Length != 0.0f) {
+			const float height = heightL.m_Length;
+			const char* heightUnit = lengthUnitToString(heightL.m_Unit).data();
+			writer.write(" height=\"%g%s\"", height, heightUnit);
+		}
+	}
+	{
+		const float viewBoxWidth  = viewport.m_ViewBox[2];
+		const float viewBoxHeight = viewport.m_ViewBox[3];
+		if (viewBoxWidth > 0.0f && viewBoxHeight > 0.0f) {
+			writer.write(" viewBox=\"%g %g %g %g\"", viewport.m_ViewBox[0], viewport.m_ViewBox[1], viewport.m_ViewBox[2], viewport.m_ViewBox[3]);
+		}
 	}
 	if (img->m_VerMajor != 0) {
 		writer.write(" version=\"%u.%u\"", img->m_VerMajor, img->m_VerMinor);
 	}
 	if (img->m_BaseProfile != BaseProfile::None) {
 		writer.out() << " baseProfile=\"" << baseProfileToString(img->m_BaseProfile) << "\"";
-	}
-	const float viewBoxWidth  = img->m_ViewBox[2];
-	const float viewBoxHeight = img->m_ViewBox[3];
-	if (viewBoxWidth > 0.0f && viewBoxHeight > 0.0f) {
-		writer.write(" viewBox=\"%g %g %g %g\"", img->m_ViewBox[0], img->m_ViewBox[1], img->m_ViewBox[2], img->m_ViewBox[3]);
 	}
 	writer.out() << " xmlns=\"http://www.w3.org/2000/svg\">\n";
 

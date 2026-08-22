@@ -735,6 +735,52 @@ bool parseTransform(const std::string_view& str, float* transform)
 	return true;
 }
 
+bool parseRootSVGAttribute(std::string_view name, std::string_view value, Image& img)
+{
+	bool found = false;
+	if (name == "version") {
+		IGNORE_RETURN parseVersion(value, &img.m_VerMajor, &img.m_VerMinor);
+		found = true;
+	} else if (name == "baseProfile") {
+		if (value == "full") {
+			img.m_BaseProfile = BaseProfile::Full;
+		} else if (value == "basic") {
+			img.m_BaseProfile = BaseProfile::Basic;
+		} else if (value == "tiny") {
+			img.m_BaseProfile = BaseProfile::Tiny;
+		} else {
+			// Unknown base profile. Ignore.
+			SSVG_WARN(false, "Unknown baseProfile value \"%.*s\"", strlenint(value), value.data());
+		}
+		found = true;
+	}
+	return found;
+}
+
+bool parseViewPortAttribute(std::string_view name, std::string_view value, ViewPort& viewport)
+{
+	bool found = false;
+	if (name == "x") {
+		IGNORE_RETURN parseLength(value, viewport.m_X);
+		found = true;
+	} else if (name == "y") {
+		IGNORE_RETURN parseLength(value, viewport.m_Y);
+		found = true;
+	} else if (name == "width") {
+		IGNORE_RETURN parsePositiveLength(value, viewport.m_Width);
+		found = true;
+	} else if (name == "height") {
+		IGNORE_RETURN parsePositiveLength(value, viewport.m_Height);
+		found = true;
+	} else if (name == "viewBox") {
+		const bool hasViewBox = parseViewBox(value, &viewport.m_ViewBox[0]);
+		SSVG_WARN(hasViewBox, "Failed to parse the ViewBox \"%.*s\"", strlenint(value), value.data());
+		found = true;
+	}
+
+	return found;
+}
+
 } // namespace
 
 bool pathFromString(Path* path, const std::string_view& str, ImageLoadFlags::Type flags)
@@ -1277,7 +1323,7 @@ bool parseContainer_Group(ParserState* parser, Shape* shape, std::string_view cl
 	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
 		if (parserExpectingChar(parser, '>')) {
-			// Expect aa closing tag, which is handled in this function
+			// Expect a closing tag, which is handled in this function
 			break;
 		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
 			// TODO: Test this!
@@ -1862,16 +1908,48 @@ bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& 
 	return parserExpectingString(parser, closingTag);
 }
 
+LengthContext initialLengthContext(const ViewPort& initialViewport, const Length& fontSize) {
+	LengthContext context;
+	const float viewBoxWidth  = initialViewport.m_ViewBox[2];
+	const float viewBoxHeight = initialViewport.m_ViewBox[3];
+	const Length width  = initialViewport.m_Width;
+	const Length height = initialViewport.m_Height;
+	assert(fontSize.m_Unit != LengthUnit::EM
+		&& fontSize.m_Unit != LengthUnit::EX
+		&& fontSize.m_Unit != LengthUnit::Percent);
+	context.m_FontSize = convertLengthToPixel(fontSize);
+	context.m_ViewportWidth  = SSVG_CONFIG_PARSER_DEFAULT_VIEWPORT_WIDTH_IN_PX;
+	context.m_ViewportHeight = SSVG_CONFIG_PARSER_DEFAULT_VIEWPORT_HEIGHT_IN_PX;
+	if (viewBoxWidth > 0.f && viewBoxHeight > 0.f) {
+		context.m_ViewportWidth  = viewBoxWidth;
+		context.m_ViewportHeight = viewBoxHeight;
+	} else if (width.m_Length  > 0.f && width.m_Unit  != LengthUnit::Percent
+			&& height.m_Length > 0.f && height.m_Unit != LengthUnit::Percent) {
+		context.m_ViewportWidth  = convertLengthToPixel(width,  LengthAxis::X, &context);
+		context.m_ViewportHeight = convertLengthToPixel(height, LengthAxis::Y, &context);
+	}
+	context.m_ViewportDiag = math::normalizedDiagonal(context.m_ViewportWidth, context.m_ViewportHeight);
+
+	assert(context.m_FontSize > 0.f);
+	assert(context.m_ViewportWidth > 0.f);
+	assert(context.m_ViewportHeight > 0.f);
+	assert(context.m_ViewportDiag > 0.f);
+	return context;
+}
+
 bool parseTag_svg(ParserState* parser, Image* img)
 {
 	assert(parser);
 	if (!parser) { return false; }
+	assert(img);
+	if (!img) { return false; }
 
 	// Parse svg tag attributes...
 	bool err = false;
 	bool hasViewBox = false;
 	while (!parserIsDone(parser) && !err) {
 		if (parserExpectingChar(parser, '>')) {
+			// Expect a closing tag, which is handled in this function
 			break;
 		}
 
@@ -1879,68 +1957,27 @@ bool parseTag_svg(ParserState* parser, Image* img)
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
-			if (name == "version") {
-				parseVersion(value, &img->m_VerMajor, &img->m_VerMinor);
-			} else if (name == "baseProfile") {
-				if (value == "full") {
-					img->m_BaseProfile = BaseProfile::Full;
-				} else if (value == "basic") {
-					img->m_BaseProfile = BaseProfile::Basic;
-				} else if (value == "tiny") {
-					img->m_BaseProfile = BaseProfile::Tiny;
-				} else {
-					// Unknown base profile. Ignore.
-					SSVG_WARN(false, "Unknown baseProfile \"%.*s\"", strlenint(value), value.data());
-				}
-			} else if (name == "width") {
-				IGNORE_RETURN parsePositiveLength(value, img->m_Width);
-			} else if (name == "height") {
-				IGNORE_RETURN parsePositiveLength(value, img->m_Height);
-			} else if (name == "viewBox") {
-				hasViewBox = parseViewBox(value, &img->m_ViewBox[0]);
-				SSVG_WARN(hasViewBox, "Failed to parse the ViewBox");
-			} else if (name == "xmlns" || name == "id") {
-				// Ignore. This is here in order to shut up the trace message below.
-			} else {
+			bool found = false;
+			if (!found) { found = parseRootSVGAttribute(name, value, *img); }
+			if (!found) { found = parseViewPortAttribute(name, value, img->m_ViewPort); }
+            if (!found) {
+				// Ignore those attributes. This is here in order to shut up the trace message below.
+				found = (name == "xmlns" || name == "id");
+			}
+			if (!found) {
 				// Unknown attribute. Ignore it (parser has already moved forward)
 				SSVG_WARN(false, "Ignoring SVG attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 			}
 		}
 	}
-
-	SSVG_WARN(hasViewBox, "The SVG has no ViewBox");
-
 	if (err) {
 		return false;
 	}
 
 	// Set the length context, used to convert length units to pixels
-	LengthContext lengthContext = [img, hasViewBox]() {
-		LengthContext context;
-		const float viewBoxWidth  = hasViewBox ? img->m_ViewBox[2] : 0.f;
-		const float viewBoxHeight = hasViewBox ? img->m_ViewBox[3] : 0.f;
-		assert(img->m_BaseAttrs.m_FontSize.m_Unit != LengthUnit::EM
-			&& img->m_BaseAttrs.m_FontSize.m_Unit != LengthUnit::EX
-			&& img->m_BaseAttrs.m_FontSize.m_Unit != LengthUnit::Percent);
-		context.m_FontSize = convertLengthToPixel(img->m_BaseAttrs.m_FontSize);
-		context.m_ViewportWidth  = SSVG_CONFIG_PARSER_DEFAULT_VIEWPORT_WIDTH_IN_PX;
-		context.m_ViewportHeight = SSVG_CONFIG_PARSER_DEFAULT_VIEWPORT_HEIGHT_IN_PX;
-		if (viewBoxWidth > 0.f && viewBoxHeight > 0.f) {
-			context.m_ViewportWidth  = viewBoxWidth;
-			context.m_ViewportHeight = viewBoxHeight;
-		} else if (img->m_Width.m_Length  > 0.f && img->m_Width.m_Unit  != LengthUnit::Percent
-				&& img->m_Height.m_Length > 0.f && img->m_Height.m_Unit != LengthUnit::Percent) {
-			context.m_ViewportWidth  = convertLengthToPixel(img->m_Width,  LengthAxis::X, &context);
-			context.m_ViewportHeight = convertLengthToPixel(img->m_Height, LengthAxis::Y, &context);
-		}
-		context.m_ViewportDiag = math::normalizedDiagonal(context.m_ViewportWidth, context.m_ViewportHeight);
-		assert(context.m_FontSize > 0.f);
-		assert(context.m_ViewportWidth > 0.f);
-		assert(context.m_ViewportHeight > 0.f);
-		assert(context.m_ViewportDiag > 0.f);
-		return context;
-	}();
+	LengthContext lengthContext = initialLengthContext(img->m_ViewPort, img->m_BaseAttrs.m_FontSize);
 	parser->m_LengthContext = &lengthContext;
+
 	return parseSVGElements(parser, &img->m_RootContainer, img->m_BaseAttrs, "</svg>");
 }
 

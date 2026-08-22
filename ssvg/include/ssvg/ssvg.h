@@ -343,6 +343,15 @@ struct ShapeAttributes
 inline constexpr uint32_t BOUNDING_RECT_ARRAY_SZ = 4;
 inline constexpr uint32_t VIEW_BOX_ARRAY_SZ = 4;
 
+struct ViewPort
+{
+	Length m_X;
+	Length m_Y;
+	Length m_Width;
+	Length m_Height;
+	float m_ViewBox[VIEW_BOX_ARRAY_SZ];
+};
+
 struct Shape;
 
 struct ShapeList
@@ -381,9 +390,7 @@ struct Image
 {
 	Group m_RootContainer;
 	ShapeAttributes m_BaseAttrs;
-	Length m_Width;
-	Length m_Height;
-	float m_ViewBox[VIEW_BOX_ARRAY_SZ];
+	ViewPort m_ViewPort;
 	float m_BoundingRect[BOUNDING_RECT_ARRAY_SZ];
 	BaseProfile::Enum m_BaseProfile;
 	uint16_t m_VerMajor;
