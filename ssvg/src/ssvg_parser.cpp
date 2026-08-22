@@ -36,8 +36,8 @@ struct ParseAttr
 	enum Result : uint32_t
 	{
 		OK = 0,
-		Fail = 1,
-		Unknown = 2
+		Fail,
+		Unknown,
 	};
 };
 
@@ -102,6 +102,7 @@ constexpr uint32_t kNumCSSColors = sizeof(kCSSColors) / sizeof(CSSColor);
 bool parseSVGElements(ParserState* parser, Group* group, const ShapeAttributes& parentAttrs, std::string_view closingTag);
 const char* parseColorComponent(const char* str, const char* end, float& comp);
 const char* parseCoord(const char* str, const char* end, float* coord);
+bool parseCoreAttribute(const std::string_view& name, const std::string_view& value, Shape* shape);
 ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs);
 
 inline uint8_t charToNibble(char ch)
@@ -1087,6 +1088,21 @@ ParseAttr::Result parseStyle(const std::string_view& str, ShapeAttributes* attrs
 	return ParseAttr::OK;
 }
 
+bool parseCoreAttribute(const std::string_view& name, const std::string_view& value, Shape* shape)
+{
+	assert(shape);
+
+	if (name == "id") {
+		shapeSetID(shape, value);
+		return true;
+	} else if (name == "xml:base" || name == "xml:lang" || name == "xml:space") {
+		// Ignore
+		return true;
+	}
+
+	return false;
+}
+
 ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs)
 {
 	assert(attrs);
@@ -1181,10 +1197,6 @@ ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const
 	} else if (name == "transform") {
 		attrs->m_Flags |= AttribFlags::Transformation;
 		return parseTransform(value, &attrs->m_Transform[0]) ? ParseAttr::OK : ParseAttr::Fail;
-	} else if (name == "id") {
-		attrs->m_Flags |= AttribFlags::ElementID;
-		shapeAttrsSetID(attrs, value);
-		return ParseAttr::OK;
 	} else if (name == "class") {
 #if SSVG_CONFIG_CLASS_MAX_LEN
 		attrs->m_Flags |= AttribFlags::ElementClass;
@@ -1252,9 +1264,6 @@ void selectiveCopyShapeAttributes(ShapeAttributes* targetAttrs, const ShapeAttri
 	if (flags & AttribFlags::Transformation) {
 		stdutils::memcpy<float>(&targetAttrs->m_Transform[0], TRANSFORM_ARRAY_SZ, &sourceAttrs->m_Transform[0], sizeof(float) * TRANSFORM_ARRAY_SZ);
 	}
-	if (flags & AttribFlags::ElementID) {
-		shapeAttrsSetID(targetAttrs, shapeAttrsGetID(sourceAttrs));
-	}
 #if SSVG_CONFIG_CLASS_MAX_LEN
 	if (flags & AttribFlags::ElementClass) {
 		shapeAttrsSetClass(targetAttrs, shapeAttrsGetClass(sourceAttrs));
@@ -1316,7 +1325,7 @@ bool parseContainer_Group(ParserState* parser, Shape* shape, std::string_view cl
 
 	Group& group = shape->m_Group;
 	ShapeAttributes* attrs = shape->m_Attrs;
-	SSVG_CHECK(attrs, "A contrainer type shape must always allocate its own ShapeAttributes");
+	SSVG_CHECK(attrs, "A container type shape must always allocate its own ShapeAttributes");
 	if (!attrs) { return false; }
 	assert(attrs->m_Flags == AttribFlags::None);
 	bool err = false;
@@ -1327,7 +1336,7 @@ bool parseContainer_Group(ParserState* parser, Shape* shape, std::string_view cl
 			break;
 		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
 			// TODO: Test this!
-			const auto group_id = shapeAttrsGetID(attrs);
+			const auto group_id = shapeGetID(shape);
 			SSVG_WARN(false, "Empty group element id=\"%.*s\"", strlenint(group_id), group_id.data());
 			parser->m_Ptr += 2;
 			return true;
@@ -1336,11 +1345,10 @@ bool parseContainer_Group(ParserState* parser, Shape* shape, std::string_view cl
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
-			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, attrs);
-			if (res == ParseAttr::Fail) {
-				err = true;
-			} else if (res == ParseAttr::Unknown) {
+			bool found = false;
+			if (!found) { found = parseCoreAttribute(name, value, shape); }
+			if (!found) { found = (parseGenericShapeAttribute(name, value, attrs) == ParseAttr::OK); }
+			if (!found) {
 				// No specific attributes for groups. Ignore it.
 				SSVG_WARN(false, "Ignoring g attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
 			}
@@ -1381,11 +1389,10 @@ bool parseShape_Text(ParserState* parser, Shape* shape)
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
-			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs);
-			if (res == ParseAttr::Fail) {
-				err = true;
-			} else if (res == ParseAttr::Unknown) {
+			bool found = false;
+			if (!found) { found = parseCoreAttribute(name, value, shape); }
+			if (!found) { found = (parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs) == ParseAttr::OK); }
+			if (!found) {
 				// Text specific attributes
 				if (name == "x") {
 					Length x;
@@ -1456,11 +1463,10 @@ bool parseShape_Path(ParserState* parser, Shape* shape)
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
-			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs);
-			if (res == ParseAttr::Fail) {
-				err = true;
-			} else if (res == ParseAttr::Unknown) {
+			bool found = false;
+			if (!found) { found = parseCoreAttribute(name, value, shape); }
+			if (!found) { found = (parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs) == ParseAttr::OK); }
+			if (!found) {
 				// Path specific attributes.
 				if (name == "d") {
 					err = !pathFromString(&path, value, parser->m_Flags);
@@ -1496,13 +1502,12 @@ bool parseShape_Rect(ParserState* parser, Shape* shape)
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
-			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs);
-			if (res == ParseAttr::Fail) {
-				err = true;
-			} else if (res == ParseAttr::Unknown) {
+			bool found = false;
+			if (!found) { found = parseCoreAttribute(name, value, shape); }
+			if (!found) { found = (parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs) == ParseAttr::OK); }
+			if (!found) {
+				// Rect specific attributes
 				Length len;
-				// Rect specific attributes.
 				if (name == "width") {
 					err = !parsePositiveLength(value, len);
 					rect.width = !err ? convertLengthToPixel(len, LengthAxis::X, parser->m_LengthContext) : 0.f;
@@ -1553,13 +1558,12 @@ bool parseShape_Circle(ParserState* parser, Shape* shape)
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
-			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs);
-			if (res == ParseAttr::Fail) {
-				err = true;
-			} else if (res == ParseAttr::Unknown) {
+			bool found = false;
+			if (!found) { found = parseCoreAttribute(name, value, shape); }
+			if (!found) { found = (parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs) == ParseAttr::OK); }
+			if (!found) {
+				// Circle specific attributes
 				Length len;
-				// Circle specific attributes.
 				if (name == "cx") {
 					err = !parseLength(value, len);
 					circle.cx = !err ? convertLengthToPixel(len, LengthAxis::X, parser->m_LengthContext) : 0.f;
@@ -1601,13 +1605,12 @@ bool parseShape_Line(ParserState* parser, Shape* shape)
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
-			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs);
-			if (res == ParseAttr::Fail) {
-				err = true;
-			} else if (res == ParseAttr::Unknown) {
+			bool found = false;
+			if (!found) { found = parseCoreAttribute(name, value, shape); }
+			if (!found) { found = (parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs) == ParseAttr::OK); }
+			if (!found) {
+				// Line specific attributes
 				Length len;
-				// Line specific attributes.
 				if (name == "x1") {
 					err = !parseLength(value, len);
 					line.x1 = !err ? convertLengthToPixel(len, LengthAxis::X, parser->m_LengthContext) : 0.f;
@@ -1652,13 +1655,12 @@ bool parseShape_Ellipse(ParserState* parser, Shape* shape)
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
-			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs);
-			if (res == ParseAttr::Fail) {
-				err = true;
-			} else if (res == ParseAttr::Unknown) {
+			bool found = false;
+			if (!found) { found = parseCoreAttribute(name, value, shape); }
+			if (!found) { found = (parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs) == ParseAttr::OK); }
+			if (!found) {
+				// Ellipse specific attributes
 				Length len;
-				// Ellipse specific attributes.
 				if (name == "cx") {
 					err = !parseLength(value, len);
 					ellipse.cx = !err ? convertLengthToPixel(len, LengthAxis::X, parser->m_LengthContext) : 0.f;
@@ -1703,11 +1705,10 @@ bool parseShape_PointList(ParserState* parser, Shape* shape)
 		if (!parserGetAttribute(parser, &name, &value)) {
 			err = true;
 		} else {
-			// Check if this a generic attribute (i.e. styling)
-			ParseAttr::Result res = parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs);
-			if (res == ParseAttr::Fail) {
-				err = true;
-			} else if (res == ParseAttr::Unknown) {
+			bool found = false;
+			if (!found) { found = parseCoreAttribute(name, value, shape); }
+			if (!found) { found = (parseGenericShapeAttribute(name, value, &parser->m_ParsedShapeAttrs) == ParseAttr::OK); }
+			if (!found) {
 				if (name == "points") {
 					PointList ptList;
 					stdutils::memset<PointList>(&ptList, 0);

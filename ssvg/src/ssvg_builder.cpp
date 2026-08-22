@@ -20,7 +20,9 @@ Shape temporaryShape()
 {
 	Shape tmpShape;
 	stdutils::memset<Shape>(&tmpShape, 0);
+	assert(stdutils::strnlen(&tmpShape.m_ID[0], SSVG_CONFIG_ID_MAX_LEN) == 0);
 	assert(shapeIsEmptyGroup(&tmpShape));
+
 	return tmpShape;
 }
 

@@ -22,21 +22,20 @@ struct SaveAttr
 	enum Enum : Type
 	{
 		None        = 0,
-		ID          = 1 << 0,
-		Transform   = 1 << 1,
-		Stroke      = 1 << 2,
-		Fill        = 1 << 3,
-		Color       = 1 << 4,
-		Font        = 1 << 5,
-		Class       = 1 << 6,
-		Opacity     = 1 << 7,
-		All         =(1 << 8) - 1,
+		Transform   = 1 << 0,
+		Stroke      = 1 << 1,
+		Fill        = 1 << 2,
+		Color       = 1 << 3,
+		Font        = 1 << 4,
+		Class       = 1 << 5,
+		Opacity     = 1 << 6,
+		All         =(1 << 7) - 1,
 
 		// Special flag
 		ConditionalPaints = 0x80000000, // If set, and PaintType == None || Transparent don't save stroke-width, stroke-opacity, etc.
 
 		// Common combinations
-		Unique = Transform | ID,
+		Unique = Transform,
 		Shape = Unique  | Stroke | Fill | Color,
 		Text = Unique | Stroke | Fill | Color | Font | ConditionalPaints,
 	};
@@ -215,16 +214,23 @@ void writePaintColorValue(StreamWriter& writer, const Paint& paint)
 	}
 }
 
+bool writeCoreAttributes(StreamWriter& writer, const Shape* shape)
+{
+	if (!shape) {
+		return true;
+	}
+
+	if (shape->m_ID[0] != '\0') {
+		writer.out() << " id=\"" << shape->m_ID << "\"";
+	}
+
+	return true;
+}
+
 bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, SaveAttr::Type flags = SaveAttr::All)
 {
 	if (!attrs) {
 		return true;
-	}
-
-	const bool conditionalPaints = (flags & SaveAttr::ConditionalPaints) != 0;
-
-	if ((flags & SaveAttr::ID) != 0 && attrs->m_ID[0] != '\0') {
-		writer.out() << " id=\"" << attrs->m_ID << "\"";
 	}
 
 #if SSVG_CONFIG_CLASS_MAX_LEN
@@ -232,6 +238,8 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, Sa
 		writer.out() << " class=\"" << attrs->m_Class << "\"";
 	}
 #endif
+
+	const bool conditionalPaints = (flags & SaveAttr::ConditionalPaints) != 0;
 
 	if ((flags & SaveAttr::Transform) != 0 && !transformIsIdentity(&attrs->m_Transform[0])) {
 		writer.write(" transform=\"matrix(%g,%g,%g,%g,%g,%g)\""
@@ -410,6 +418,9 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 			{
 				writer.indent(indentationLevel);
 				writer.out() << "<g";
+				if (!writeCoreAttributes(writer, shape)) {
+					return false;
+				}
 				if (!writeShapeAttributes(writer, shape->m_Attrs)) {
 					return false;
 				}
@@ -428,6 +439,9 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Rect:
 			writer.indent(indentationLevel);
 			writer.out() << "<rect";
+			if (!writeCoreAttributes(writer, shape)) {
+				return false;
+			}
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
 			}
@@ -448,6 +462,9 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Circle:
 			writer.indent(indentationLevel);
 			writer.out() << "<circle";
+			if (!writeCoreAttributes(writer, shape)) {
+				return false;
+			}
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
 			}
@@ -459,6 +476,9 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Ellipse:
 			writer.indent(indentationLevel);
 			writer.out() << "<ellipse";
+			if (!writeCoreAttributes(writer, shape)) {
+				return false;
+			}
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
 			}
@@ -471,6 +491,9 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Line:
 			writer.indent(indentationLevel);
 			writer.out() << "<line";
+			if (!writeCoreAttributes(writer, shape)) {
+				return false;
+			}
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
 			}
@@ -483,6 +506,9 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Polyline:
 			writer.indent(indentationLevel);
 			writer.out() << "<polyline";
+			if (!writeCoreAttributes(writer, shape)) {
+				return false;
+			}
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
 			}
@@ -494,6 +520,9 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Polygon:
 			writer.indent(indentationLevel);
 			writer.out() << "<polygon";
+			if (!writeCoreAttributes(writer, shape)) {
+				return false;
+			}
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
 			}
@@ -505,6 +534,9 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Path:
 			writer.indent(indentationLevel);
 			writer.out() << "<path";
+			if (!writeCoreAttributes(writer, shape)) {
+				return false;
+			}
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Shape | SaveAttr::ConditionalPaints)) {
 				return false;
 			}
@@ -516,6 +548,9 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		case ShapeType::Text:
 			writer.indent(indentationLevel);
 			writer.out() << "<text";
+			if (!writeCoreAttributes(writer, shape)) {
+				return false;
+			}
 			if (!writeShapeAttributes(writer, shape->m_Attrs, SaveAttr::Text)) {
 				return false;
 			}

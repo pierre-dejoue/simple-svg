@@ -291,7 +291,6 @@ void resetShapeAttributes(ShapeAttributes* attrs)
 
 	assert(attrs->m_Flags == AttribFlags::None);
 	assert(stdutils::strnlen(&attrs->m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN) == 0);
-	assert(stdutils::strnlen(&attrs->m_ID[0], SSVG_CONFIG_ID_MAX_LEN) == 0);
 	#if SSVG_CONFIG_CLASS_MAX_LEN
 		assert(stdutils::strnlen(&attrs->m_Class[0], SSVG_CONFIG_CLASS_MAX_LEN) == 0);
 	#endif
@@ -381,6 +380,7 @@ Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type)
 		assert(shapeList->m_NumShapes + 1 <= shapeList->m_Capacity);
 		Shape* shape = &shapeList->m_Shapes[shapeList->m_NumShapes++];
 		stdutils::memset<Shape>(shape, 0);
+		assert(stdutils::strnlen(&shape->m_ID[0], SSVG_CONFIG_ID_MAX_LEN) == 0);
 		assert(shapeIsEmptyGroup(shape));
 		return shape;
 	}();
@@ -1226,13 +1226,6 @@ void textClear(Text* text)
 	stdutils::memset<Text>(text, 0);
 }
 
-std::string_view shapeAttrsGetID(const ShapeAttributes* attrs)
-{
-	if (!attrs) { return ""; }
-	const uint32_t len = stdutils::strnlen(&attrs->m_ID[0], SSVG_CONFIG_ID_MAX_LEN);
-	return std::string_view(&attrs->m_ID[0], len);
-}
-
 std::string_view shapeAttrsGetFontFamily(const ShapeAttributes* attrs)
 {
 	if (!attrs) { return ""; }
@@ -1251,19 +1244,9 @@ std::string_view shapeAttrsGetClass(const ShapeAttributes* attrs)
 #endif
 }
 
-void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& value)
-{
-	SSVG_CHECK(attrs, "Nullptr to ShapeAttrubutes. Allocate them first with shapeAllocAttributes.");
-	if (!attrs) { return; }
-	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_ID_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
-	SSVG_WARN((std::int32_t)maxLen >= strlenint(value), "id \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
-	stdutils::memcpy<char>(&attrs->m_ID[0], SSVG_CONFIG_ID_MAX_LEN, value.data(), maxLen);
-	attrs->m_ID[maxLen] = '\0';
-}
-
 void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& value)
 {
-	SSVG_CHECK(attrs, "Nullptr to ShapeAttrubutes. Allocate them first with shapeAllocAttributes.");
+	SSVG_CHECK(attrs, "Nullptr to ShapeAttributes. Allocate them first with shapeAllocAttributes.");
 	if (!attrs) { return; }
 	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
 	SSVG_WARN((std::int32_t)maxLen >= strlenint(value), "font-family \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
@@ -1273,7 +1256,7 @@ void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& val
 
 void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value)
 {
-	SSVG_CHECK(attrs, "Nullptr to ShapeAttrubutes. Allocate them first with shapeAllocAttributes.");
+	SSVG_CHECK(attrs, "Nullptr to ShapeAttributes. Allocate them first with shapeAllocAttributes.");
 	if (!attrs) { return; }
 #if SSVG_CONFIG_CLASS_MAX_LEN
 	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_CLASS_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
@@ -1441,6 +1424,23 @@ ShapeType::Enum shapeGetType(const Shape* shape)
 	return shape->m_Type;
 }
 
+std::string_view shapeGetID(const Shape* shape)
+{
+	if (!shape) { return ""; }
+	const uint32_t len = stdutils::strnlen(&shape->m_ID[0], SSVG_CONFIG_ID_MAX_LEN);
+	return std::string_view(&shape->m_ID[0], len);
+}
+
+void shapeSetID(Shape* shape, const std::string_view& value)
+{
+	SSVG_CHECK(shape, "Nullptr to Shape");
+	if (!shape) { return; }
+	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_ID_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
+	SSVG_WARN((std::int32_t)maxLen >= strlenint(value), "id \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
+	stdutils::memcpy<char>(&shape->m_ID[0], SSVG_CONFIG_ID_MAX_LEN, value.data(), maxLen);
+	shape->m_ID[maxLen] = '\0';
+}
+
 ShapeAttributes* shapeAllocAttributes(Shape* shape, const ShapeAttributes* parentAttrs)
 {
 	SSVG_CHECK(shape, "Nullptr to Shape");
@@ -1452,11 +1452,10 @@ ShapeAttributes* shapeAllocAttributes(Shape* shape, const ShapeAttributes* paren
 	if (parentAttrs) {
 		// We copy all attributes from the parent, except for:
 		// - The transformation, else we would apply it twice on the shape.
-		// - The ID and Class, specific to an alement.
+		// - The Class, specific to an alement.
 		*attrs = *parentAttrs;
 		attrs->m_Flags = AttribFlags::None;
 		transformIdentity(attrs->m_Transform);
-		attrs->m_ID[0] = '\0';
 #if SSVG_CONFIG_CLASS_MAX_LEN
 		attrs->m_Class[0] = '\0';
 #endif
@@ -1614,6 +1613,7 @@ void shapeClear(Shape* shape)
 	}
 	shapeAttrsFree(shape->m_Attrs);
 	stdutils::memset<Shape>(shape, 0);
+	assert(stdutils::strnlen(&shape->m_ID[0], SSVG_CONFIG_ID_MAX_LEN) == 0);
 	assert(shapeIsEmptyGroup(shape));
 }
 
@@ -1685,7 +1685,7 @@ ShapeAttributes* shapeAttrsAllocFromNode(ShapeAttributeFreeListNode* node)
 
 ShapeAttributes* shapeAttrsAlloc()
 {
-	constexpr uint32_t kNumShapeAttributesPerBatch = 1024;
+	constexpr uint32_t kNumShapeAttributesPerBatch = 128;
 
 	ShapeAttributeFreeListNode* node = s_ShapeAttrFreeListHead;
 	while (node) {
@@ -1699,7 +1699,9 @@ ShapeAttributes* shapeAttrsAlloc()
 	node = (ShapeAttributeFreeListNode*)std::malloc(sizeof(ShapeAttributeFreeListNode));
 	SSVG_CHECK(node != nullptr, "Failed to allocate shape attributes");
 
-	node->m_Attrs = (ShapeAttributes*)std::malloc(sizeof(ShapeAttributes) * kNumShapeAttributesPerBatch);
+	const size_t attrBytes = sizeof(ShapeAttributes) * kNumShapeAttributesPerBatch;
+	//SSVG_TRACE("Allocate %u new ShapeAtributes, size=%u bytes", kNumShapeAttributesPerBatch, static_cast<unsigned int>(attrBytes));
+	node->m_Attrs = (ShapeAttributes*)std::malloc(attrBytes);
 	node->m_NumAttrs = kNumShapeAttributesPerBatch;
 	node->m_Next = s_ShapeAttrFreeListHead;
 	node->m_Prev = nullptr;

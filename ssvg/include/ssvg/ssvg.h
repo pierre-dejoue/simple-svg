@@ -309,9 +309,8 @@ struct AttribFlags
 		FontFamilyChanged       = 1 << 11,
 		Opacity                 = 1 << 12,
 		Transformation          = 1 << 13,
-		ElementID               = 1 << 14,
-		ElementClass            = 1 << 15,
-		All                     =(1 << 16) - 1
+		ElementClass            = 1 << 14,
+		All                     =(1 << 15) - 1
 	};
 };
 
@@ -334,7 +333,6 @@ struct ShapeAttributes
 	FillRule::Enum m_FillRule;
 	Length m_FontSize;
 	char m_FontFamily[SSVG_CONFIG_FONT_FAMILY_MAX_LEN];
-	char m_ID[SSVG_CONFIG_ID_MAX_LEN];
 #if SSVG_CONFIG_CLASS_MAX_LEN
 	char m_Class[SSVG_CONFIG_CLASS_MAX_LEN];
 #endif
@@ -371,6 +369,7 @@ struct Shape
 {
 	ShapeType::Enum m_Type;
 	ShapeAttributes* m_Attrs;
+	char m_ID[SSVG_CONFIG_ID_MAX_LEN];
 	float m_BoundingRect[BOUNDING_RECT_ARRAY_SZ]; // NOTE: Transformation independent axis-aligned bounding rect {minx, miny, maxx, maxy}
 
 	union
@@ -532,10 +531,8 @@ void textSetString(Text* text, const char* str);
 void textClear(Text* text);
 
 // Manipulate ShapeAttributes
-std::string_view shapeAttrsGetID(const ShapeAttributes* attrs);
 std::string_view shapeAttrsGetFontFamily(const ShapeAttributes* attrs);
 std::string_view shapeAttrsGetClass(const ShapeAttributes* attrs);
-void shapeAttrsSetID(ShapeAttributes* attrs, const std::string_view& value);
 void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& value);
 void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value);
 
@@ -550,12 +547,13 @@ void transformBoundingRect(const float* transform, const float* localRect, float
 // Manipulate Shapes
 void shapeClear(Shape* shape);
 bool shapeIsEmptyGroup(Shape* shape);       // A cleared shape is an empty ShapeType::Group
-
 void shapeGetTransform(const Shape* shape, float* out_transform);
 void shapeSetTransform(Shape* shape, const float* transform);
 void shapeSetIdentityTransform(Shape* shape);
 void shapeApplyTransform(Shape* shape, const float* transform);
 ShapeType::Enum shapeGetType(const Shape* shape);
+std::string_view shapeGetID(const Shape* shape);
+void shapeSetID(Shape* shape, const std::string_view& value);
 ShapeAttributes*       shapeAllocAttributes(Shape* shape, const ShapeAttributes* parentAttrs = nullptr);
 ShapeAttributes*       shapeGetAttributes(Shape* shape);
 const ShapeAttributes* shapeGetAttributes(const Shape* shape);
