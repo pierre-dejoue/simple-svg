@@ -32,15 +32,36 @@ Read the examples to see the library in action!
 
 ### [Example_01_round_trip](examples/example_01_round_trip/main.cpp)
 
-Do a round trip of parsing and writing a SVG file. Provide the initial SVG file as input:
+Perform a round trip of parsing and writing a SVG file. Provide the initial SVG file as input:
 
 ```
-$ ./example_01_round_trip.exe ./examples/svg_files/Ghostscript_Tiger.svg
+$  example_01_round_trip.exe ./examples/svg_files/Ghostscript_Tiger.svg
 Loading "./examples/svg_files/Ghostscript_Tiger.svg"...
-- Root element contains 1 shapes
-Converting "./examples/svg_files/Ghostscript_Tiger.svg" to "./examples/svg_files/round_trip_Ghostscript_Tiger.svg"...
-Loading "./examples/svg_files/round_trip_Ghostscript_Tiger.svg"...
-- Root element contains 1 shapes
+    Nb of groups: 241
+    Basic shapes:
+        rect: 0; circle: 0; ellipse: 0; text: 0
+        line: 0; polyline: 0 (0 points); polygon: 0 (0 points);
+    Paths:
+        closed: 227 (2246 nodes)
+        open:   13 (37 nodes)
+    The root element contains 1 shapes
+    ShapesAttributes: nodes: 2; allocated: 241; free: 15
+Closing ssvg::Image ./examples/svg_files/Ghostscript_Tiger.svg...
+Converting "./examples/svg_files/Ghostscript_Tiger.svg" to "./examples/svg_files\round_trip_Ghostscript_Tiger.svg"...
+Loading "./examples/svg_files/Ghostscript_Tiger.svg"...
+Saved ssvg::Image to "./examples/svg_files\round_trip_Ghostscript_Tiger.svg"...
+Closing ssvg::Image ./examples/svg_files/Ghostscript_Tiger.svg...
+Loading "./examples/svg_files\round_trip_Ghostscript_Tiger.svg"...
+    Nb of groups: 241
+    Basic shapes:
+        rect: 0; circle: 0; ellipse: 0; text: 0
+        line: 0; polyline: 0 (0 points); polygon: 0 (0 points);
+    Paths:
+        closed: 227 (2246 nodes)
+        open:   13 (37 nodes)
+    The root element contains 1 shapes
+    ShapesAttributes: nodes: 2; allocated: 241; free: 15
+Closing ssvg::Image ./examples/svg_files\round_trip_Ghostscript_Tiger.svg...
 ```
 
 ### [Example_02_build_svg](examples/example_02_build_svg/main.cpp)
@@ -48,22 +69,6 @@ Loading "./examples/svg_files/round_trip_Ghostscript_Tiger.svg"...
 Build a SVG image programmatically and save it to file `test_output.svg`
 
 ```
-$ ./example_02_build_svg.exe
+$ example_02_build_svg.exe
 Building "./test_output.svg"
-```
-
-### [Example_03_enumerate_shapes](examples/example_03_enumerate_shapes/main.cpp)
-
-Parse a SVG file, count the shapes and total number of points/nodes in the image.
-
-```
-$ ./example_03_enumerate_shapes.exe ./examples/svg_files/Ghostscript_Tiger.svg
-Loading "./examples/svg_files/Ghostscript_Tiger.svg"...
-Nb of groups: 241
-Basic shapes:
-    rect: 0; circle: 0; ellipse: 0
-    line: 0; polyline: 0 (0 points); polygon: 0 (0 points);
-Paths:
-    closed: 227 (2246 nodes)
-    open:   13 (37 nodes)
 ```

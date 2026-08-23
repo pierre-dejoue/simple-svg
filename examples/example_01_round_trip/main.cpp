@@ -12,7 +12,9 @@
 
 namespace fs = std::filesystem;
 
-bool testParser(const char* filepath)
+constexpr bool  QUIET = true;
+
+bool testParser(const char* filepath, bool quiet = false)
 {
 	constexpr const char* INDENT = "    ";
 
@@ -23,6 +25,7 @@ bool testParser(const char* filepath)
 		return false;
 	}
 
+	if (!quiet)
 	{
 		const auto shapesCounters = ssvg::shapeListEnumerate(ssvg::imageGetRootShapeList(img));
 		std::cout << shapesCounters;
@@ -30,6 +33,7 @@ bool testParser(const char* filepath)
 		std::cout << INDENT << "The root element contains " << rootNumChildren << " shapes" << std::endl;
 	}
 
+	if (!quiet)
 	{
 		const auto allocatedShapeAttrsCounters = ssvg::internals::enumerateAllocatedShapeAttrs();
 		std::cout << INDENT << allocatedShapeAttrsCounters;
@@ -37,10 +41,13 @@ bool testParser(const char* filepath)
 
 	closeSVGImage(img, fs::path(filepath));
 
+#if 0
+	if (!quiet)
 	{
 		const auto allocatedShapeAttrsCounters = ssvg::internals::enumerateAllocatedShapeAttrs();
 		std::cout << INDENT << allocatedShapeAttrsCounters;
 	}
+#endif
 
 	return load_success;
 }
