@@ -221,7 +221,7 @@ bool writeCoreAttributes(StreamWriter& writer, const Shape* shape)
 	}
 
 	if (shape->m_ID[0] != '\0') {
-		writer.out() << " id=\"" << shape->m_ID << "\"";
+		writer.out() << " id=\"" << shape->m_ID << '\"';
 	}
 
 	return true;
@@ -235,7 +235,7 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, Sa
 
 #if SSVG_CONFIG_CLASS_MAX_LEN
 	if ((flags & SaveAttr::Class) != 0 && attrs->m_Class[0] != '\0') {
-		writer.out() << " class=\"" << attrs->m_Class << "\"";
+		writer.out() << " class=\"" << attrs->m_Class << '\"';
 	}
 #endif
 
@@ -255,7 +255,7 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, Sa
 		if (attrs->m_Flags & AttribFlags::StrokePaintChanged) {
 			writer.out() << " stroke=\"";
 			writePaintColorValue(writer, attrs->m_StrokePaint);
-			writer.out() << "\"";
+			writer.out() << '\"';
 		}
 
 		const PaintType::Enum strokeType = attrs->m_StrokePaint.m_Type;
@@ -279,12 +279,12 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, Sa
 
 			if (attrs->m_Flags & AttribFlags::StrokeLineJoinChanged) {
 				const LineJoin::Enum lineJoin = attrs->m_StrokeLineJoin;
-				writer.out() << " stroke-linejoin=\"" << lineJoinToString(lineJoin) << "\"";
+				writer.out() << " stroke-linejoin=\"" << lineJoinToString(lineJoin) << '\"';
 			}
 
 			if (attrs->m_Flags & AttribFlags::StrokeLineCapChanged) {
 				const LineCap::Enum lineCap = attrs->m_StrokeLineCap;
-				writer.out() << " stroke-linecap=\"" << lineCapToString(lineCap) << "\"";
+				writer.out() << " stroke-linecap=\"" << lineCapToString(lineCap) << '\"';
 			}
 		}
 	}
@@ -293,7 +293,7 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, Sa
 		if (attrs->m_Flags & AttribFlags::FillPaintChanged) {
 			writer.out() << " fill=\"";
 			writePaintColorValue(writer, attrs->m_FillPaint);
-			writer.out() << "\"";
+			writer.out() << '\"';
 		}
 
 		const PaintType::Enum fillType = attrs->m_FillPaint.m_Type;
@@ -305,7 +305,7 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, Sa
 			}
 
 			if (attrs->m_Flags & AttribFlags::FillRuleChanged) {
-				writer.out() << " fill-rule=\"" << fillRuleToString(attrs->m_FillRule) << "\"";
+				writer.out() << " fill-rule=\"" << fillRuleToString(attrs->m_FillRule) << '\"';
 			}
 		}
 	}
@@ -314,14 +314,14 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, Sa
 		if (attrs->m_Flags & AttribFlags::ColorPaintChanged) {
 			writer.out() << " color=\"";
 			writePaintColorValue(writer, attrs->m_ColorPaint);
-			writer.out() << "\"";
+			writer.out() << '\"';
 		}
 	}
 
 	if ((flags & SaveAttr::Font) != 0) {
 		const char* fontFamily = attrs->m_FontFamily;
 		if (fontFamily[0] != '\0') {
-			writer.out() << " font-family=\"" << fontFamily << "\"";
+			writer.out() << " font-family=\"" << fontFamily << '\"';
 		}
 
 		const float& fontSize = attrs->m_FontSize.m_Length;
@@ -348,7 +348,7 @@ bool writePointList(StreamWriter& writer, const PointList* pointList)
 		const float* coords = &pointList->m_Coords[i * 2];
 		writer.write("%g,%g ", coords[0], coords[1]);
 	}
-	writer.out() << "\"";
+	writer.out() << '\"';
 
 	return true;
 }
@@ -391,7 +391,7 @@ bool writePath(StreamWriter& writer, const Path* path)
 			break;
 		}
 	}
-	writer.out() << "\"";
+	writer.out() << '\"';
 
 	return true;
 }
@@ -625,7 +625,7 @@ bool imageSave(const Image* img, std::ostream& out, const ImageWriterOptions* op
 		writer.write(" version=\"%u.%u\"", img->m_VerMajor, img->m_VerMinor);
 	}
 	if (img->m_BaseProfile != BaseProfile::None) {
-		writer.out() << " baseProfile=\"" << baseProfileToString(img->m_BaseProfile) << "\"";
+		writer.out() << " baseProfile=\"" << baseProfileToString(img->m_BaseProfile) << '\"';
 	}
 	writer.out() << " xmlns=\"http://www.w3.org/2000/svg\">\n";
 

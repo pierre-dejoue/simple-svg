@@ -115,7 +115,7 @@ inline uint8_t charToNibble(char ch)
 		return 10 + (ch - 'A');
 	}
 
-	SSVG_WARN(false, "Invalid hex char %c", ch);
+	SSVG_WARN(false, "Invalid hex char '%c'", ch);
 
 	return 0;
 }
@@ -339,14 +339,22 @@ bool parserGetAttribute(ParserState* parser, std::string_view* name, std::string
 
 	// Check of opening quote
 	parserSkipWhitespace(parser);
-	if (!parserExpectingChar(parser, '\"')) {
+	const char quoteSign = [&parser]() -> char {
+		for (char quote : "\"\'") {
+			if (parserExpectingChar(parser, quote)) {
+				return quote;
+			}
+		}
+		return '\0';
+	}();
+	if (quoteSign == '\0') {
 		return false;
 	}
 
-	const char* valuePtr = parser->m_Ptr;
+	const char* valueBeginPtr = parser->m_Ptr;
 
 	// Find the closing quote
-	while (*parser->m_Ptr != '\"') {
+	while (*parser->m_Ptr != quoteSign) {
 		// Check for invalid strings (i.e. tag closes before closing quote or we reached the end of the buffer)
 		char ch = *parser->m_Ptr;
 		if (ch == '>' || ch == '\0') {
@@ -356,8 +364,9 @@ bool parserGetAttribute(ParserState* parser, std::string_view* name, std::string
 		++parser->m_Ptr;
 	}
 
-	assert(valuePtr <= parser->m_Ptr);
-	*value = std::string_view(valuePtr, parser->m_Ptr - valuePtr);
+	const char* valueEndPtr = parser->m_Ptr;
+	assert(valueBeginPtr <= valueEndPtr);
+	*value = std::string_view(valueBeginPtr, valueEndPtr - valueBeginPtr);
 
 	++parser->m_Ptr;
 
