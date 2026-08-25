@@ -110,6 +110,10 @@ struct GroupFlavor
 	{
 		Group = 0,      // <g>
 		SVG,            // <svg>, or an instatiated <symbol>
+		Link,           // <a>
+		Defs,           // <defs>
+		Symbol,         // <symbol>
+		Use,            // <use>
 	};
 };
 
@@ -373,8 +377,9 @@ struct Group
 {
 	GroupFlavor::Enum m_Type;
 	ShapeList m_ShapeList;
+	ViewPort m_ViewPort;
 	OwnedString m_Title;
-	ViewPort m_ViewPort;		// Only relevant for <svg> and <symbol>
+	OwnedString m_Href;         // Used by <a> and <use> elements
 };
 
 struct Shape
@@ -455,6 +460,7 @@ ShapeList*             imageGetRootShapeList(      Image* img);
 const ShapeList*       imageGetRootShapeList(const Image* img);
 const OwnedString& imageGetTile(const Image* img);
 void               imageSetTitle(Image* img, const char* str);
+void               imageSetTitle(Image* img, std::string_view str);
 uint32_t imageGetNumShapes(const Image* img);
 
 // Manipulate Groups
@@ -462,6 +468,10 @@ ShapeList*             groupGetShapeList(      Group* group);
 const ShapeList*       groupGetShapeList(const Group* group);
 const OwnedString&     groupGetTitle(const Group* group);
 void                   groupSetTitle(Group* group, const char* str);
+void                   groupSetTitle(Group* group, std::string_view str);
+const OwnedString&     groupGetHref(const Group* group);
+void                   groupSetHref(Group* group, const char* str);
+void                   groupSetHref(Group* group, std::string_view str);
 void groupClear(Group* group);
 
 // Manipulate ShapeLists

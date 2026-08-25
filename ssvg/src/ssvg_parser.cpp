@@ -1110,12 +1110,24 @@ ParseAttr::Result parseStyle(const std::string_view& str, ShapeAttributes* attrs
 bool parseCoreAttribute(const std::string_view& name, const std::string_view& value, Shape* shape)
 {
 	assert(shape);
+	if (!shape) { return false; }
 
 	if (name == "id") {
 		shapeSetID(shape, value);
 		return true;
 	} else if (name == "xml:base" || name == "xml:lang" || name == "xml:space") {
 		// Ignore
+		return true;
+	}
+
+	return false;
+}
+
+bool parseHrefAttribute(const std::string_view& name, const std::string_view& value, Group& group)
+{
+	// "link:ref" is deprecated in SVG 2.0
+	if (name == "href" || name == "link:href") {
+		groupSetHref(&group, value);
 		return true;
 	}
 
@@ -1344,6 +1356,8 @@ bool parseContainer_Group(ParserState* parser, Shape* shape, bool& expectClosing
 	expectClosingTag = false;
 	Group& group = shape->m_Group;
 	const bool isSVG = (group.m_Type == GroupFlavor::SVG);
+	const bool hasGeometry = (group.m_Type == GroupFlavor::SVG || group.m_Type == GroupFlavor::Symbol || group.m_Type == GroupFlavor::Use);
+	const bool hasHref = (group.m_Type == GroupFlavor::Link || group.m_Type == GroupFlavor::Use);
 	ShapeAttributes* attrs = shape->m_Attrs;
 	SSVG_CHECK(attrs, "A container type shape must always allocate its own ShapeAttributes");
 	if (!attrs) { return false; }
@@ -1358,7 +1372,8 @@ bool parseContainer_Group(ParserState* parser, Shape* shape, bool& expectClosing
 		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
 			const auto groupTypeStr = groupFlavorToString(group.m_Type);
 			const auto groupId = shapeGetID(shape);
-			SSVG_WARN(false, "Empty container <%.*s> element id=\"%.*s\"", strlenint(groupTypeStr), groupTypeStr.data(), strlenint(groupId), groupId.data());
+			// Warn on empty containers, except for <use> elements
+			SSVG_WARN(group.m_Type == GroupFlavor::Use, "Empty container <%.*s> element id=\"%.*s\"", strlenint(groupTypeStr), groupTypeStr.data(), strlenint(groupId), groupId.data());
 			parser->m_Ptr += 2;
 			return true;
 		}
@@ -1369,13 +1384,14 @@ bool parseContainer_Group(ParserState* parser, Shape* shape, bool& expectClosing
 			bool found = false;
 			if (!found) { found = parseCoreAttribute(name, value, shape); }
 			if (!found) { found = (parseGenericShapeAttribute(name, value, attrs) == ParseAttr::OK); }
-			if (!found && isSVG) { found = parseViewPortAttribute(name, value, group.m_ViewPort); }
+			if (!found && hasGeometry) { found = parseViewPortAttribute(name, value, group.m_ViewPort); }
+			if (!found && hasHref) { found = parseHrefAttribute(name, value, group); }
 			if (!found) {
 				// Ignore those attributes (they can be present in the root SVG element)
 				found = (name == "xmlns" || name == "version" || name == "baseProfile");
 			}
 			if (!found) {
-				// No specific attributes for groups. Ignore it.
+				// No specific attributes for containers.
 				const auto groupTypeStr = groupFlavorToString(group.m_Type);
 				SSVG_WARN(false, "Ignoring container <%.*s> attribute: %.*s=\"%.*s\"", strlenint(groupTypeStr), groupTypeStr.data(), strlenint(name), name.data(), strlenint(value), value.data());
 			}
@@ -1804,8 +1820,12 @@ bool parseSVGElements(ParserState* parser, Group& group, const ShapeAttributes& 
 		std::string_view closingTag;
 	};
 	static const ParseContainerFunc parseContainerFuncs[] = {
-		{ std::string_view("g"),        GroupFlavor::Group,  parseContainer_Group,  "</g>"   },
-		{ std::string_view("svg"),      GroupFlavor::SVG,    parseContainer_Group,  "</svg>" },
+		{ std::string_view("g"),        GroupFlavor::Group,  parseContainer_Group,  "</g>"      },
+		{ std::string_view("svg"),      GroupFlavor::SVG,    parseContainer_Group,  "</svg>"    },
+		{ std::string_view("a"),        GroupFlavor::Link,   parseContainer_Group,  "</a>"      },
+		{ std::string_view("defs"),     GroupFlavor::Defs,   parseContainer_Group,  "</defs>"   },
+		{ std::string_view("symbol"),   GroupFlavor::Symbol, parseContainer_Group,  "</symbol>" },
+		{ std::string_view("use"),      GroupFlavor::Use,    parseContainer_Group,  "</use>"    },
 	};
 	static const uint32_t numParseContainerFuncs = sizeof(parseContainerFuncs) / sizeof(ParseContainerFunc);
 

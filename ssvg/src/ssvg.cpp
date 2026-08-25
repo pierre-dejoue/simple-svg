@@ -72,6 +72,22 @@ OwnedString ownedStringAlloc(const char* str)
 	return ownedStr;
 }
 
+OwnedString ownedStringAlloc(std::string_view str)
+{
+	OwnedString ownedStr;
+	ownedStr.m_Buf = nullptr;
+	ownedStr.m_Len = 0;
+	if (str.empty()) {
+		return ownedStr;
+	}
+	const auto len = str.length();
+	ownedStr.m_Buf = (char*)malloc((len + 1) * sizeof(char));
+	IGNORE_RETURN stdutils::memcpy<char>(ownedStr.m_Buf, len, str.data(), len);
+	ownedStr.m_Buf[len] = '\0';
+	ownedStr.m_Len = len;
+	return ownedStr;
+}
+
 OwnedString ownedStringAlloc(uint32_t len)
 {
 	OwnedString ownedStr;
@@ -100,6 +116,15 @@ void ownedStringSet(OwnedString& ownedStr, const char* str)
 {
 	ownedStringClear(ownedStr);
 	if (str == nullptr) {
+		return;
+	}
+	ownedStr = ownedStringAlloc(str);
+}
+
+void ownedStringSet(OwnedString& ownedStr, std::string_view str)
+{
+	ownedStringClear(ownedStr);
+	if (str.empty()) {
 		return;
 	}
 	ownedStr = ownedStringAlloc(str);
@@ -157,6 +182,10 @@ std::string_view groupFlavorToString(GroupFlavor::Enum groupFlavor)
 	switch (groupFlavor) {
 		case GroupFlavor::Group:        return "g";
 		case GroupFlavor::SVG:          return "svg";
+		case GroupFlavor::Link:         return "a";
+		case GroupFlavor::Defs:         return "defs";
+		case GroupFlavor::Symbol:       return "symbol";
+		case GroupFlavor::Use:          return "use";
 		default:
 			assert(0);
 			break;
@@ -391,12 +420,45 @@ void groupSetTitle(Group* group, const char* str)
 	ownedStringSet(group->m_Title, str);
 }
 
+void groupSetTitle(Group* group, std::string_view str)
+{
+	SSVG_CHECK(group, "Nullptr to Group");
+	if (!group) { return; }
+
+	ownedStringSet(group->m_Title, str);
+}
+
+const OwnedString& groupGetHref(const Group* group)
+{
+	SSVG_CHECK(group, "Nullptr to Group");
+	if (!group) { return emptyOwnedString(); }
+
+	return group->m_Href;
+}
+
+void groupSetHref(Group* group, const char* str)
+{
+	SSVG_CHECK(group, "Nullptr to Group");
+	if (!group) { return; }
+
+	ownedStringSet(group->m_Href, str);
+}
+
+void groupSetHref(Group* group, std::string_view str)
+{
+	SSVG_CHECK(group, "Nullptr to Group");
+	if (!group) { return; }
+
+	ownedStringSet(group->m_Href, str);
+}
+
 void groupClear(Group* group)
 {
 	SSVG_CHECK(group, "Nullptr to Group");
 	if (!group) { return; }
 
 	ownedStringClear(group->m_Title);
+	ownedStringClear(group->m_Href);
 	shapeListClear(&group->m_ShapeList);
 }
 
@@ -1466,6 +1528,15 @@ const OwnedString& imageGetTile(const Image* img)
 }
 
 void imageSetTitle(Image* img, const char* str)
+{
+	SSVG_CHECK(img, "Nullptr to Image");
+	if (!img) { return; }
+	SSVG_CHECK(img->m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
+
+	ownedStringSet(img->m_RootContainer.m_Group.m_Title, str);
+}
+
+void imageSetTitle(Image* img, std::string_view str)
 {
 	SSVG_CHECK(img, "Nullptr to Image");
 	if (!img) { return; }

@@ -285,6 +285,15 @@ bool writeRootSVGAttributes(StreamWriter& writer, const Image* img)
 	return true;
 }
 
+bool writeHrefAttributes(StreamWriter& writer, const Group& group)
+{
+	if (!group.m_Href.empty()) {
+		writer.write(" href=\"%s\"", group.m_Href.c_str());
+	}
+
+	return true;
+}
+
 bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, SaveAttr::Type flags = SaveAttr::All)
 {
 	if (!attrs) {
@@ -481,7 +490,11 @@ bool writeShapeList(StreamWriter& writer, const ConstShapeList* shapeList, const
 		switch (shapeType) {
 		case ShapeType::Group:
 			{
-				const auto groupType = shape->m_Group.m_Type;
+				const Group& group = shape->m_Group;
+				const auto groupType = group.m_Type;
+				const bool isSVG = (groupType == GroupFlavor::SVG);
+				const bool hasGeometry = (groupType == GroupFlavor::SVG || groupType == GroupFlavor::Symbol || groupType == GroupFlavor::Use);
+				const bool hasHref = (groupType == GroupFlavor::Link || groupType == GroupFlavor::Use);
 				writer.indent(indentationLevel);
 				writer.out() << '<' << groupFlavorToString(groupType);
 				if (!writeCoreAttributes(writer, shape)) {
@@ -490,19 +503,26 @@ bool writeShapeList(StreamWriter& writer, const ConstShapeList* shapeList, const
 				if (!writeShapeAttributes(writer, shape->m_Attrs)) {
 					return false;
 				}
-				if (groupType == GroupFlavor::SVG && !writeViewPort(writer, &shape->m_Group.m_ViewPort)) {
+				if (hasGeometry && !writeViewPort(writer, &group.m_ViewPort)) {
 					return false;
 				}
-				if (groupType == GroupFlavor::SVG && treeDepth == 0 && img && !writeRootSVGAttributes(writer, img)) {
+				if (isSVG && treeDepth == 0 && img && !writeRootSVGAttributes(writer, img)) {
 					return false;
+				}
+				if (hasHref && !writeHrefAttributes(writer, group)) {
+					return false;
+				}
+
+				if (group.m_Title.empty() && group.m_ShapeList.m_NumShapes == 0) {
+					writer.out() << " />\n";
+					break;
 				}
 				writer.out() << ">\n";
 
-				writeTitle(writer, shape->m_Group.m_Title, indentationLevel + 1);
-
+				writeTitle(writer, group.m_Title, indentationLevel + 1);
 				ConstShapeList localShapeList;
-				localShapeList.m_Shapes    = shape->m_Group.m_ShapeList.m_Shapes;
-				localShapeList.m_NumShapes = shape->m_Group.m_ShapeList.m_NumShapes;
+				localShapeList.m_Shapes    = group.m_ShapeList.m_Shapes;
+				localShapeList.m_NumShapes = group.m_ShapeList.m_NumShapes;
 				if (!writeShapeList(writer, &localShapeList, img, treeDepth + 1)) {
 					return false;
 				}
