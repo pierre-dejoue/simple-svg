@@ -90,7 +90,8 @@ struct ShapeType
 {
 	enum Enum : uint32_t
 	{
-		Group = 0,   // The default Shape is an empty group
+		Group = 0,      // The default Shape is an empty group
+		SVG,
 		Rect,
 		Circle,
 		Ellipse,
@@ -100,6 +101,15 @@ struct ShapeType
 		Path,
 		Text,
 		NumShapeTypes
+	};
+};
+
+struct GroupFlavor
+{
+	enum Enum : uint32_t
+	{
+		Group = 0,      // <g>
+		SVG,            // <svg>, or an instatiated <symbol>
 	};
 };
 
@@ -361,8 +371,10 @@ struct ShapeList
 
 struct Group
 {
+	GroupFlavor::Enum m_Type;
 	ShapeList m_ShapeList;
 	OwnedString m_Title;
+	ViewPort m_ViewPort;		// Only relevant for <svg> and <symbol>
 };
 
 struct Shape
@@ -387,10 +399,7 @@ struct Shape
 
 struct Image
 {
-	Group m_RootContainer;
-	ShapeAttributes m_BaseAttrs;
-	ViewPort m_ViewPort;
-	float m_BoundingRect[BOUNDING_RECT_ARRAY_SZ];
+	Shape m_RootContainer;
 	BaseProfile::Enum m_BaseProfile;
 	uint16_t m_VerMajor;
 	uint16_t m_VerMinor;

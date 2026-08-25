@@ -11,6 +11,8 @@
 //
 namespace ssvg {
 
+std::string_view groupFlavorToString(GroupFlavor::Enum groupFlavor);
+
 std::string_view lengthUnitToString(LengthUnit::Enum lengthUnit);
 
 struct LengthContext
@@ -32,6 +34,9 @@ struct LengthAxis {
 };
 
 float convertLengthToPixel(const Length& length, LengthAxis::Enum axis = LengthAxis::X, const LengthContext* lengthContext = nullptr);
+
+LengthContext initialLengthContext();
+void updateLengthContext(LengthContext& context, const ViewPort& viewport, const Length& fontSize);
 
 } // namespace ssvg
 

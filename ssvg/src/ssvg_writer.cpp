@@ -227,6 +227,64 @@ bool writeCoreAttributes(StreamWriter& writer, const Shape* shape)
 	return true;
 }
 
+bool writeViewPort(StreamWriter& writer, const ViewPort* viewport)
+{
+	if (!viewport) {
+		return true;
+	}
+
+	const Length& xLength = viewport->m_X;
+	if (xLength.m_Length != 0.0f) {
+		const float x = xLength.m_Length;
+		const char* xUnit = lengthUnitToString(xLength.m_Unit).data();
+		writer.write(" width=\"%g%s\"", x, xUnit);
+	}
+
+	const Length& yLength = viewport->m_Y;
+	if (yLength.m_Length != 0.0f) {
+		const float y = yLength.m_Length;
+		const char* yUnit = lengthUnitToString(yLength.m_Unit).data();
+		writer.write(" width=\"%g%s\"", y, yUnit);
+	}
+
+	const Length& widthL = viewport->m_Width;
+	if (widthL.m_Length != 0.0f) {
+		const float width = widthL.m_Length;
+		const char* widthUnit = lengthUnitToString(widthL.m_Unit).data();
+		writer.write(" width=\"%g%s\"", width, widthUnit);
+	}
+
+	const Length& heightL = viewport->m_Height;
+	if (heightL.m_Length != 0.0f) {
+		const float height = heightL.m_Length;
+		const char* heightUnit = lengthUnitToString(heightL.m_Unit).data();
+		writer.write(" height=\"%g%s\"", height, heightUnit);
+	}
+
+	const float viewBoxWidth  = viewport->m_ViewBox[2];
+	const float viewBoxHeight = viewport->m_ViewBox[3];
+	if (viewBoxWidth > 0.0f && viewBoxHeight > 0.0f) {
+		writer.write(" viewBox=\"%g %g %g %g\"", viewport->m_ViewBox[0], viewport->m_ViewBox[1], viewport->m_ViewBox[2], viewport->m_ViewBox[3]);
+	}
+
+	return true;
+}
+
+bool writeRootSVGAttributes(StreamWriter& writer, const Image* img)
+{
+	if (!img) { return false; }
+
+	if (img->m_VerMajor != 0) {
+		writer.write(" version=\"%u.%u\"", img->m_VerMajor, img->m_VerMinor);
+	}
+	if (img->m_BaseProfile != BaseProfile::None) {
+		writer.out() << " baseProfile=\"" << baseProfileToString(img->m_BaseProfile) << '\"';
+	}
+	writer.out() << " xmlns=\"http://www.w3.org/2000/svg\"";
+
+	return true;
+}
+
 bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, SaveAttr::Type flags = SaveAttr::All)
 {
 	if (!attrs) {
@@ -405,10 +463,17 @@ void writeTitle(StreamWriter& writer, const OwnedString& title, uint32_t indenta
 	writer.out() << "<title>" << title.c_str() << "</title>\n";
 }
 
-bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const ShapeAttributes* parentAttrs, uint32_t treeDepth = 0)
+struct ConstShapeList
 {
+	const Shape* m_Shapes;
+	uint32_t     m_NumShapes;
+};
+
+bool writeShapeList(StreamWriter& writer, const ConstShapeList* shapeList, const Image* img, uint32_t treeDepth = 0)
+{
+	assert(shapeList);
 	const uint32_t numShapes = shapeList->m_NumShapes;
-	const uint32_t indentationLevel = treeDepth + 1;
+	const uint32_t indentationLevel = treeDepth;
 	for (uint32_t iShape = 0; iShape < numShapes; ++iShape) {
 		const Shape* shape = &shapeList->m_Shapes[iShape];
 
@@ -416,24 +481,34 @@ bool writeShapeList(StreamWriter& writer, const ShapeList* shapeList, const Shap
 		switch (shapeType) {
 		case ShapeType::Group:
 			{
+				const auto groupType = shape->m_Group.m_Type;
 				writer.indent(indentationLevel);
-				writer.out() << "<g";
+				writer.out() << '<' << groupFlavorToString(groupType);
 				if (!writeCoreAttributes(writer, shape)) {
 					return false;
 				}
 				if (!writeShapeAttributes(writer, shape->m_Attrs)) {
 					return false;
 				}
+				if (groupType == GroupFlavor::SVG && !writeViewPort(writer, &shape->m_Group.m_ViewPort)) {
+					return false;
+				}
+				if (groupType == GroupFlavor::SVG && treeDepth == 0 && img && !writeRootSVGAttributes(writer, img)) {
+					return false;
+				}
 				writer.out() << ">\n";
 
 				writeTitle(writer, shape->m_Group.m_Title, indentationLevel + 1);
 
-				if (!writeShapeList(writer, &shape->m_Group.m_ShapeList, shape->m_Attrs, treeDepth + 1)) {
+				ConstShapeList localShapeList;
+				localShapeList.m_Shapes    = shape->m_Group.m_ShapeList.m_Shapes;
+				localShapeList.m_NumShapes = shape->m_Group.m_ShapeList.m_NumShapes;
+				if (!writeShapeList(writer, &localShapeList, img, treeDepth + 1)) {
 					return false;
 				}
 
 				writer.indent(indentationLevel);
-				writer.out() << "</g>\n";
+				writer.out() << "</" << groupFlavorToString(groupType) << ">\n";
 			}
 			break;
 		case ShapeType::Rect:
@@ -595,51 +670,13 @@ bool imageSave(const Image* img, std::ostream& out, const ImageWriterOptions* op
 		writer.out() << "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n";
 	}
 
-	// Open the root <svg> element
-	writer.out() << "<svg";
-	const ViewPort& viewport = img->m_ViewPort;
-	{
-		const Length& widthL = viewport.m_Width;
-		if (widthL.m_Length != 0.0f) {
-			const float width = widthL.m_Length;
-			const char* widthUnit = lengthUnitToString(widthL.m_Unit).data();
-			writer.write(" width=\"%g%s\"", width, widthUnit);
-		}
-	}
-	{
-		const Length& heightL = viewport.m_Height;
-		if (heightL.m_Length != 0.0f) {
-			const float height = heightL.m_Length;
-			const char* heightUnit = lengthUnitToString(heightL.m_Unit).data();
-			writer.write(" height=\"%g%s\"", height, heightUnit);
-		}
-	}
-	{
-		const float viewBoxWidth  = viewport.m_ViewBox[2];
-		const float viewBoxHeight = viewport.m_ViewBox[3];
-		if (viewBoxWidth > 0.0f && viewBoxHeight > 0.0f) {
-			writer.write(" viewBox=\"%g %g %g %g\"", viewport.m_ViewBox[0], viewport.m_ViewBox[1], viewport.m_ViewBox[2], viewport.m_ViewBox[3]);
-		}
-	}
-	if (img->m_VerMajor != 0) {
-		writer.write(" version=\"%u.%u\"", img->m_VerMajor, img->m_VerMinor);
-	}
-	if (img->m_BaseProfile != BaseProfile::None) {
-		writer.out() << " baseProfile=\"" << baseProfileToString(img->m_BaseProfile) << '\"';
-	}
-	writer.out() << " xmlns=\"http://www.w3.org/2000/svg\">\n";
-
-	// Write image title
-	constexpr uint32_t indendationLevel = 1;
-	writeTitle(writer, img->m_RootContainer.m_Title, indendationLevel);
-
 	// Write shapes
-	if (!writeShapeList(writer, &img->m_RootContainer.m_ShapeList, &img->m_BaseAttrs)) {
+	ConstShapeList rootShapeList;
+	rootShapeList.m_Shapes = &img->m_RootContainer;
+	rootShapeList.m_NumShapes = 1;
+	if (!writeShapeList(writer, &rootShapeList, img)) {
 		return false;
 	}
-
-	// Close the <svg> element
-	writer.out() << "</svg>\n";
 
 	return true;
 }

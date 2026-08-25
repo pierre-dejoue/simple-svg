@@ -107,9 +107,66 @@ void ownedStringSet(OwnedString& ownedStr, const char* str)
 
 } // namespace
 
+LengthContext initialLengthContext() {
+	LengthContext context;
+	context.m_FontSize = SSVG_CONFIG_PARSER_DEFAULT_FONT_SIZE_IN_PX;
+	context.m_ViewportWidth  = SSVG_CONFIG_PARSER_DEFAULT_VIEWPORT_WIDTH_IN_PX;
+	context.m_ViewportHeight = SSVG_CONFIG_PARSER_DEFAULT_VIEWPORT_HEIGHT_IN_PX;
+	context.m_ViewportDiag = math::normalizedDiagonal(context.m_ViewportWidth, context.m_ViewportHeight);
+
+	assert(context.m_FontSize > 0.f);
+	assert(context.m_ViewportWidth > 0.f);
+	assert(context.m_ViewportHeight > 0.f);
+	assert(context.m_ViewportDiag > 0.f);
+	return context;
+}
+
+void updateLengthContext(LengthContext& context, const ViewPort& viewport, const Length& fontSize) {
+	const LengthContext contextLocalCpy = context;
+	const float viewBoxWidth  = viewport.m_ViewBox[2];
+	const float viewBoxHeight = viewport.m_ViewBox[3];
+	const Length width  = viewport.m_Width;
+	const Length height = viewport.m_Height;
+
+	// Font size
+	assert(fontSize.m_Length > 0.f);
+	assert(fontSize.m_Unit != LengthUnit::EM
+		&& fontSize.m_Unit != LengthUnit::EX
+		&& fontSize.m_Unit != LengthUnit::Percent);
+	context.m_FontSize = convertLengthToPixel(fontSize, LengthAxis::Radial, &contextLocalCpy);
+
+	// Viewport
+	if (viewBoxWidth > 0.f && viewBoxHeight > 0.f) {
+		context.m_ViewportWidth  = viewBoxWidth;
+		context.m_ViewportHeight = viewBoxHeight;
+		context.m_ViewportDiag = math::normalizedDiagonal(context.m_ViewportWidth, context.m_ViewportHeight);
+	} else if (width.m_Length > 0.f && height.m_Length > 0.f) {
+		context.m_ViewportWidth  = convertLengthToPixel(width,  LengthAxis::X, &contextLocalCpy);
+		context.m_ViewportHeight = convertLengthToPixel(height, LengthAxis::Y, &contextLocalCpy);
+		context.m_ViewportDiag = math::normalizedDiagonal(context.m_ViewportWidth, context.m_ViewportHeight);
+	}
+
+	assert(context.m_FontSize > 0.f);
+	assert(context.m_ViewportWidth > 0.f);
+	assert(context.m_ViewportHeight > 0.f);
+	assert(context.m_ViewportDiag > 0.f);
+}
+
+std::string_view groupFlavorToString(GroupFlavor::Enum groupFlavor)
+{
+	switch (groupFlavor) {
+		case GroupFlavor::Group:        return "g";
+		case GroupFlavor::SVG:          return "svg";
+		default:
+			assert(0);
+			break;
+	}
+	return "";
+}
+
 std::string_view lengthUnitToString(LengthUnit::Enum lengthUnit)
 {
-	switch(lengthUnit) {
+	switch (lengthUnit) {
 		case LengthUnit::User:          return "";
 		case LengthUnit::PX:            return "px";
 		case LengthUnit::Percent:       return "%";
@@ -130,7 +187,7 @@ std::string_view lengthUnitToString(LengthUnit::Enum lengthUnit)
 float convertLengthToPixel(const Length& length, LengthAxis::Enum axis, const LengthContext* lengthContext)
 {
 	constexpr float DPI = (float)(SSVG_CONFIG_DEFAULT_DPI);
-	switch(length.m_Unit) {
+	switch (length.m_Unit) {
 		case LengthUnit::User:
 		case LengthUnit::PX:
 			return length.m_Length;
@@ -1129,7 +1186,6 @@ PathNum pathGetSubpathCounters(const Path* path)
 	return counters;
 }
 
-
 float* pointListAllocPoints(PointList* ptList, uint32_t n)
 {
 	SSVG_CHECK(n != 0, "Requested invalid number of points");
@@ -1273,20 +1329,26 @@ Image* imageCreate(const ShapeAttributes* baseAttrs)
 	Image* img = (Image*)std::malloc(sizeof(Image));
 	if (!img) { return nullptr; }
 	stdutils::memset<Image>(img, 0);
-
+	ShapeAttributes* attrs = shapeAllocAttributes(&img->m_RootContainer);
+	if (!attrs) {
+		std::free(img);
+		return nullptr;
+	}
 	if (baseAttrs) {
-		img->m_BaseAttrs = *baseAttrs;
+		*attrs = *baseAttrs;
 	} else {
-		img->m_BaseAttrs = defaultShapeAttributes();
+		*attrs = defaultShapeAttributes();
 	}
 
+	shapeIsEmptyGroup(&img->m_RootContainer);
+	assert(img->m_RootContainer.m_Attrs);
 	return img;
 }
 
 void imageFree(Image* img)
 {
 	if (!img) { return; }
-	groupClear(&img->m_RootContainer);
+	shapeClear(&img->m_RootContainer);
 	std::free(img);
 }
 
@@ -1363,7 +1425,7 @@ const ShapeAttributes* imageGetShapeAttributes(const Image* img)
 	SSVG_CHECK(img, "Nullptr to Image");
 	if (!img) { return nullptr; }
 
-	return &img->m_BaseAttrs;
+	return img->m_RootContainer.m_Attrs;
 }
 
 Group* imageGetRootGroup(Image* img)
@@ -1375,8 +1437,9 @@ const Group* imageGetRootGroup(const Image* img)
 {
 	SSVG_CHECK(img, "Nullptr to Image");
 	if (!img) { return nullptr; }
+	SSVG_CHECK(img->m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
 
-	return &img->m_RootContainer;
+	return &img->m_RootContainer.m_Group;
 }
 
 ShapeList* imageGetRootShapeList(Image* img)
@@ -1388,32 +1451,36 @@ const ShapeList* imageGetRootShapeList(const Image* img)
 {
 	SSVG_CHECK(img, "Nullptr to Image");
 	if (!img) { return nullptr; }
+	SSVG_CHECK(img->m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
 
-	return &img->m_RootContainer.m_ShapeList;
+	return &img->m_RootContainer.m_Group.m_ShapeList;
 }
 
 const OwnedString& imageGetTile(const Image* img)
 {
 	SSVG_CHECK(img, "Nullptr to Image");
 	if (!img) { return emptyOwnedString(); }
+	SSVG_CHECK(img->m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
 
-	return img->m_RootContainer.m_Title;
+	return img->m_RootContainer.m_Group.m_Title;
 }
 
 void imageSetTitle(Image* img, const char* str)
 {
 	SSVG_CHECK(img, "Nullptr to Image");
 	if (!img) { return; }
+	SSVG_CHECK(img->m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
 
-	ownedStringSet(img->m_RootContainer.m_Title, str);
+	ownedStringSet(img->m_RootContainer.m_Group.m_Title, str);
 }
 
 uint32_t imageGetNumShapes(const Image* img)
 {
 	SSVG_CHECK(img, "Nullptr to Image");
 	if (!img) { return 0; }
+	SSVG_CHECK(img->m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
 
-	return img->m_RootContainer.m_ShapeList.m_NumShapes;
+	return img->m_RootContainer.m_Group.m_ShapeList.m_NumShapes;
 }
 
 ShapeType::Enum shapeGetType(const Shape* shape)
