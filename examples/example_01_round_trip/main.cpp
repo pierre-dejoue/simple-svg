@@ -68,7 +68,7 @@ bool testRoundTrip(const char* input_filepath, const char* output_filepath)
 	return save_success;
 }
 
-std::string build_output_round_trip_filename(const std::string& input_svg_file)
+std::string buildOutputRoundTripFilename(const std::string& input_svg_file)
 {
 	const fs::path input_path(input_svg_file);
 	std::string output_filename = "round_trip_";
@@ -78,24 +78,34 @@ std::string build_output_round_trip_filename(const std::string& input_svg_file)
 
 int main(int argc, char* argv[])
 {
-	if (argc != 2)
+	if (argc < 2)
 	{
 		printf("(x) Wrong number of arguments.\n");
-		printf("Usage: example_01_round_trip input_file.svg\n");
+		printf("Usage: example_01_round_trip SVG_FILE [SVG_FILE ...]\n");
 		return 1;
 	}
 
-	// Call with one argument: the path to an input SVG file
-	const std::string input_svg_file = argv[1];
-	const std::string output_round_trip_file = build_output_round_trip_filename(input_svg_file);
+	uint32_t countTotal{0};
+	uint32_t countSuccess{0};
 
 	ssvg::initLib();
+	{
+		for (int fileIdx = 1; fileIdx < argc; fileIdx++) {
+			std::cout << "============================================================" << std::endl;
 
-	testParser(input_svg_file.c_str());
-	testRoundTrip(input_svg_file.c_str(), output_round_trip_file.c_str());
-	testParser(output_round_trip_file.c_str());
+			const std::string input_svg_file = argv[fileIdx];
+			const std::string output_round_trip_file = buildOutputRoundTripFilename(input_svg_file);
 
+			const bool initialParseSuccess = testParser(input_svg_file.c_str());
+			testRoundTrip(input_svg_file.c_str(), output_round_trip_file.c_str());
+			testParser(output_round_trip_file.c_str());
+
+			countTotal++;
+			if (initialParseSuccess) { countSuccess++; }
+		}
+		std::cout << "========== Success/Total: " << countSuccess << '/' << countTotal << std::endl;
+	}
 	ssvg::shutdownLib();
 
-	return 0;
+	return countSuccess == countTotal ? 0 : 1;
 }
