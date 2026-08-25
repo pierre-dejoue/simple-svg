@@ -1406,6 +1406,7 @@ bool parseContainer_Group(ParserState* parser, Shape* shape, bool& expectClosing
 	bool err = false;
 	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
+
 		if (parserExpectingChar(parser, '>')) {
 			// Expect a closing tag, which is handled by the caller of this function
 			expectClosingTag = true;
@@ -1464,10 +1465,16 @@ bool parseShape_Text(ParserState* parser, Shape* shape)
 	if (!shape) { return false; }
 	Text& text = shape->m_Text;
 	bool err = false;
+	bool expectClosingTag = false;
 	while (!parserIsDone(parser) && !err) {
-		SSVG_CHECK(!(parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>'), "Empty <text> element");
+		parserSkipWhitespace(parser);
+
 		if (parser->m_Ptr[0] == '>') {
 			parser->m_Ptr++;
+			expectClosingTag = true;
+			break;
+		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
+			parser->m_Ptr += 2;
 			break;
 		}
 
@@ -1489,6 +1496,7 @@ bool parseShape_Text(ParserState* parser, Shape* shape)
 					err = !parseLength(value, y);
 					text.y = !err ? convertLengthToPixel(y, LengthAxis::Y, parser->m_LengthContext) : 0.f;
 				} else if (name == "text-anchor") {
+					text.m_Anchor = TextAnchor::Start;        // The default
 					if (value == "start") {
 						text.m_Anchor = TextAnchor::Start;
 					} else if (value == "middle") {
@@ -1496,7 +1504,8 @@ bool parseShape_Text(ParserState* parser, Shape* shape)
 					} else if (value == "end") {
 						text.m_Anchor = TextAnchor::End;
 					} else {
-						err = true;
+						// Some files might use "inherit"
+						SSVG_WARN(false, "Ignoring text attribute: text-anchor=\"%.*s\", use the default value \"start\"", strlenint(value), value.data());
 					}
 				} else {
 					SSVG_WARN(false, "Ignoring text attribute: %.*s=\"%.*s\"", strlenint(name), name.data(), strlenint(value), value.data());
@@ -1509,10 +1518,13 @@ bool parseShape_Text(ParserState* parser, Shape* shape)
 		return false;
 	}
 
-	// TODO: Parse <tspan> blocks
+	if (!expectClosingTag) {
+		textClear(&text);
+		return true;
+	}
 
 	const char* txtBegin = parser->m_Ptr;
-	while (!parserIsDone(parser) && std::string_view(parser->m_Ptr, 2) != "</") {
+	while (!parserIsDone(parser) && std::string_view(parser->m_Ptr, 7) != "</text>") {
 		++parser->m_Ptr;
 	}
 	const char* txtEnd = parser->m_Ptr;
@@ -1536,6 +1548,7 @@ bool parseShape_Path(ParserState* parser, Shape* shape)
 	bool err = false;
 	while (!parserIsDone(parser) && !err) {
 		parserSkipWhitespace(parser);
+
 		if (parser->m_Ptr[0] == '>') {
 			// NOTE: Don't skip the closing bracket because parserSkipTag() expects it.
 			parser->m_ExpectClosingTag = true;
