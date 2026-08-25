@@ -577,44 +577,61 @@ bool parsePaint(const std::string_view& str, Paint* paint)
 
 const char* parseColorComponent(const char* str, const char* end, float& comp)
 {
+	comp = 0.f;
 	const char* ptr = skipCommaWhitespace(str, end);
+	if (ptr == end) { return end; }
 
-	SSVG_CHECK(ptr != end && !stdutils::ascii::isalpha(*ptr), "Parse error");
+	SSVG_WARN(!stdutils::ascii::isalpha(*ptr), "Unexpected alpha character '%c' in color component", *ptr);
+	if (stdutils::ascii::isalpha(*ptr)) { return end; }
 
-	char* coordEnd = nullptr;
-	comp = stdutils::clamp<float>(strtof(ptr, &coordEnd), 0.f, 255.f);
+	char* compEnd = nullptr;
+	comp = stdutils::clamp<float>(strtof(ptr, &compEnd), 0.f, 255.f);
 
-	SSVG_CHECK(coordEnd != nullptr, "Failed to parse coordinate");
-	SSVG_CHECK(coordEnd <= end, "strtof() read past end of buffer");
+	SSVG_CHECK(compEnd <= end, "strtof() read past end of buffer");
+	SSVG_WARN(compEnd != nullptr, "Failed to parse color component \"%s\"", std::string(str, end).c_str());
+	SSVG_WARN(compEnd != ptr, "Invalid  color component value \"%s\"", std::string(str, end).c_str());
+	if (compEnd == nullptr || compEnd == ptr) { return end; }
 
-	if (coordEnd && *coordEnd == '%') {
-		coordEnd++;
+	if (compEnd && *compEnd == '%') {
+		compEnd++;
 		comp = stdutils::clamp<float>(std::round(comp * 2.55f), 0.f, 255.f);
 	}
 
-	return skipCommaWhitespace(coordEnd, end);
+	return skipCommaWhitespace(compEnd, end);
 }
 
 const char* parseCoord(const char* str, const char* end, float* coord)
 {
-	const char* ptr = skipCommaWhitespace(str, end);
+	assert(coord);
+	*coord = 0.f;
 
-	SSVG_CHECK(ptr != end && !stdutils::ascii::isalpha(*ptr), "Parse error");
+	const char* ptr = skipCommaWhitespace(str, end);
+	if (ptr == end) { return end; }
+
+	SSVG_WARN(!stdutils::ascii::isalpha(*ptr), "Unexpected alpha character '%c' in coordinate", *ptr);
+	if (stdutils::ascii::isalpha(*ptr)) { return end; }
 
 	char* coordEnd = nullptr;
 	*coord = strtof(ptr, &coordEnd);
 
-	SSVG_CHECK(coordEnd != nullptr, "Failed to parse coordinate");
 	SSVG_CHECK(coordEnd <= end, "strtof() read past end of buffer");
+	SSVG_WARN(coordEnd != nullptr, "Failed to parse coordinate \"%s\"", std::string(str, end).c_str());
+	SSVG_WARN(coordEnd != ptr, "Invalid coordinate value \"%s\"", std::string(str, end).c_str());
+	if (coordEnd == nullptr || coordEnd == ptr) { return end; }
 
 	return skipCommaWhitespace(coordEnd, end);
 }
 
-const char* parseFlag(const char* str, const char* end, float* flag)
+const char* parseArcFlag(const char* str, const char* end, float* flag)
 {
-	const char* ptr = skipCommaWhitespace(str, end);
+	assert(flag);
+	*flag = 0.0f;
 
-	SSVG_CHECK(ptr != end && !stdutils::ascii::isalpha(*ptr), "Parse error");
+	const char* ptr = skipCommaWhitespace(str, end);
+	if (ptr == end) { return end; }
+
+	SSVG_WARN(!stdutils::ascii::isalpha(*ptr), "Unexpected alpha character '%c' in path arc flag", *ptr);
+	if (stdutils::ascii::isalpha(*ptr)) { return end; }
 
 	if (*ptr == '0') {
 		*flag = 0.0f;
@@ -1058,8 +1075,8 @@ bool pathFromString(Path* path, const std::string_view& str, ImageLoadFlags::Typ
 			ptr = parseCoord(ptr, end, &cmd->m_Data[0]);
 			ptr = parseCoord(ptr, end, &cmd->m_Data[1]);
 			ptr = parseCoord(ptr, end, &cmd->m_Data[2]);
-			ptr = parseFlag(ptr, end, &cmd->m_Data[3]);
-			ptr = parseFlag(ptr, end, &cmd->m_Data[4]);
+			ptr = parseArcFlag(ptr, end, &cmd->m_Data[3]);
+			ptr = parseArcFlag(ptr, end, &cmd->m_Data[4]);
 			ptr = parseCoord(ptr, end, &cmd->m_Data[5]);
 			ptr = parseCoord(ptr, end, &cmd->m_Data[6]);
 
