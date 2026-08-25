@@ -140,6 +140,19 @@ inline const char* skipWhitespace(const char* ptr, const char* end)
 	return ptr;
 }
 
+// Skip an escape sequence of the kind: &#x0020;
+inline const char* skipEscapeSequence(const char* ptr, const char* end)
+{
+	assert(ptr);
+	assert(*ptr == '&');
+	assert(((ptr + 1) < end) && *(ptr + 1) == '#');
+	while (ptr != end && *ptr != '\0') {
+		const char ch = *ptr++;
+		if (ch == ';') { break; }
+	}
+	return ptr;
+}
+
 inline const char* skipCommaWhitespace(const char* ptr, const char* end)
 {
 	assert(ptr);
@@ -613,6 +626,17 @@ bool parseViewBox(const std::string_view& str, float* viewBox)
 // where type is an identifier and value is any kind of text
 const char* parseTransformComponent(const char* str, const char* end, std::string_view* type, std::string_view* value)
 {
+	assert(str);
+	assert(end >= str);
+	if (str == end) { return end; }
+
+	// Skip escape sequences such as &#0020;
+	while (str != end && *str == '&') {
+		const char* nextStr = skipEscapeSequence(str, end);
+		if (nextStr <= str) { break; }
+		str = nextStr;
+	}
+
 	SSVG_CHECK(stdutils::ascii::isalpha(*str), "Parse error: Excepted identifier");
 
 	const char* ptr = str;
