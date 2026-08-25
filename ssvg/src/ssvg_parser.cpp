@@ -205,6 +205,23 @@ inline bool parserExpectingString(ParserState* parser, std::string_view str)
 	return false;
 }
 
+inline bool parserSkipDoctype(ParserState* parser) {
+	assert(parser);
+	const char*& ptr = parser->m_Ptr;
+	assert(ptr);
+	bool subset = false;
+	while (*ptr != '\0' ) {
+		char ch = *ptr++;
+		if (!subset && ch == '[') { subset = true; }
+		if ( subset && ch == ']') { subset = false; }
+		if (!subset && ch == '>') {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 //
 // Advance the stream passed the end of the tag passed as argument.
 // It is assumed that the starting pointer is passed the beginning tag
@@ -2059,6 +2076,7 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 		const std::string_view tag = parserGetTag(&parser);
 		if (tag.empty()) {
 			err = !parserIsDone(&parser);
+			SSVG_WARN(!err, "Empty XML root tag");
 		} else {
 			if (tag == "?xml") {
 				// Special case: Search for "?>".
@@ -2072,13 +2090,7 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 
 				err = parserIsDone(&parser);
 			} else if (tag == "!DOCTYPE") {
-				// Special case: Search for first '>'.
-				while (!parserIsDone(&parser)) {
-					char ch = *parser.m_Ptr++;
-					if (ch == '>') {
-						break;
-					}
-				}
+				parserSkipDoctype(&parser);
 
 				err = parserIsDone(&parser);
 			} else if (tag == "svg") {
