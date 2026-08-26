@@ -462,6 +462,12 @@ const OwnedString& imageGetTile(const Image* img);
 void               imageSetTitle(Image* img, const char* str);
 void               imageSetTitle(Image* img, std::string_view str);
 uint32_t imageGetNumShapes(const Image* img);
+const float* imageGetViewBox(const Image* img);
+void imageSetViewBox(Image* img, const float* viewBox);
+void imageSetViewBox(Image* img, float x, float y, float width, float height);
+float imageGetWidth(const Image* img);   // In pixels. Coming from the width  attribute of the root svg element, or its viewbox
+float imageGetHeight(const Image* img);  // In pixels. Coming from the height attribute of the root svg element, or its viewbox
+
 
 // Manipulate Groups
 ShapeList*         groupGetShapeList(      Group* group);

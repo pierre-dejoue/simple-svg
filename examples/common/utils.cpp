@@ -1,6 +1,7 @@
 #include <ssvg/ssvg.h>
 
 #include <cassert>
+#include <cstdarg>
 #include <cstdlib>
 #include <cstdio>
 #include <exception>
@@ -95,6 +96,25 @@ bool saveImage(const fs::path& filepath, const ssvg::Image* img)
 		printf("%s\n", oss.str().c_str());
 	}
 	return success;
+}
+
+void assertion(bool condition, const char *fmt, ...)
+{
+	// If the assertion is verified, return immediately
+	if (condition) { return; }
+
+	// Declare a va_list type variable
+	std::va_list args;
+
+	// Initialise the va_list variable with the ... after fmt
+	va_start(args, fmt);
+
+	// Forward the '...' to vprintf
+	std::vprintf(fmt, args);
+	std::printf("\n");
+
+	// Clean up the va_list
+	va_end(args);
 }
 
 std::ostream& operator<<(std::ostream& out, const ssvg::ShapesCounters& counters)

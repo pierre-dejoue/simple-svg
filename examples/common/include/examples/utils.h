@@ -13,5 +13,7 @@ void closeSVGImage(ssvg::Image* img, const std::filesystem::path& filepath = std
 
 bool saveImage(const std::filesystem::path& filepath, const ssvg::Image* img);
 
+void assertion(bool condition, const char *fmt, ...);
+
 std::ostream& operator<<(std::ostream& out, const ssvg::ShapesCounters& counters);
 std::ostream& operator<<(std::ostream& out, const ssvg::internals::AllocatedShapeAttrsCounters& counters);

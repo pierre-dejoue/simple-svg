@@ -26,6 +26,16 @@ bool testBuilder(const char* filepath)
 	ssvg::Image* img = ssvg::imageCreate();
 	assert(img);
 
+	assertion(ssvg::imageGetWidth(img)  == 0.f, "Newly create Image has zero width");
+	assertion(ssvg::imageGetHeight(img) == 0.f, "Newly create Image has zero height");
+
+	constexpr float IMG_WIDTH = 1024.f;
+	constexpr float IMG_HEIGHT = 720.f;
+	ssvg::imageSetViewBox(img, 0.f, 0.f, IMG_WIDTH, IMG_HEIGHT);
+
+	assertion(ssvg::imageGetWidth(img)  == IMG_WIDTH,  "Not the expected image width (%f != %f)",  ssvg::imageGetWidth(img),  IMG_WIDTH);
+	assertion(ssvg::imageGetHeight(img) == IMG_HEIGHT, "Not the expected image height (%f != %f)", ssvg::imageGetHeight(img), IMG_HEIGHT);
+
 	ssvg::ShapeList* imgShapeList = ssvg::imageGetRootShapeList(img);
 
 	// Add shapes to the image shape list

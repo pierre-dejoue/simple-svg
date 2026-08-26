@@ -216,13 +216,13 @@ std::string_view lengthUnitToString(LengthUnit::Enum lengthUnit)
 float convertLengthToPixel(const Length& length, LengthAxis::Enum axis, const LengthContext* lengthContext)
 {
 	constexpr float DPI = (float)(SSVG_CONFIG_DEFAULT_DPI);
+
 	switch (length.m_Unit) {
 		case LengthUnit::User:
 		case LengthUnit::PX:
 			return length.m_Length;
 		case LengthUnit::Percent:
 		{
-			assert(lengthContext);
 			if (!lengthContext) { break; }
 			const float referenceLength = (axis == LengthAxis::Radial
 				? lengthContext->m_ViewportDiag
@@ -230,11 +230,9 @@ float convertLengthToPixel(const Length& length, LengthAxis::Enum axis, const Le
 			return referenceLength * (length.m_Length / 100.f);
 		}
 		case LengthUnit::EM:
-			assert(lengthContext);
 			if (!lengthContext) { break; }
 			return lengthContext->m_FontSize * length.m_Length;
 		case LengthUnit::EX:
-			assert(lengthContext);
 			if (!lengthContext) { break; }
 			return 0.5f * lengthContext->m_FontSize * length.m_Length;
 		case LengthUnit::IN:
@@ -251,8 +249,8 @@ float convertLengthToPixel(const Length& length, LengthAxis::Enum axis, const Le
 			assert(0);
 			break;
 	}
-	// By default, return the raw length value
-	return length.m_Length;
+	// By default, return zero
+	return 0.f;
 }
 
 void transformIdentity(float* transform)
@@ -1553,6 +1551,68 @@ uint32_t imageGetNumShapes(const Image* img)
 	SSVG_CHECK(img->m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
 
 	return img->m_RootContainer.m_Group.m_ShapeList.m_NumShapes;
+}
+
+const float* imageGetViewBox(const Image* img)
+{
+	SSVG_CHECK(img, "Nullptr to Image");
+	if (!img) { return 0; }
+	SSVG_CHECK(img->m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
+
+	return &img->m_RootContainer.m_Group.m_ViewPort.m_ViewBox[0];
+}
+
+void imageSetViewBox(Image* img, const float* viewBox)
+{
+	SSVG_CHECK(img, "Nullptr to Image");
+	if (!img) { return; }
+	SSVG_CHECK(img->m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
+	assert(viewBox);
+	if (!viewBox) { return; }
+
+	float* imageViewBox = &img->m_RootContainer.m_Group.m_ViewPort.m_ViewBox[0];
+	imageViewBox[0] = viewBox[0];
+	imageViewBox[1] = viewBox[1];
+	imageViewBox[2] = viewBox[2];
+	imageViewBox[3] = viewBox[3];
+}
+
+void imageSetViewBox(Image* img, float x, float y, float width, float height)
+{
+	SSVG_CHECK(img, "Nullptr to Image");
+	if (!img) { return; }
+	SSVG_CHECK(img->m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
+
+	float* imageViewBox = &img->m_RootContainer.m_Group.m_ViewPort.m_ViewBox[0];
+	imageViewBox[0] = x;
+	imageViewBox[1] = y;
+	imageViewBox[2] = width;
+	imageViewBox[3] = height;
+}
+
+float imageGetWidth(const Image* img)
+{
+	SSVG_CHECK(img, "Nullptr to Image");
+	if (!img) { return 0.f; }
+	SSVG_CHECK(img->m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
+
+	const ViewPort& imageViewPort = img->m_RootContainer.m_Group.m_ViewPort;
+	if (imageViewPort.m_Width.m_Length > 0.f && imageViewPort.m_Height.m_Length > 0.f) {
+		return convertLengthToPixel(imageViewPort.m_Width);
+	}
+	return imageViewPort.m_ViewBox[2];
+}
+
+float imageGetHeight(const Image* img)
+{
+	SSVG_CHECK(img, "Nullptr to Image");
+	if (!img) { return 0.f; }
+	SSVG_CHECK(img->m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
+	const ViewPort& imageViewPort = img->m_RootContainer.m_Group.m_ViewPort;
+	if (imageViewPort.m_Width.m_Length > 0.f && imageViewPort.m_Height.m_Length > 0.f) {
+		return convertLengthToPixel(imageViewPort.m_Height);
+	}
+	return imageViewPort.m_ViewBox[3];
 }
 
 ShapeType::Enum shapeGetType(const Shape* shape)
