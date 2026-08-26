@@ -2,6 +2,7 @@
 
 #include "ssvg_debug.h"
 #include "ssvg_math.h"
+#include "ssvg_private.h"
 
 #include <stdutils/macros.h>
 #include <stdutils/minmax.h>

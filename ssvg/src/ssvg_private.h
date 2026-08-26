@@ -11,6 +11,8 @@
 //
 namespace ssvg {
 
+bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs = true);
+
 std::string_view groupFlavorToString(GroupFlavor::Enum groupFlavor);
 
 std::string_view lengthUnitToString(LengthUnit::Enum lengthUnit);

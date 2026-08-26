@@ -464,14 +464,14 @@ void               imageSetTitle(Image* img, std::string_view str);
 uint32_t imageGetNumShapes(const Image* img);
 
 // Manipulate Groups
-ShapeList*             groupGetShapeList(      Group* group);
-const ShapeList*       groupGetShapeList(const Group* group);
-const OwnedString&     groupGetTitle(const Group* group);
-void                   groupSetTitle(Group* group, const char* str);
-void                   groupSetTitle(Group* group, std::string_view str);
-const OwnedString&     groupGetHref(const Group* group);
-void                   groupSetHref(Group* group, const char* str);
-void                   groupSetHref(Group* group, std::string_view str);
+ShapeList*         groupGetShapeList(      Group* group);
+const ShapeList*   groupGetShapeList(const Group* group);
+const OwnedString& groupGetTitle(const Group* group);
+void               groupSetTitle(Group* group, const char* str);
+void               groupSetTitle(Group* group, std::string_view str);
+const OwnedString& groupGetHref(const Group* group);
+void               groupSetHref(Group* group, const char* str);
+void               groupSetHref(Group* group, std::string_view str);
 void groupClear(Group* group);
 
 // Manipulate ShapeLists
@@ -576,7 +576,6 @@ void shapeSetID(Shape* shape, const std::string_view& value);
 ShapeAttributes*       shapeAllocAttributes(Shape* shape, const ShapeAttributes* parentAttrs = nullptr);
 ShapeAttributes*       shapeGetAttributes(Shape* shape);
 const ShapeAttributes* shapeGetAttributes(const Shape* shape);
-bool shapeCopy(Shape* dst, const Shape* src, bool copyAttrs = true);
 void shapeUpdateBounds(Shape* shape);
 
 namespace internals {
