@@ -2070,11 +2070,11 @@ bool parseRootSVG(ParserState* parser, Image& img)
 
 	// Rewind the parser to process the root <svg> element as any generic <svg> element
 	parser->seek(rootSvgPos);
-	SSVG_CHECK(img.m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
+	SSVG_CHECK(img.m_RootContainer.m_Type == ShapeType::Group, "The image root element is not a container type");
 	Group& group = img.m_RootContainer.m_Group;
+	SSVG_CHECK(group.m_Type == GroupFlavor::SVG, "The image root element is not a <svg> container");
 	ShapeAttributes* attrs = img.m_RootContainer.m_Attrs;
 	SSVG_CHECK(attrs, "A container type shape must always allocate its own ShapeAttributes");
-	group.m_Type = GroupFlavor::SVG;
 	bool expectClosingTag = false;
 	err = !parseContainer_Group(parser, &img.m_RootContainer, expectClosingTag);
 	if (expectClosingTag && attrs) {

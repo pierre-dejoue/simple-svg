@@ -1401,9 +1401,10 @@ Image* imageCreate(const ShapeAttributes* baseAttrs)
 	} else {
 		*attrs = defaultShapeAttributes();
 	}
-
-	shapeIsEmptyGroup(&img->m_RootContainer);
 	assert(img->m_RootContainer.m_Attrs);
+	assert(shapeIsEmptyGroup(&img->m_RootContainer));
+	img->m_RootContainer.m_Group.m_Type = GroupFlavor::SVG;
+
 	return img;
 }
 
