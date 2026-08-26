@@ -130,6 +130,15 @@ inline uint8_t charToNibble(char ch)
 	return 0;
 }
 
+inline const char* skipBOM(const char* ptr) {
+	assert(ptr);
+	if (std::string_view(ptr, 3) == "\xEF\xBB\xBF") {
+		ptr += 3;
+	}
+
+	return ptr;
+}
+
 inline const char* skipWhitespace(const char* ptr, const char* end)
 {
 	assert(ptr);
@@ -2097,6 +2106,7 @@ Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* base
 	Image* img = imageCreate(baseAttrs);
 	if (!img) { return nullptr; }
 
+	xmlStr = skipBOM(xmlStr);
 	ParserState parser = initialParserState(xmlStr, flags);
 	LengthContext lengthContext = initialLengthContext();
 	parser.m_LengthContext = &lengthContext;
