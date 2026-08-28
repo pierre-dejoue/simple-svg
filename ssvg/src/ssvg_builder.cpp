@@ -472,13 +472,19 @@ void pathClearCommand(Path* path, uint32_t cmdIndex)
 
 namespace {
 
+inline float not_finite_to_zero(float v) {
+	assert(std::isfinite(v));
+	return std::isfinite(v) ? v : 0.f;
+}
+
 float nsvg__vecang(float ux, float uy, float vx, float vy)
 {
 	const float umag = std::sqrt(ux * ux + uy * uy);
 	const float vmag = std::sqrt(vx * vx + vy * vy);
 	const float u_dot_v = ux * vx + uy * vy;
-	const float r = stdutils::clamp<float>(u_dot_v / (umag * vmag), -1.0f, 1.0f);
-	return math::sign(ux * vy - uy * vx) * std::acos(r);
+	const float r = stdutils::clamp<float>(not_finite_to_zero(u_dot_v / (umag * vmag)), -1.0f, 1.0f);
+
+	return (math::sign(ux * vy - uy * vx) < 0.f ? -1.f : 1.f) * std::acos(r);
 }
 
 // nsvg__pathArcTo(NSVGparser* p, float* cpx, float* cpy, float* args, int rel)
@@ -487,13 +493,13 @@ void convertArcToBezier(Path* path, uint32_t cmdIndex, const float* arcToArgs, c
 	// Ported from canvg (https://code.google.com/p/canvg/)
 	float rx = std::abs(arcToArgs[0]);                    // x radius
 	float ry = std::abs(arcToArgs[1]);                    // y radius
-	const float rotx = math::to_rad(arcToArgs[2]);          // x rotation angle
-	const int fa = std::abs(arcToArgs[3]) > 1e-6 ? 1 : 0; // Large arc
-	const int fs = std::abs(arcToArgs[4]) > 1e-6 ? 1 : 0; // Sweep direction
-	const float x1 = lastPt[0];                          // start point x
-	const float y1 = lastPt[1];                          // start point y
-	const float x2 = arcToArgs[5];                       // end point x
-	const float y2 = arcToArgs[6];                       // end point y
+	const float rotx = math::to_rad(arcToArgs[2]);        // x rotation angle
+	const int fa = std::abs(arcToArgs[3]) > 1e-6 ? 1 : 0; // Flag: Large arc
+	const int fs = std::abs(arcToArgs[4]) > 1e-6 ? 1 : 0; // Flag: Sweep direction
+	const float x1 = lastPt[0];                           // Start point x
+	const float y1 = lastPt[1];                           // Start point y
+	const float x2 = arcToArgs[5];                        // End point x
+	const float y2 = arcToArgs[6];                        // End point y
 
 	float dx = x1 - x2;
 	float dy = y1 - y2;
@@ -516,6 +522,7 @@ void convertArcToBezier(Path* path, uint32_t cmdIndex, const float* arcToArgs, c
 	const float x1p = cosrx * dx / 2.0f + sinrx * dy / 2.0f;
 	const float y1p = -sinrx * dx / 2.0f + cosrx * dy / 2.0f;
 	d = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
+	d = not_finite_to_zero(d);
 	if (d > 1) {
 		d = std::sqrt(d);
 		rx *= d;
@@ -555,6 +562,7 @@ void convertArcToBezier(Path* path, uint32_t cmdIndex, const float* arcToArgs, c
 	} else if (fs == 1 && da < 0) {
 		da += math::kPi2;
 	}
+	assert(-math::kPi2 <= da && da <= math::kPi2);
 
 	// Approximate the arc using cubic spline segments.
 	float t[6];
@@ -569,10 +577,7 @@ void convertArcToBezier(Path* path, uint32_t cmdIndex, const float* arcToArgs, c
 	// The loop assumes an iteration per end point (including start and end), this +1.
 	const int ndivs = (int)(std::abs(da) / math::kPiHalf + 1.0f);
 	const float hda = (da / (float)ndivs) / 2.0f;
-	float kappa = std::abs(4.0f / 3.0f * (1.0f - std::cos(hda)) / std::sin(hda));
-	if (da < 0.0f) {
-		kappa = -kappa;
-	}
+	const float kappa = (da < 0.f ? -1.f : 1.f) * not_finite_to_zero(std::abs(4.0f / 3.0f * (1.0f - std::cos(hda)) / std::sin(hda)));
 
 	float px = 0.0f;
 	float py = 0.0f;
@@ -582,7 +587,7 @@ void convertArcToBezier(Path* path, uint32_t cmdIndex, const float* arcToArgs, c
 	PathCmd* nextCmd = nullptr;
 	if (ndivs > 1) {
 		PathCmd* newCommands = pathInsertCommands(path, cmdIndex + 1, ndivs - 1);
-		nextCmd = newCommands - 1; // Replace existing command.
+		nextCmd = newCommands - 1; // Replace existing command
 	} else {
 		nextCmd = &path->m_Commands[cmdIndex];
 	}
