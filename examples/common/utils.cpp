@@ -42,7 +42,7 @@ std::vector<char> loadFile(const fs::path& filepath)
 }
 
 // Image loaded with loadSVGImage *must* be freed with closeSVGImage
-ssvg::Image* loadSVGImage(const fs::path& filepath)
+ssvg::Image* loadSVGImage(const fs::path& filepath, ssvg::ImageLoadFlags::Type flags)
 {
 	printf("Loading \"%s\"...\n", filepath.string().c_str());
 
@@ -52,7 +52,7 @@ ssvg::Image* loadSVGImage(const fs::path& filepath)
 		return nullptr;
 	}
 
-	ssvg::Image* img = ssvg::imageLoad(svgFileBuffer.data(), ssvg::ImageLoadFlags::None);
+	ssvg::Image* img = ssvg::imageLoad(svgFileBuffer.data(), flags);
 	if (!img) {
 		printf("(x) Failed to parse the svg file.\n");
 		return nullptr;

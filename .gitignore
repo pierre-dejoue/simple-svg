@@ -9,3 +9,4 @@
 /.vscode
 /misc
 /examples/svg_files/round_trip_*
+/examples/svg_files/cubic_bezier_*

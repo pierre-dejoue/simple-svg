@@ -439,7 +439,7 @@ void shutdownLib();
 const ShapeAttributes& defaultShapeAttributes();
 
 // Image allocated by imageLoad or imageCreate *must* be freed with imageFree
-Image* imageLoad(const char* xmlStr, ImageLoadFlags::Type flags, const ShapeAttributes* baseAttrs = nullptr);
+Image* imageLoad(const char* xmlStr, ImageLoadFlags::Type flags = 0, const ShapeAttributes* baseAttrs = nullptr);
 Image* imageCreate(const ShapeAttributes* baseAttrs = nullptr);
 void imageFree(Image* img);
 

@@ -2097,7 +2097,7 @@ ParserState initialParserState(const char* xmlStr, uint32_t flags)
 
 } // namespace
 
-Image* imageLoad(const char* xmlStr, uint32_t flags, const ShapeAttributes* baseAttrs)
+Image* imageLoad(const char* xmlStr, ImageLoadFlags::Type flags, const ShapeAttributes* baseAttrs)
 {
 	if (!xmlStr || *xmlStr == '\0') {
 		return nullptr;

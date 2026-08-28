@@ -1,0 +1,114 @@
+#include <ssvg/ssvg.h>
+
+#include <examples/utils.h>
+
+#include <cassert>
+#include <cstdlib>
+#include <cstdio>
+#include <filesystem>
+#include <iostream>
+#include <string>
+#include <vector>
+
+namespace fs = std::filesystem;
+
+bool testParser(const char* filepath, bool quiet = false)
+{
+	constexpr const char* INDENT = "    ";
+
+	ssvg::Image* img = loadSVGImage(fs::path(filepath));
+
+	const bool load_success = (img != nullptr);
+	if (!load_success) {
+		return false;
+	}
+
+	if (!quiet)
+	{
+		const auto shapesCounters = ssvg::shapeListEnumerate(ssvg::imageGetRootShapeList(img));
+		std::cout << shapesCounters;
+		const uint32_t rootNumChildren = ssvg::imageGetNumShapes(img);
+		std::cout << INDENT << "The root element contains " << rootNumChildren << " shapes" << std::endl;
+	}
+
+	if (!quiet)
+	{
+		const auto allocatedShapeAttrsCounters = ssvg::internals::enumerateAllocatedShapeAttrs();
+		std::cout << INDENT << allocatedShapeAttrsCounters;
+	}
+
+	closeSVGImage(img, fs::path(filepath));
+
+#if 0
+	if (!quiet)
+	{
+		const auto allocatedShapeAttrsCounters = ssvg::internals::enumerateAllocatedShapeAttrs();
+		std::cout << INDENT << allocatedShapeAttrsCounters;
+	}
+#endif
+
+	return load_success;
+}
+
+bool testConvertToCubicBezier(const char* input_filepath, const char* output_filepath)
+{
+	printf("Converting \"%s\" to \"%s\"...\n", input_filepath, output_filepath);
+
+	const ssvg::ImageLoadFlags::Type loadFlags =
+		ssvg::ImageLoadFlags::ConvertQuadToCubicBezier |
+		ssvg::ImageLoadFlags::ConvertArcToCubicBezier;
+
+	ssvg::Image* img = loadSVGImage(fs::path(input_filepath), loadFlags);
+	if (!img) {
+		return false;
+	}
+
+	const auto shapesCounters = ssvg::shapeListEnumerate(ssvg::imageGetRootShapeList(img));
+	std::cout << shapesCounters;
+
+	const bool save_success = saveImage(fs::path(output_filepath), img);
+
+	closeSVGImage(img, fs::path(input_filepath));
+
+	return save_success;
+}
+
+std::string buildOutputFilename(const std::string& input_svg_file)
+{
+	const fs::path input_path(input_svg_file);
+	std::string output_filename = "cubic_bezier_";
+	output_filename.append(input_path.filename().string());
+	return input_path.parent_path().append(output_filename).string();
+}
+
+int main(int argc, char* argv[])
+{
+	if (argc < 2)
+	{
+		printf("(x) Wrong number of arguments.\n");
+		printf("Usage: example_03_arcs_to_bezier SVG_FILE [SVG_FILE ...]\n");
+		return 1;
+	}
+
+	uint32_t countTotal{0};
+	uint32_t countSuccess{0};
+
+	ssvg::initLib();
+	{
+		for (int fileIdx = 1; fileIdx < argc; fileIdx++) {
+			std::cout << "============================================================" << std::endl;
+
+			const std::string input_svg_file = argv[fileIdx];
+			const std::string output_file = buildOutputFilename(input_svg_file);
+
+			const bool success = testConvertToCubicBezier(input_svg_file.c_str(), output_file.c_str());
+
+			countTotal++;
+			if (success) { countSuccess++; }
+		}
+		std::cout << "========== Success/Total: " << countSuccess << '/' << countTotal << std::endl;
+	}
+	ssvg::shutdownLib();
+
+	return countSuccess == countTotal ? 0 : 1;
+}
