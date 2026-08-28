@@ -83,7 +83,7 @@ const char* lineCapToString(LineCap::Enum cap)
 	case LineCap::Square:
 		return "square";
 	case LineCap::Round:
-		return "Round";
+		return "round";
 	}
 
 	SSVG_WARN(false, "Unknown stroke-linecap value");
