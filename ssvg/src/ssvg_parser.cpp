@@ -337,7 +337,8 @@ std::string_view parserGetTag(ParserState* parser)
 	++parser->m_Ptr;
 
 	// Search for the next whitespace or closing angle bracket
-	while (!parserIsDone(parser) && !stdutils::ascii::isspace(*parser->m_Ptr) && *parser->m_Ptr != '>') {
+	while (!parserIsDone(parser) && !stdutils::ascii::isspace(*parser->m_Ptr)
+	    && *parser->m_Ptr != '/' && *parser->m_Ptr != '>') {
 		++parser->m_Ptr;
 	}
 
@@ -362,6 +363,8 @@ bool parserGetAttribute(ParserState* parser, std::string_view* name, std::string
 {
 	assert(parser);
 	parserSkipWhitespace(parser);
+	assert(name);
+	assert(value);
 
 	if (!stdutils::ascii::isalpha(*parser->m_Ptr)) {
 		return false;
@@ -1377,10 +1380,13 @@ bool parseNonShapeElement_Title(ParserState* parser, Group* group)
 	if (!group) { return false; }
 	bool err = false;
 	while (!parserIsDone(parser) && !err) {
-		SSVG_CHECK(!(parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>'), "Empty <title> element");
-		if (parser->m_Ptr[0] == '>') {
-			parser->m_Ptr++;
+		if (parserExpectingChar(parser, '>')) {
 			break;
+		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
+			SSVG_WARN(false, "Empty <title/> element");
+			parser->m_Ptr += 2;
+			groupClearTitle(group);
+			return true;
 		}
 
 		std::string_view name, value;
@@ -1406,6 +1412,7 @@ bool parseNonShapeElement_Title(ParserState* parser, Group* group)
 	}
 
 	const uint32_t txtLen = (uint32_t)(txtEnd - txtBegin);
+	SSVG_WARN(txtLen > 0, "Empty <title> element");
 	std::string txt(txtBegin, txtEnd);	// TODO: filter text string
 	groupSetTitle(group, txt.c_str());
 
