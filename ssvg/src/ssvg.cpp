@@ -426,6 +426,14 @@ void groupSetTitle(Group* group, std::string_view str)
 	ownedStringSet(group->m_Title, str);
 }
 
+void groupClearTitle(Group* group)
+{
+	SSVG_CHECK(group, "Nullptr to Group");
+	if (!group) { return; }
+
+	ownedStringClear(group->m_Title);
+}
+
 const OwnedString& groupGetHref(const Group* group)
 {
 	SSVG_CHECK(group, "Nullptr to Group");
@@ -448,6 +456,14 @@ void groupSetHref(Group* group, std::string_view str)
 	if (!group) { return; }
 
 	ownedStringSet(group->m_Href, str);
+}
+
+void groupClearHref(Group* group)
+{
+	SSVG_CHECK(group, "Nullptr to Group");
+	if (!group) { return; }
+
+	ownedStringClear(group->m_Href);
 }
 
 void groupClear(Group* group)
@@ -1542,6 +1558,15 @@ void imageSetTitle(Image* img, std::string_view str)
 	SSVG_CHECK(img->m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
 
 	ownedStringSet(img->m_RootContainer.m_Group.m_Title, str);
+}
+
+void imageClearTitle(Image* img, std::string_view str)
+{
+	SSVG_CHECK(img, "Nullptr to Image");
+	if (!img) { return; }
+	SSVG_CHECK(img->m_RootContainer.m_Type == ShapeType::Group, "Image root element is not a container type");
+
+	ownedStringClear(img->m_RootContainer.m_Group.m_Title);
 }
 
 uint32_t imageGetNumShapes(const Image* img)

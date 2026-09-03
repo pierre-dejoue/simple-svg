@@ -461,6 +461,7 @@ const ShapeList*       imageGetRootShapeList(const Image* img);
 const OwnedString& imageGetTile(const Image* img);
 void               imageSetTitle(Image* img, const char* str);
 void               imageSetTitle(Image* img, std::string_view str);
+void               imageClearTitle(Image* img);
 uint32_t imageGetNumShapes(const Image* img);
 const float* imageGetViewBox(const Image* img);
 void imageSetViewBox(Image* img, const float* viewBox);
@@ -475,9 +476,11 @@ const ShapeList*   groupGetShapeList(const Group* group);
 const OwnedString& groupGetTitle(const Group* group);
 void               groupSetTitle(Group* group, const char* str);
 void               groupSetTitle(Group* group, std::string_view str);
+void               groupClearTitle(Group* group);
 const OwnedString& groupGetHref(const Group* group);
 void               groupSetHref(Group* group, const char* str);
 void               groupSetHref(Group* group, std::string_view str);
+void               groupClearHref(Group* group);
 void groupClear(Group* group);
 
 // Manipulate ShapeLists
