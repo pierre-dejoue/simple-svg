@@ -312,7 +312,7 @@ void transformPoint(const float* transform, const float* localPos, float* global
 void transformBoundingRect(const float* transform, const float* localRect, float* globalRect)
 {
 	assert(transform);
-	float transformedRect[4];
+	float transformedRect[BOUNDING_RECT_ARRAY_SZ];
 	transformPoint(transform, &localRect[0], &transformedRect[0]);
 	transformPoint(transform, &localRect[2], &transformedRect[2]);
 
@@ -1843,7 +1843,7 @@ void shapeClear(Shape* shape)
 
 void shapeUpdateBounds(Shape* shape)
 {
-	float bounds[4] = { math::kFloatMax, math::kFloatMax, -math::kFloatMax, -math::kFloatMax };
+	float bounds[BOUNDING_RECT_ARRAY_SZ] = { math::kFloatMax, math::kFloatMax, -math::kFloatMax, -math::kFloatMax };
 
 	const ShapeType::Enum type = shape->m_Type;
 	switch (type) {
@@ -1889,7 +1889,7 @@ void shapeUpdateBounds(Shape* shape)
 		break;
 	}
 
-	stdutils::memcpy<float>(&shape->m_BoundingRect[0], BOUNDING_RECT_ARRAY_SZ, &bounds[0], sizeof(float) * 4);
+	stdutils::memcpy<float>(&shape->m_BoundingRect[0], BOUNDING_RECT_ARRAY_SZ, &bounds[0], sizeof(float) * BOUNDING_RECT_ARRAY_SZ);
 }
 
 namespace {
