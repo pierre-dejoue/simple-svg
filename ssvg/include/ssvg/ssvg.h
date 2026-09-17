@@ -531,7 +531,7 @@ PathCmd* pathInsertCommands(Path* path, uint32_t at, uint32_t n);
 void pathReserveCommands(Path* path, uint32_t capacity);
 void pathShrinkToFit(Path* path);
 void pathClear(Path* path);
-bool pathFromString(Path* path, const std::string_view& str, ImageLoadFlags::Type flags);
+bool pathFromString(Path* path, std::string_view str, ImageLoadFlags::Type flags);
 uint32_t pathMoveTo(Path* path, float x, float y);
 uint32_t pathLineTo(Path* path, float x, float y);
 uint32_t pathCubicTo(Path* path, float x1, float y1, float x2, float y2, float x, float y);
@@ -547,7 +547,7 @@ PathNum pathGetSubpathCounters(const Path* path);
 float* pointListAllocPoints(PointList* ptList, uint32_t n);
 void pointListShrinkToFit(PointList* ptList);
 void pointListClear(PointList* ptList);
-bool pointListFromString(PointList* ptList, const std::string_view str);
+bool pointListFromString(PointList* ptList, std::string_view str);
 void pointListCalcBounds(const PointList* ptList, float* bounds);
 uint32_t pointListGetNumPoints(const PointList* ptList);
 

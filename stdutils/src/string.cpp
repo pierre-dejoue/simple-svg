@@ -301,12 +301,12 @@ std::vector<std::string_view> split_and_filter(std::string_view in_str, char del
 
 std::vector<std::string_view> split(std::string_view in_str, char delim)
 {
-    return split_and_filter(in_str, delim, [](const std::string_view&) -> bool { return true; });
+    return split_and_filter(in_str, delim, [](std::string_view) -> bool { return true; });
 }
 
 std::vector<std::string_view> split_skip_empty(std::string_view in_str, char delim)
 {
-    return split_and_filter(in_str, delim, [](const std::string_view& elt) -> bool { return !elt.empty(); });
+    return split_and_filter(in_str, delim, [](std::string_view elt) -> bool { return !elt.empty(); });
 }
 
 std::string replace_first(std::string_view src, std::string_view from, std::string_view to, bool& replaced)

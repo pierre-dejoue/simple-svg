@@ -111,9 +111,9 @@ constexpr uint32_t kNumCSSColors = sizeof(kCSSColors) / sizeof(CSSColor);
 bool parseSVGElements(ParserState* parser, Group& group, const ShapeAttributes& parentAttrs, std::string_view closingTag);
 const char* parseColorComponent(const char* str, const char* end, float& comp);
 const char* parseCoord(const char* str, const char* end, float* coord);
-bool parseCoreAttribute(const std::string_view& name, const std::string_view& value, Shape* shape);
+bool parseCoreAttribute(std::string_view name, std::string_view value, Shape* shape);
 bool parseViewPortAttribute(std::string_view name, std::string_view value, ViewPort& viewport);
-ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs);
+ParseAttr::Result parseGenericShapeAttribute(std::string_view name, std::string_view value, ShapeAttributes* attrs);
 
 inline uint8_t charToNibble(char ch)
 {
@@ -425,7 +425,7 @@ bool parserGetAttribute(ParserState* parser, std::string_view* name, std::string
 	return true;
 }
 
-bool parseVersion(const std::string_view& verStr, uint16_t* maj, uint16_t* min)
+bool parseVersion(std::string_view verStr, uint16_t* maj, uint16_t* min)
 {
 	assert(maj);
 	assert(min);
@@ -452,7 +452,7 @@ inline std::istream& parseNumber(std::istream& in, float& val, bool& success, fl
 	return in;
 }
 
-bool parseNumber(const std::string_view& str, float& val, float min = -math::kFloatMax, float max = math::kFloatMax)
+bool parseNumber(std::string_view str, float& val, float min = -math::kFloatMax, float max = math::kFloatMax)
 {
 	std::stringstream in;
 	in << str;
@@ -488,7 +488,7 @@ LengthUnit::Enum lengthUnitFind(std::string_view length)
 	return LengthUnit::User;
 }
 
-bool parseLength(const std::string_view& str, Length& length)
+bool parseLength(std::string_view str, Length& length)
 {
 	stdutils::memset<Length>(&length, 0);
 
@@ -506,14 +506,14 @@ bool parseLength(const std::string_view& str, Length& length)
 	return success;
 }
 
-bool parsePositiveLength(const std::string_view& str, Length& length)
+bool parsePositiveLength(std::string_view str, Length& length)
 {
 	constexpr float MIN_LENGTH = 0.f;
 	constexpr float MAX_LENGTH = math::kFloatMax;
 	return stdutils::clamp<float>(parseLength(str, length), MIN_LENGTH, MAX_LENGTH);
 }
 
-bool parsePaint(const std::string_view& str, Paint* paint)
+bool parsePaint(std::string_view str, Paint* paint)
 {
 	if (str == "none") {
 		paint->m_Type = PaintType::None;
@@ -654,7 +654,7 @@ const char* parseArcFlag(const char* str, const char* end, float* flag)
 	return skipCommaWhitespace(ptr + 1, end);
 }
 
-bool parseViewBox(const std::string_view& str, float* viewBox)
+bool parseViewBox(std::string_view str, float* viewBox)
 {
 	const char* ptr = str.data();
 	const char* end = strend(str);
@@ -736,7 +736,7 @@ const char* parseTransformComponent(const char* str, const char* end, std::strin
 	return endPtr;
 }
 
-bool parseTransform(const std::string_view& str, float* transform)
+bool parseTransform(std::string_view str, float* transform)
 {
 	const char* ptr = str.data();
 	const char* end = strend(str);
@@ -873,7 +873,7 @@ bool parseViewPortAttribute(std::string_view name, std::string_view value, ViewP
 
 } // namespace
 
-bool pathFromString(Path* path, const std::string_view& str, ImageLoadFlags::Type flags)
+bool pathFromString(Path* path, std::string_view str, ImageLoadFlags::Type flags)
 {
 	const char* ptr = str.data();
 	const char* end = strend(str);
@@ -1116,7 +1116,7 @@ bool pathFromString(Path* path, const std::string_view& str, ImageLoadFlags::Typ
 	return true;
 }
 
-bool pointListFromString(PointList* ptList, const std::string_view str)
+bool pointListFromString(PointList* ptList, std::string_view str)
 {
 	const char* ptr = str.data();
 	const char* end = strend(str);
@@ -1133,7 +1133,7 @@ bool pointListFromString(PointList* ptList, const std::string_view str)
 
 namespace {
 
-ParseAttr::Result parseStyle(const std::string_view& str, ShapeAttributes* attrs)
+ParseAttr::Result parseStyle(std::string_view str, ShapeAttributes* attrs)
 {
 	assert(attrs);
 	const char* end = strend(str);
@@ -1177,7 +1177,7 @@ ParseAttr::Result parseStyle(const std::string_view& str, ShapeAttributes* attrs
 	return ParseAttr::OK;
 }
 
-bool parseCoreAttribute(const std::string_view& name, const std::string_view& value, Shape* shape)
+bool parseCoreAttribute(std::string_view name, std::string_view value, Shape* shape)
 {
 	assert(shape);
 	if (!shape) { return false; }
@@ -1193,7 +1193,7 @@ bool parseCoreAttribute(const std::string_view& name, const std::string_view& va
 	return false;
 }
 
-bool parseHrefAttribute(const std::string_view& name, const std::string_view& value, Group& group)
+bool parseHrefAttribute(std::string_view name, std::string_view value, Group& group)
 {
 	// "link:ref" is deprecated in SVG 2.0
 	if (name == "href" || name == "link:href") {
@@ -1204,7 +1204,7 @@ bool parseHrefAttribute(const std::string_view& name, const std::string_view& va
 	return false;
 }
 
-ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const std::string_view& value, ShapeAttributes* attrs)
+ParseAttr::Result parseGenericShapeAttribute(std::string_view name, std::string_view value, ShapeAttributes* attrs)
 {
 	assert(attrs);
 	if (name == "style") {
