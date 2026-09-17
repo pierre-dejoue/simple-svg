@@ -220,8 +220,8 @@ bool writeCoreAttributes(StreamWriter& writer, const Shape* shape)
 		return true;
 	}
 
-	if (shape->m_ID[0] != '\0') {
-		writer.out() << " id=\"" << shape->m_ID << '\"';
+	if (!shape->m_ID.empty()) {
+		writer.out() << " id=\"" << shape->m_ID.c_str() << '\"';
 	}
 
 	return true;
@@ -300,9 +300,9 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, Sa
 		return true;
 	}
 
-#if SSVG_CONFIG_CLASS_MAX_LEN
-	if ((flags & SaveAttr::Class) != 0 && attrs->m_Class[0] != '\0') {
-		writer.out() << " class=\"" << attrs->m_Class << '\"';
+#if SSVG_CONFIG_SUPPORT_CLASS_ATTR
+	if ((flags & SaveAttr::Class) != 0 && !attrs->m_Class.empty()) {
+		writer.out() << " class=\"" << attrs->m_Class.c_str() << '\"';
 	}
 #endif
 
@@ -386,9 +386,9 @@ bool writeShapeAttributes(StreamWriter& writer, const ShapeAttributes* attrs, Sa
 	}
 
 	if ((flags & SaveAttr::Font) != 0) {
-		const char* fontFamily = attrs->m_FontFamily;
-		if (fontFamily[0] != '\0') {
-			writer.out() << " font-family=\"" << fontFamily << '\"';
+		const auto& fontFamily = attrs->m_FontFamily;
+		if (!fontFamily.empty()) {
+			writer.out() << " font-family=\"" << fontFamily.c_str() << '\"';
 		}
 
 		const float& fontSize = attrs->m_FontSize.m_Length;

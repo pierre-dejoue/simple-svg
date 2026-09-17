@@ -1116,7 +1116,7 @@ bool pathFromString(Path* path, const std::string_view& str, ImageLoadFlags::Typ
 	return true;
 }
 
-bool pointListFromString(PointList* ptList, const std::string_view& str)
+bool pointListFromString(PointList* ptList, const std::string_view str)
 {
 	const char* ptr = str.data();
 	const char* end = strend(str);
@@ -1299,7 +1299,7 @@ ParseAttr::Result parseGenericShapeAttribute(const std::string_view& name, const
 		attrs->m_Flags |= AttribFlags::Transformation;
 		return parseTransform(value, &attrs->m_Transform[0]) ? ParseAttr::OK : ParseAttr::Fail;
 	} else if (name == "class") {
-#if SSVG_CONFIG_CLASS_MAX_LEN
+#if SSVG_CONFIG_SUPPORT_CLASS_ATTR
 		attrs->m_Flags |= AttribFlags::ElementClass;
 		shapeAttrsSetClass(attrs, value);
 #endif
@@ -1365,9 +1365,10 @@ void selectiveCopyShapeAttributes(ShapeAttributes* targetAttrs, const ShapeAttri
 	if (flags & AttribFlags::Transformation) {
 		stdutils::memcpy<float>(&targetAttrs->m_Transform[0], TRANSFORM_ARRAY_SZ, &sourceAttrs->m_Transform[0], sizeof(float) * TRANSFORM_ARRAY_SZ);
 	}
-#if SSVG_CONFIG_CLASS_MAX_LEN
+#if SSVG_CONFIG_SUPPORT_CLASS_ATTR
 	if (flags & AttribFlags::ElementClass) {
-		shapeAttrsSetClass(targetAttrs, shapeAttrsGetClass(sourceAttrs));
+		const OwnedString& sourceClass = shapeAttrsGetClass(sourceAttrs);
+		shapeAttrsSetClass(targetAttrs, sourceClass.c_str());
 	}
 #endif
 
@@ -1446,7 +1447,7 @@ bool parseContainer_Group(ParserState* parser, Shape* shape, bool& expectClosing
 			break;
 		} else if (parser->m_Ptr[0] == '/' && parser->m_Ptr[1] == '>') {
 			const auto groupTypeStr = groupFlavorToString(group.m_Type);
-			const auto groupId = shapeGetID(shape);
+			const auto groupId = static_cast<std::string_view>(shapeGetID(shape));
 			// Warn on empty containers, except for <use> elements
 			SSVG_WARN(group.m_Type == GroupFlavor::Use, "Empty container <%.*s> element id=\"%.*s\"", strlenint(groupTypeStr), groupTypeStr.data(), strlenint(groupId), groupId.data());
 			parser->m_Ptr += 2;

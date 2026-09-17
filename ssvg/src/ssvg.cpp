@@ -374,9 +374,9 @@ void resetShapeAttributes(ShapeAttributes* attrs)
 	transformIdentity(&attrs->m_Transform[0]);
 
 	assert(attrs->m_Flags == AttribFlags::None);
-	assert(stdutils::strnlen(&attrs->m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN) == 0);
-	#if SSVG_CONFIG_CLASS_MAX_LEN
-		assert(stdutils::strnlen(&attrs->m_Class[0], SSVG_CONFIG_CLASS_MAX_LEN) == 0);
+	assert(attrs->m_FontFamily.empty());
+	#if SSVG_CONFIG_SUPPORT_CLASS_ATTR
+		assert(attrs->m_Class.empty());
 	#endif
 }
 
@@ -513,7 +513,7 @@ Shape* shapeListAllocShape(ShapeList* shapeList, ShapeType::Enum type)
 		assert(shapeList->m_NumShapes + 1 <= shapeList->m_Capacity);
 		Shape* shape = &shapeList->m_Shapes[shapeList->m_NumShapes++];
 		stdutils::memset<Shape>(shape, 0);
-		assert(stdutils::strnlen(&shape->m_ID[0], SSVG_CONFIG_ID_MAX_LEN) == 0);
+		assert(shape->m_ID.empty());
 		assert(shapeIsEmptyGroup(shape));
 		return shape;
 	}();
@@ -1358,45 +1358,65 @@ void textClear(Text* text)
 	stdutils::memset<Text>(text, 0);
 }
 
-std::string_view shapeAttrsGetFontFamily(const ShapeAttributes* attrs)
+const OwnedString& shapeAttrsGetFontFamily(const ShapeAttributes* attrs)
 {
-	if (!attrs) { return ""; }
-	const uint32_t len = stdutils::strnlen(&attrs->m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN);
-	return std::string_view(&attrs->m_FontFamily[0], len);
+	if (!attrs) { return emptyOwnedString(); }
+	return attrs->m_FontFamily;
 }
 
-std::string_view shapeAttrsGetClass(const ShapeAttributes* attrs)
+const OwnedString& shapeAttrsGetClass(const ShapeAttributes* attrs)
 {
-	if (!attrs) { return ""; }
-#if SSVG_CONFIG_CLASS_MAX_LEN
-	const uint32_t len = stdutils::strnlen(&attrs->m_Class[0], SSVG_CONFIG_CLASS_MAX_LEN);
-	return std::string_view(&attrs->m_Class[0], len);
+	if (!attrs) { return emptyOwnedString(); }
+#if SSVG_CONFIG_SUPPORT_CLASS_ATTR
+	return attrs->m_Class;
 #else
-	return std::string_view();
+	return emptyOwnedString();
 #endif
 }
 
-void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& value)
+void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const char* value)
 {
 	SSVG_CHECK(attrs, "Nullptr to ShapeAttributes. Allocate them first with shapeAllocAttributes.");
 	if (!attrs) { return; }
-	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
-	SSVG_WARN((std::int32_t)maxLen >= strlenint(value), "font-family \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
-	stdutils::memcpy<char>(&attrs->m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN, value.data(), maxLen);
-	attrs->m_FontFamily[maxLen] = '\0';
+	ownedStringSet(attrs->m_FontFamily, value);
 }
 
-void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value)
+void shapeAttrsSetFontFamily(ShapeAttributes* attrs, std::string_view value)
 {
 	SSVG_CHECK(attrs, "Nullptr to ShapeAttributes. Allocate them first with shapeAllocAttributes.");
 	if (!attrs) { return; }
-#if SSVG_CONFIG_CLASS_MAX_LEN
-	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_CLASS_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
-	SSVG_WARN((std::int32_t)maxLen >= strlenint(value), "class \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
-	stdutils::memcpy<char>(&attrs->m_Class[0], SSVG_CONFIG_CLASS_MAX_LEN, value.data(), maxLen);
-	attrs->m_Class[maxLen] = '\0';
+	ownedStringSet(attrs->m_FontFamily, value);
+}
+
+void shapeAttrsSetClass(ShapeAttributes* attrs, const char* value)
+{
+	SSVG_CHECK(attrs, "Nullptr to ShapeAttributes. Allocate them first with shapeAllocAttributes.");
+	if (!attrs) { return; }
+#if SSVG_CONFIG_SUPPORT_CLASS_ATTR
+	ownedStringSet(attrs->m_Class, value);
 #else
 	UNUSED(value);
+#endif
+}
+
+void shapeAttrsSetClass(ShapeAttributes* attrs, std::string_view value)
+{
+	SSVG_CHECK(attrs, "Nullptr to ShapeAttributes. Allocate them first with shapeAllocAttributes.");
+	if (!attrs) { return; }
+#if SSVG_CONFIG_SUPPORT_CLASS_ATTR
+	ownedStringSet(attrs->m_Class, value);
+#else
+	UNUSED(value);
+#endif
+}
+
+void shapeAttrsClear(ShapeAttributes* attrs)
+{
+	SSVG_CHECK(attrs, "Nullptr to ShapeAttributes");
+	if (!attrs) { return; }
+	ownedStringClear(attrs->m_FontFamily);
+#if SSVG_CONFIG_SUPPORT_CLASS_ATTR
+	ownedStringClear(attrs->m_Class);
 #endif
 }
 
@@ -1648,21 +1668,24 @@ ShapeType::Enum shapeGetType(const Shape* shape)
 	return shape->m_Type;
 }
 
-std::string_view shapeGetID(const Shape* shape)
+const OwnedString& shapeGetID(const Shape* shape)
 {
-	if (!shape) { return ""; }
-	const uint32_t len = stdutils::strnlen(&shape->m_ID[0], SSVG_CONFIG_ID_MAX_LEN);
-	return std::string_view(&shape->m_ID[0], len);
+	if (!shape) { return emptyOwnedString(); }
+	return shape->m_ID;
 }
 
-void shapeSetID(Shape* shape, const std::string_view& value)
+void shapeSetID(Shape* shape, const char* value)
 {
 	SSVG_CHECK(shape, "Nullptr to Shape");
 	if (!shape) { return; }
-	uint32_t maxLen = stdutils::min<uint32_t>(SSVG_CONFIG_ID_MAX_LEN - 1, static_cast<uint32_t>(value.length()));
-	SSVG_WARN((std::int32_t)maxLen >= strlenint(value), "id \"%.*s\" truncated to %d characters", strlenint(value), value.data(), maxLen);
-	stdutils::memcpy<char>(&shape->m_ID[0], SSVG_CONFIG_ID_MAX_LEN, value.data(), maxLen);
-	shape->m_ID[maxLen] = '\0';
+	ownedStringSet(shape->m_ID, value);
+}
+
+void shapeSetID(Shape* shape, std::string_view value)
+{
+	SSVG_CHECK(shape, "Nullptr to Shape");
+	if (!shape) { return; }
+	ownedStringSet(shape->m_ID, value);
 }
 
 ShapeAttributes* shapeAllocAttributes(Shape* shape, const ShapeAttributes* parentAttrs)
@@ -1676,12 +1699,12 @@ ShapeAttributes* shapeAllocAttributes(Shape* shape, const ShapeAttributes* paren
 	if (parentAttrs) {
 		// We copy all attributes from the parent, except for:
 		// - The transformation, else we would apply it twice on the shape.
-		// - The Class, specific to an alement.
+		// - The class, specific to an alement.
 		*attrs = *parentAttrs;
 		attrs->m_Flags = AttribFlags::None;
 		transformIdentity(attrs->m_Transform);
-#if SSVG_CONFIG_CLASS_MAX_LEN
-		attrs->m_Class[0] = '\0';
+#if SSVG_CONFIG_SUPPORT_CLASS_ATTR
+		ownedStringClear(attrs->m_Class);
 #endif
 	}
 
@@ -1836,8 +1859,9 @@ void shapeClear(Shape* shape)
 		break;
 	}
 	shapeAttrsFree(shape->m_Attrs);
+	ownedStringClear(shape->m_ID);
 	stdutils::memset<Shape>(shape, 0);
-	assert(stdutils::strnlen(&shape->m_ID[0], SSVG_CONFIG_ID_MAX_LEN) == 0);
+	assert(shape->m_ID.empty());
 	assert(shapeIsEmptyGroup(shape));
 }
 
@@ -1948,6 +1972,9 @@ ShapeAttributes* shapeAttrsAlloc()
 void shapeAttrsFree(ShapeAttributes* attrs)
 {
 	if (!attrs) { return; }
+
+	// Clear all attributes
+	shapeAttrsClear(attrs);
 
 	// Find the free list node attrs belongs to
 	ShapeAttributeFreeListNode* node = s_ShapeAttrFreeListHead;

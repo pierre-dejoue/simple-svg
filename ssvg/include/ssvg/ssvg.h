@@ -5,16 +5,9 @@
 #include <ostream>
 #include <string_view>
 
-#ifndef SSVG_CONFIG_ID_MAX_LEN
-#	define SSVG_CONFIG_ID_MAX_LEN 16
-#endif
-
-#ifndef SSVG_CONFIG_FONT_FAMILY_MAX_LEN
-#	define SSVG_CONFIG_FONT_FAMILY_MAX_LEN 16
-#endif
-
-#ifndef SSVG_CONFIG_CLASS_MAX_LEN
-#	define SSVG_CONFIG_CLASS_MAX_LEN 0
+// Support for tthe "class" attribute in all SVG elements
+#ifndef SSVG_CONFIG_SUPPORT_CLASS_ATTR
+#	define SSVG_CONFIG_SUPPORT_CLASS_ATTR 0
 #endif
 
 // Default parser font size:
@@ -280,6 +273,10 @@ struct OwnedString {
 		// If empty() returns true, the pointer points to a single null character.
 		return m_Buf ? m_Buf : "";
 	}
+
+	constexpr operator std::string_view() const noexcept {
+		return std::string_view(m_Buf, m_Len);
+	}
 };
 
 // TODO: alignment-baseline
@@ -346,9 +343,9 @@ struct ShapeAttributes
 	LineCap::Enum m_StrokeLineCap;
 	FillRule::Enum m_FillRule;
 	Length m_FontSize;
-	char m_FontFamily[SSVG_CONFIG_FONT_FAMILY_MAX_LEN];
-#if SSVG_CONFIG_CLASS_MAX_LEN
-	char m_Class[SSVG_CONFIG_CLASS_MAX_LEN];
+	OwnedString m_FontFamily;
+#if SSVG_CONFIG_SUPPORT_CLASS_ATTR
+	OwnedString m_Class;
 #endif
 };
 
@@ -386,7 +383,7 @@ struct Shape
 {
 	ShapeType::Enum m_Type;
 	ShapeAttributes* m_Attrs;
-	char m_ID[SSVG_CONFIG_ID_MAX_LEN];
+	OwnedString m_ID;
 	float m_BoundingRect[BOUNDING_RECT_ARRAY_SZ]; // NOTE: Transformation independent axis-aligned bounding rect {minx, miny, maxx, maxy}
 
 	union
@@ -550,7 +547,7 @@ PathNum pathGetSubpathCounters(const Path* path);
 float* pointListAllocPoints(PointList* ptList, uint32_t n);
 void pointListShrinkToFit(PointList* ptList);
 void pointListClear(PointList* ptList);
-bool pointListFromString(PointList* ptList, const std::string_view& str);
+bool pointListFromString(PointList* ptList, const std::string_view str);
 void pointListCalcBounds(const PointList* ptList, float* bounds);
 uint32_t pointListGetNumPoints(const PointList* ptList);
 
@@ -559,10 +556,13 @@ void textSetString(Text* text, const char* str);
 void textClear(Text* text);
 
 // Manipulate ShapeAttributes
-std::string_view shapeAttrsGetFontFamily(const ShapeAttributes* attrs);
-std::string_view shapeAttrsGetClass(const ShapeAttributes* attrs);
-void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const std::string_view& value);
-void shapeAttrsSetClass(ShapeAttributes* attrs, const std::string_view& value);
+const OwnedString& shapeAttrsGetFontFamily(const ShapeAttributes* attrs);
+const OwnedString& shapeAttrsGetClass(const ShapeAttributes* attrs);
+void shapeAttrsSetFontFamily(ShapeAttributes* attrs, const char* value);
+void shapeAttrsSetFontFamily(ShapeAttributes* attrs, std::string_view value);
+void shapeAttrsSetClass(ShapeAttributes* attrs, const char* value);
+void shapeAttrsSetClass(ShapeAttributes* attrs, std::string_view value);
+void shapeAttrsClear(ShapeAttributes* attrs);
 
 // A transformation is an array float[TRANSFORM_ARRAY_SZ]
 void transformIdentity(float* transform);
@@ -580,8 +580,9 @@ void shapeSetTransform(Shape* shape, const float* transform);
 void shapeSetIdentityTransform(Shape* shape);
 void shapeApplyTransform(Shape* shape, const float* transform);
 ShapeType::Enum shapeGetType(const Shape* shape);
-std::string_view shapeGetID(const Shape* shape);
-void shapeSetID(Shape* shape, const std::string_view& value);
+const OwnedString& shapeGetID(const Shape* shape);
+void shapeSetID(Shape* shape, const char* value);
+void shapeSetID(Shape* shape, std::string_view value);
 ShapeAttributes*       shapeAllocAttributes(Shape* shape, const ShapeAttributes* parentAttrs = nullptr);
 ShapeAttributes*       shapeGetAttributes(Shape* shape);
 const ShapeAttributes* shapeGetAttributes(const Shape* shape);
