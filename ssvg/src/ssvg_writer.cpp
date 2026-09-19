@@ -200,7 +200,7 @@ void writePaintColorValue(StreamWriter& writer, const Paint& paint)
 			writer.out() << "none";
 			break;
 		case PaintType::Transparent:
-			writer.out() << " transparent";
+			writer.out() << "transparent";
 			break;
 		case PaintType::CurrentColor:
 			writer.out() << "currentColor";
