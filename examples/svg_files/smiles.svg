@@ -37,7 +37,7 @@
     <g>
       <text y="-10">xMin*</text>
       <rect x='.5' y='.5' width='49' height='29'/>
-      <svg preserveAspectRatio="xMinYMin meet" viewBox="0 0 30 40" width="50" height="30">
+      <svg preserveAspectRatio="xMinYMn meet" viewBox="0 0 30 40" width="50" height="30">
         <use href="#smile" />
       </svg>
     </g>

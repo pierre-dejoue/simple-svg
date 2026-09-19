@@ -325,6 +325,29 @@ struct AttribFlags
 	};
 };
 
+// preserveAspectRatio attribute
+struct AspectRatio
+{
+	using Type = uint32_t;
+	enum Enum : Type
+	{
+		// <align>
+		XMid  = 0,          // Default: xMidYMid
+		XMax  = 1,
+		XMin  = 2,
+		XNone = 3,
+		YMid  = 0 << 2,     // Default: xMidYMid
+		YMax  = 1 << 2,
+		YMin  = 2 << 2,
+		YNone = 3 << 2,
+		None  = XNone | YNone,
+
+		// <meetOrSlice>?
+		Meet  = 0,          // Default: meet
+		Slice = 16,
+	};
+};
+
 inline constexpr uint32_t TRANSFORM_ARRAY_SZ = 6;
 
 struct ShapeAttributes
@@ -358,6 +381,7 @@ struct ViewPort
 	Length m_Y;
 	Length m_Width;
 	Length m_Height;
+	AspectRatio::Type m_PreserveAspectRatio;
 	float m_ViewBox[VIEW_BOX_ARRAY_SZ];
 };
 

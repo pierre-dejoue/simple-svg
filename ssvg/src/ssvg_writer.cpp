@@ -261,6 +261,35 @@ bool writeViewPort(StreamWriter& writer, const ViewPort* viewport)
 		writer.write(" height=\"%g%s\"", height, heightUnit);
 	}
 
+	if (viewport->m_PreserveAspectRatio != 0) {
+		const uint32_t alignX = viewport->m_PreserveAspectRatio & 0x00000003;
+		const uint32_t alignY = viewport->m_PreserveAspectRatio & 0x0000000C;
+		const bool slice      = viewport->m_PreserveAspectRatio & 0x00000010;
+		writer.out() << " preserveAspectRatio=\"";
+		if (alignX == AspectRatio::XNone || alignY == AspectRatio::YNone) {
+			writer.out() << "none";
+		} else {
+			switch (alignX) {
+				case AspectRatio::XMid : writer.out() << "xMid"; break;
+				case AspectRatio::XMax : writer.out() << "xMax"; break;
+				case AspectRatio::XMin : writer.out() << "xMin"; break;
+				default: assert(0); break;
+			}
+			switch (alignY) {
+				case AspectRatio::YMid : writer.out() << "YMid"; break;
+				case AspectRatio::YMax : writer.out() << "YMax"; break;
+				case AspectRatio::YMin : writer.out() << "YMin"; break;
+				default: assert(0); break;
+			}
+		}
+		if (slice) {
+			writer.out() << " slice";
+		} else {
+			writer.out() << " meet";
+		}
+		writer.out() << "\"";
+	}
+
 	const float viewBoxWidth  = viewport->m_ViewBox[2];
 	const float viewBoxHeight = viewport->m_ViewBox[3];
 	if (viewBoxWidth > 0.0f && viewBoxHeight > 0.0f) {

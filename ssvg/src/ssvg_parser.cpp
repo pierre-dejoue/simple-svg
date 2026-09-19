@@ -654,6 +654,68 @@ const char* parseArcFlag(const char* str, const char* end, float* flag)
 	return skipCommaWhitespace(ptr + 1, end);
 }
 
+bool parsePreserveAspectRatio(std::string_view str, AspectRatio::Type& preserveAspectRatio)
+{
+	const std::string lower = stdutils::string::tolower(str);
+	const char* ptr = lower.data();
+	const char* end = lower.data() + lower.length();
+
+	preserveAspectRatio = 0;
+
+	// Parse the <align> part
+	ptr = skipWhitespace(ptr, end);
+	{
+		const bool tooShort = (end - ptr) < 4;
+		SSVG_CHECK(!tooShort, "parsePreserveAspectRatio is too short: \"%.*s\"", strlenint(str), str.data());
+		if (tooShort) { return false; }
+	}
+	const std::string_view alignX(ptr, 4);
+	if (alignX == "xmid") {
+		preserveAspectRatio |= AspectRatio::XMid;
+	} else if (alignX == "xmin") {
+		preserveAspectRatio |= AspectRatio::XMin;
+	} else if (alignX == "xmax") {
+		preserveAspectRatio |= AspectRatio::XMax;
+	} else {
+		preserveAspectRatio = AspectRatio::None;
+	}
+	ptr += 4;
+	if (preserveAspectRatio != AspectRatio::None) {
+		{
+			const bool tooShort = (end - ptr) < 4;
+			SSVG_CHECK(!tooShort, "parsePreserveAspectRatio is too short: \"%.*s\"", strlenint(str), str.data());
+			if (tooShort) { return false; }
+		}
+		const std::string_view alignY(ptr, 4);
+		if (alignY == "ymid") {
+			preserveAspectRatio |= AspectRatio::YMid;
+		} else if (alignY == "ymin") {
+			preserveAspectRatio |= AspectRatio::YMin;
+		} else if (alignY == "ymax") {
+			preserveAspectRatio |= AspectRatio::YMax;
+		} else {
+			preserveAspectRatio = AspectRatio::None;
+		}
+		ptr += 4;
+	}
+
+	// Skip to next word
+	while (ptr != end && !stdutils::ascii::isspace(*ptr) && *ptr != '\0') {
+		++ptr;
+	}
+	ptr = skipWhitespace(ptr, end);
+
+	assert(ptr <= end);
+	const std::string_view meetOrSlice(ptr, (end - ptr));
+	if (stdutils::string::starts_with(meetOrSlice, "slice")) {
+		preserveAspectRatio |= AspectRatio::Slice;
+	} else {
+		preserveAspectRatio |= AspectRatio::Meet;
+	}
+
+	return true;
+}
+
 bool parseViewBox(std::string_view str, float* viewBox)
 {
 	const char* ptr = str.data();
@@ -861,6 +923,9 @@ bool parseViewPortAttribute(std::string_view name, std::string_view value, ViewP
 		found = true;
 	} else if (name == "height") {
 		IGNORE_RETURN parsePositiveLength(value, viewport.m_Height);
+		found = true;
+	} else if (name == "preserveAspectRatio") {
+		IGNORE_RETURN parsePreserveAspectRatio(value, viewport.m_PreserveAspectRatio);
 		found = true;
 	} else if (name == "viewBox") {
 		const bool hasViewBox = parseViewBox(value, &viewport.m_ViewBox[0]);
