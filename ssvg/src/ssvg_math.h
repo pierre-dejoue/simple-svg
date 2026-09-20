@@ -27,7 +27,7 @@ inline constexpr float sign(float a)
 
 inline float normalizedDiagonal(float w, float h)
 {
-	return std::sqrt(w * w + h * h) / std::sqrt(2.f);
+	return std::hypot(w, h) / stdutils::constants::sqrt2_v<float>;
 }
 
 // Returns the number of roots

@@ -479,8 +479,8 @@ inline float not_finite_to_zero(float v) {
 
 float nsvg__vecang(float ux, float uy, float vx, float vy)
 {
-	const float umag = std::sqrt(ux * ux + uy * uy);
-	const float vmag = std::sqrt(vx * vx + vy * vy);
+	const float umag = std::hypot(ux, uy);
+	const float vmag = std::hypot(vx, vy);
 	const float u_dot_v = ux * vx + uy * vy;
 	const float r = stdutils::clamp<float>(not_finite_to_zero(u_dot_v / (umag * vmag)), -1.0f, 1.0f);
 
@@ -503,7 +503,7 @@ void convertArcToBezier(Path* path, uint32_t cmdIndex, const float* arcToArgs, c
 
 	float dx = x1 - x2;
 	float dy = y1 - y2;
-	float d = std::sqrt(dx * dx + dy * dy);
+	float d = std::hypot(dx, dy);
 	if (d < 1e-6f || rx < 1e-6f || ry < 1e-6f) {
 		// The arc degenerates to a line
 		PathCmd* cmd = &path->m_Commands[cmdIndex];
