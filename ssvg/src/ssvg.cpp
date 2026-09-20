@@ -1029,27 +1029,6 @@ void pathClear(Path* path)
 	path->m_Capacity = 0;
 }
 
-inline uint32_t solveQuad(float a, float b, float c, float* t)
-{
-	if (std::abs(a) < 1e-5f) {
-		if (std::abs(b) > 1e-5f) {
-			t[0] = -c / b;
-			return 1;
-		}
-	} else {
-		const float desc = b * b - 4.0f * a * c;
-		if (std::abs(desc) > 1e-5f) {
-			const float desc_sqrt = std::sqrt(desc);
-			t[0] = (-b + desc_sqrt) / (2.0f * a);
-			t[1] = (-b - desc_sqrt) / (2.0f * a);
-
-			return 2;
-		}
-	}
-
-	return 0;
-}
-
 inline void evalCubicBezierAt(float t, const float* p0, const float* p1, const float* p2, const float* p3, float* p)
 {
 	const float t2 = t * t;
@@ -1131,7 +1110,7 @@ void pathCalcBounds(const Path* path, float* bounds)
 				const float c = 3.0f * (c1 - c0);
 
 				float root[2] = { -1.0f, -1.0f }; // Max 2 roots
-				uint32_t numRoots = solveQuad(a, b, c, &root[0]);
+				uint32_t numRoots = math::solveQuad(a, b, c, &root[0]);
 
 				for (uint32_t iRoot = 0; iRoot < numRoots; ++iRoot) {
 					const float t = root[iRoot];

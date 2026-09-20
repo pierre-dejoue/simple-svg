@@ -30,6 +30,34 @@ inline float normalizedDiagonal(float w, float h)
 	return std::sqrt(w * w + h * h) / std::sqrt(2.f);
 }
 
+// Returns the number of roots
+inline uint32_t solveQuad(float a, float b, float c, float* t)
+{
+	assert(t);
+	t[0] = 0.f;
+	t[1] = 0.f;
+
+	if (std::abs(a) < 1e-5f) {
+		if (std::abs(b) > 1e-5f) {
+			t[0] = -c / b;
+
+			return 1;
+		}
+	} else {
+		const float desc = b * b - 4.0f * a * c;
+		if (std::abs(desc) > 1e-5f) {
+			const float desc_sqrt = std::sqrt(desc);
+			t[0] = (-b + desc_sqrt) / (2.0f * a);
+			t[1] = (-b - desc_sqrt) / (2.0f * a);
+
+			return 2;
+		}
+	}
+
+	// No root
+	return 0;
+}
+
 } // namespace math
 } // namespace ssvg
 
