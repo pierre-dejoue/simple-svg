@@ -1,13 +1,19 @@
-simple-svg
-==========
+simpler-svg
+===========
 
 A lightweight SVG parser and writer library, in C++.
 
-## About this fork of the library
+## Project history
 
-This fork of [jdryg/simple-svg](https://github.com/jdryg/simple-svg) removes the dependency on [bx](https://github.com/bkaradzic/bx). It also provides a few bug fixes and patches.
+This project is a fork of [jdryg/simple-svg](https://github.com/jdryg/simple-svg), it was initially created with the goal of removing the dependency on [bx](https://github.com/bkaradzic/bx).
 
-This repo is open source and closed to contributions.
+Finally the following changes were made:
+
+* The bx dependency was removed.
+* The design of the style attributes was changed and it now works.
+* The parser was made more robust. Most valid SVG files are now parsed without errors, even though unknown attributes and elements are skipped.
+* Added support for more attributes and elements.
+* Additions to the API.
 
 ## Dependencies
 
@@ -25,6 +31,7 @@ This repo is open source and closed to contributions.
 * Demo/Testing:
 	- `examples/example_01_round_trip/main.cpp`
 	- `examples/example_02_build_svg/main.cpp`
+	- `examples/example_02_arcs_to_bezier/main.cpp`
 
 ## Examples
 
@@ -72,3 +79,13 @@ Build a SVG image programmatically and save it to file `test_output.svg`
 $ example_02_build_svg.exe
 Building "./test_output.svg"
 ```
+
+## License
+
+[![License](http://img.shields.io/:license-BSD_2_Clause-blue.svg?style=flat-square)](./LICENSE)
+
+## Contributions
+
+This project does not accept pull requests at the moment. This repo is open source but closed to contributions.
+
+If you identify SVG files that do not parse correctly please submit an issue.

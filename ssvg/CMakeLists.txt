@@ -1,5 +1,5 @@
 #
-# Simple-SVG (SSVG) library
+# Simpler-SVG (SSVG) library
 #
 #include(compiler_options)
 
